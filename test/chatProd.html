@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+
+<body>
+  <h2>SQLite Cloud SDK CHAT </h2>
+  <!-- message form -->
+  <form name="publish">
+    <input type="text" name="message">
+    <input type="submit" value="Send">
+  </form>
+
+  <!-- div with messages -->
+  <div id="messages"></div>
+
+  <p id="message"></p>
+  <p id="connection-state"></p>
+  <button id="open-connection">Open connection</button>
+  <button id="close-connection">Close connection</button>
+  <script src="../dist/main.bundle.js"></script>
+  <script>
+    let show = function (message) {
+      document.getElementById('message').innerHTML = message;
+    }
+
+    let myLiter = new sqliteCloudJs.Liter("ws://localhost:8081/ws", show);
+
+    // send message from the form
+    document.forms.publish.onsubmit = function () {
+      let outgoingMessage = this.message.value;
+
+      myLiter.send(outgoingMessage);
+      return false;
+    };
+
+
+    const openEl = document.getElementById("open-connection");
+    openEl.addEventListener("click", () => {
+      myLiter.connect();
+    }, false);
+
+    const closeEl = document.getElementById("close-connection");
+    closeEl.addEventListener("click", () => {
+      myLiter.close();
+    }, false);
+
+    setInterval(() => {
+      document.getElementById('connection-state').innerHTML = myLiter.connectionState;
+    }, 200)
+
+  </script>
+
+</body>
+
+</html>

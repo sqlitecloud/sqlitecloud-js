@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+
+<body class="bg-slate-200 p-4">
+  <h2 class="text-2xl font-bold">SQLite Cloud SDK CHAT </h2>
+  <!-- message form -->
+  <form class="mt-4 flex flex-row align-middle space-x-2" name="publish">
+    <input type="text" name="message">
+    <input type="submit" value="Send" class="send-button">
+  </form>
+
+  <div class="mt-4 w-56 flex flex-col justify-start space-y-2">
+    <button type="" class="button" id="open-connection">Open connection</button>
+    <button type="" class="button" id="close-connection">Close connection</button>
+  </div>
+
+  <div class="mt-4">
+    <h3 class="text-xl font-bold">Connection status</h3>
+    <p class="pl-2 text-base" id="connection-state"></p>
+  </div>
+
+  <div class="mt-4">
+    <h3 class="text-xl font-bold">Message received</h3>
+    <p class="pl-2 text-base" id="message"></p>
+  </div>
+</body>
+
+</html>

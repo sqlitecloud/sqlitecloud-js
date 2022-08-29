@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+
+<body>
+  <h2>SQLite Cloud SDK CHAT </h2>
+  <!-- message form -->
+  <form name="publish">
+    <input type="text" name="message">
+    <input type="submit" value="Send">
+  </form>
+
+  <!-- div with messages -->
+  <div id="messages"></div>
+
+  <p id="message"></p>
+  <p id="connection-state"></p>
+  <button id="open-connection">Open connection</button>
+  <button id="close-connection">Close connection</button>
+  <button id="promise-send">Send command</button>
+  <script src="http://localhost:8080/main.bundle.js"></script>
+  <script>
+
+
+
+    let show = function (message) {
+      console.log(message);
+      //document.getElementById('message').innerHTML = message;
+    }
+    let myLiter = new sqliteCloudJS.Liter("ws://localhost:8081/ws", show);
+    //set custom requestTimeout
+    myLiter.setRequestTimeout(2200);
+
+    // send message from the form
+    document.forms.publish.onsubmit = async function () {
+      try {
+        let outgoingMessage = this.message.value;
+        const response = await myLiter.syncSend(outgoingMessage);
+        return false;
+      } catch (error) {
+        console.log(error);
+      }
+    };
+
+
+    //Connection Open
+    const openEl = document.getElementById("open-connection");
+    openEl.addEventListener("click", () => {
+      myLiter.connect();
+    }, false);
+
+    //Connection close
+    const closeEl = document.getElementById("close-connection");
+    closeEl.addEventListener("click", () => {
+      myLiter.close();
+    }, false);
+
+    //Promise Send
+    async function sendData(outgoingMessage) {
+      try {
+        const response = await myLiter.promiseSend(outgoingMessage);
+        console.log(response);
+        return false;
+      } catch (error) {
+        console.log(error);
+      }
+    }
+    const syncSendEl = document.getElementById("promise-send");
+    syncSendEl.addEventListener("click", () => {
+      sendData(
+        {
+          type: "exec",
+          command: "LIST DATABASES",
+          id: myLiter.makeid(5)
+        }
+      );
+    }, false);
+
+    //Callback Send
+    //const asyncSendEl = document.getElementById("callback-send");
+    //asyncSendEl.addEventListener("click", () => {
+    //myLiter.callbackSend(myLiter.makeid(5));
+    //}, false);
+
+
+    //Check connection state
+    setInterval(() => {
+      document.getElementById('connection-state').innerHTML = myLiter.connectionState;
+    }, 200)
+
+    //Check connection state
+    //setInterval(() => {
+    //  console.log(myLiter.requestsStackState);
+    //}, 200)
+
+  </script>
+
+</body>
+
+</html>
