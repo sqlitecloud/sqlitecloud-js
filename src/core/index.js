@@ -29,7 +29,7 @@ export class Liter {
     reject: reject //function called when the Promise reject
   }
   */
-  #requestsStack = [];
+  #requestsStack = new Map();
 
   /*
   #subscriptionsStack private property stores the list of pubSub subscriptions.
@@ -39,7 +39,7 @@ export class Liter {
     callback: //the function called when a new message arrives
   }
   */
-  #subscriptionsStack = [];
+  #subscriptionsStack = new Map();
 
   /* PUBLIC PROPERTIES */
   /*
@@ -55,9 +55,10 @@ export class Liter {
    - api key
    - 
   */
-  constructor(url, callback) {
+  constructor(url, onError = null, onClose = null) {
     this.url = url;
-    this.callback = callback;
+    this.onError = onError;
+    this.onClose = onClose;
     // this.url = "wss://" + "{{.}}" + "/api/v1/" + projectfield.value + "/ws?apikey=" + apikeyfield.value;
   }
 
@@ -90,6 +91,10 @@ export class Liter {
   async connect() {
     try {
       this.#ws = await this.#connectWs(this.url, "Websocket connection not established");
+      //register the close event on websocket
+      this.#ws.addEventListener('error', this.#onError);
+      //register the close event on websocket
+      this.#ws.addEventListener('close', this.#onClose);
       return "connection created"
     } catch (error) {
       return (error);
@@ -97,13 +102,32 @@ export class Liter {
   }
 
   /*
-  close method closes websocket connection
+  close method closes websocket connection and if exist pubSub websocket connection
+  - type = 0 close all websocket
+  - type = 1 close only request websocket
+  - type = 2 close only pubSub websocket
+
   */
-  close() {
-    this.#ws.close(1000, "Client close connection");
-    if (this.#wsPubSub !== null) {
-      this.#wsPubSub.close(1000, "Client close connection");
-      this.#subscriptionsStack = [];
+  close(type = 0) {
+    if (type == 0) {
+      this.#ws.close(1000, "Client close connection");
+      this.onError = null;
+      this.onClose = null;
+      if (this.#wsPubSub !== null) {
+        this.#wsPubSub.close(1000, "Client close connection");
+        this.#subscriptionsStack = new Map();
+      }
+    }
+    if (type == 1) {
+      this.#ws.close(1000, "Client close connection");
+      this.onError = null;
+      this.onClose = null;
+    }
+    if (type == 2) {
+      if (this.#wsPubSub !== null) {
+        this.#wsPubSub.close(1000, "Client close connection");
+        this.#subscriptionsStack = new Map();
+      }
     }
   }
 
@@ -175,29 +199,26 @@ export class Liter {
     //based on the value of of callback, create a new subscription or remove the subscription
     if (callback !== null) {
       //check if the channel subscription is already active
-      let subExist = false;
-      this.#subscriptionsStack.forEach((sub) => {
-        if (sub.channel == channel) subExist = true;
-      })
-      if (!subExist) {
+      if (!this.#subscriptionsStack.has(channel)) {
         //if the subscription does not exist 
         try {
           const response = await this.#promiseSend(
             {
               id: id,
               type: "pubsub",
-              channel: channel,
+              channel: channel.toLowerCase(),
               payload: null
             }
           );
-          this.#subscriptionsStack.push(
+          this.#subscriptionsStack.set(channel.toLowerCase(),
             {
-              channel: channel,
+              channel: channel.toLowerCase(),
               callback: callback
             }
           )
           //if this is the first subscription, create the websocket connection dedicated to receive pubSub messages
-          if (this.#subscriptionsStack.length == 1) {
+          if (this.#subscriptionsStack.size == 1) {
+            //response qui ci sono le informazioni di autenticazione
             try {
               this.#wsPubSub = await this.#connectWs(this.#wsPubSubUrl, "PubSub connection not established");
               //register the onmessage event on pubSub websocket
@@ -218,13 +239,10 @@ export class Liter {
       //::::::::::::TODO::::::::::::
       //say to server to remove subscription
       //::::::::::::
-      let newSubscriptionsStack = [];
-      this.#subscriptionsStack.forEach((sub) => {
-        if (sub.channel != channel) newSubscriptionsStack.push(sub);
-      })
-      this.#subscriptionsStack = newSubscriptionsStack;
+
+      this.#subscriptionsStack.delete(channel)
       //check the remaing active subscription. If zero the websocket connection used for pubSub can be closed
-      if (this.#subscriptionsStack.length == 0) {
+      if (this.#subscriptionsStack.size == 0) {
         this.#wsPubSub.removeEventListener('message', this.#wsPubSubonMessage);
         this.#wsPubSub.close(1000, "Client close pubSub connection");
         this.#wsPubSub = null;
@@ -240,7 +258,7 @@ export class Liter {
   connectWs private method is called to create the websocket conenction used to send command request, receive command request response, pubSub subscription request, 
   */
   #connectWs(url, errorMessage) {
-    return new Promise(function (resolve, reject) {
+    return new Promise((resolve, reject) => {
       var ws = new WebSocket(url);
       ws.onopen = function () {
         resolve(ws);
@@ -251,18 +269,38 @@ export class Liter {
     });
   }
 
-  #wsPubSubonMessage = (event) => {
-    const pubSubMessage = JSON.parse(event.data);
-    console.log("______________________");
-    console.log(this.#subscriptionsStack);
-    this.#subscriptionsStack.forEach((sub) => {
-      if (sub.channel == pubSubMessage.channel) sub.callback(pubSubMessage.message);
-    })
-    console.log("______________________");
+
+  /*
+  onClose private method is called when close event is fired by websocket.
+  if user provided a callback, this is invoked
+  */
+  #onClose = (event) => {
+    if (this.onClose !== null) {
+      this.onClose(event);
+    }
   }
 
   /*
-  promiseSend method send request to the server creating a Promise that resolve when a websocket onmessage event is fired.
+  onError private method is called when error event is fired by websocket.
+  if user provided a callback, this is invoked
+  */
+  #onError = (event) => {
+    if (this.onError !== null) {
+      this.onError(event);
+    }
+  }
+
+  /*
+  wsPubSubonMessage private method is called when ad onmessage event is fired on pubSub websocket.
+  based on the channel indicated in the message the right callback is called
+  */
+  #wsPubSubonMessage = (event) => {
+    const pubSubMessage = JSON.parse(event.data);
+    this.#subscriptionsStack.get(pubSubMessage.channel).callback(pubSubMessage.message);
+  }
+
+  /*
+  promiseSend private method send request to the server creating a Promise that resolve when a websocket onmessage event is fired.
   */
   #promiseSend(request) {
     //request is sent to the server
@@ -275,16 +313,17 @@ export class Liter {
       //define what to do if an answer does not arrive within the set time
       const onRequestTimeout = setTimeout(() => { this.#handlePromiseRejectTimeout(requestId) }, this.requestTimeout);
       //add the new request to the request stack 
-      this.#requestsStack.push(
+      this.#requestsStack.set(
+        requestId,
         {
           id: requestId,
           onRequestTimeout: onRequestTimeout,
           resolve: resolve,
           reject: reject
         }
-      );
+      )
       //if this is the only one request in the stack, register the function to be executed at the onmessage event
-      if (this.#requestsStack.length == 1) this.#ws.addEventListener('message', this.#handlePromiseResolve);
+      if (this.#requestsStack.size == 1) this.#ws.addEventListener('message', this.#handlePromiseResolve);
     })
   }
 
@@ -294,29 +333,18 @@ export class Liter {
   #handlePromiseResolve = (event) => {
     //parse the response sent by the server
     const response = JSON.parse(event.data);
-    //search in the requests stack the request with the same id of the response received by the sever.
+    //search in the requests stack the request with the same id of the response received by the server.
     //it is possible that the request no longer exists as it may have timed out and therefore deleted from the stack.
-    //a new requests stack is created by removing, if present, the request with the same id as the one in the response.
-    //the index of the request corresponding to the response is stored.
-    let newRequestsStack = [];
-    let requestIndex = -1;
-    this.#requestsStack.forEach((request, i) => {
-      if (request.id != response.id) {
-        newRequestsStack.push(request);
-      } else {
-        requestIndex = i;
-      }
-    });
     //if the request was found:
     // - the Promise corresponding to the request is resolved returning the response received by the server
     // - the timeout related to the request is cleared
     // - the new requests stack is stored
     // - if there are no pending requests remove the websocket onmessage event
-    if (requestIndex >= 0) {
-      this.#requestsStack[requestIndex].resolve(`${response.message}`);
-      clearTimeout(this.#requestsStack[requestIndex].onRequestTimeout);
-      this.#requestsStack = newRequestsStack;
-      if (this.#requestsStack.length == 0) this.#ws.removeEventListener('message', this.#handlePromiseResolve);
+    if (this.#requestsStack.has(response.id)) {
+      this.#requestsStack.get(response.id).resolve(`${response.message}`);
+      clearTimeout(this.#requestsStack.get(response.id).onRequestTimeout);
+      this.#requestsStack.delete(response.id);
+      if (this.#requestsStack.size == 0) this.#ws.removeEventListener('message', this.#handlePromiseResolve);
     }
   }
 
@@ -326,26 +354,16 @@ export class Liter {
   #handlePromiseRejectTimeout = (requestID) => {
     //search in the requests stack the request with the same id of the request that times out.
     //a new requests stack is created by removing the request that times out.
-    //the index of the request that times out is stored.
-    let newRequestsStack = [];
-    let requestIndex = -1;
-    this.#requestsStack.forEach((request, i) => {
-      if (request.id != requestID) {
-        newRequestsStack.push(request);
-      } else {
-        requestIndex = i;
-      }
-    });
     //once the request is found:
     // - the Promise corresponding to the reject returning an error message
     // - the timeout related to the request is cleared
     // - the new requests stack is stored
     // - if there are no pending requests remove the websocket onmessage event
-    if (requestIndex >= 0) {
-      clearTimeout(this.#requestsStack[requestIndex].onRequestTimeout);
-      this.#requestsStack[requestIndex].reject(`Error | Times out request ID: ${requestID} `);
-      this.#requestsStack = newRequestsStack;
-      if (this.#requestsStack.length == 0) this.#ws.removeEventListener('message', this.#handlePromiseResolve);
+    if (this.#requestsStack.has(requestID)) {
+      clearTimeout(this.#requestsStack.get(requestID).onRequestTimeout);
+      this.#requestsStack.get(requestID).reject(`Error | Times out request ID: ${requestID} `);
+      this.#requestsStack.delete(requestID);
+      if (this.#requestsStack.size == 0) this.#ws.removeEventListener('message', this.#handlePromiseResolve);
     }
   }
 }
