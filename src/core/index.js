@@ -13,6 +13,13 @@ export class Liter {
   #ws = null;
 
   /*
+  #wsPubSub private property stores the websocket used to receive pubSub messages.
+  When a new message is received, based on the channel, is selected the callbacks to be called cycling through subscriptionsStack property
+  */
+  #wsPubSub = null;
+  #wsPubSubUrl = "ws://localhost:8082/ws";
+
+  /*
   #requestsStack private property stores the list of pending requests, in this way the user can send multiple parallel requests.
   For each request an object that contains the following is stored:
   {
@@ -23,6 +30,16 @@ export class Liter {
   }
   */
   #requestsStack = [];
+
+  /*
+  #subscriptionsStack private property stores the list of pubSub subscriptions.
+  For each subscription an object that contains the following is stored:
+  {
+    channel: //the name of the channel you are subscribed to 
+    callback: //the function called when a new message arrives
+  }
+  */
+  #subscriptionsStack = [];
 
   /* PUBLIC PROPERTIES */
   /*
@@ -70,21 +87,13 @@ export class Liter {
   /*
   connect method opens websocket connection
   */
-  connect() {
-    let ws = new WebSocket(this.url);
-    this.#ws = ws;
-
-    ws.onclose = (event) => {
-      if (event.wasClean) {
-        this.callback(`[close] Connection closed cleanly, code=${event.code} reason=${event.reason}`);
-      } else {
-        // e.g. server process killed or network down
-        // event.code is usually 1006 in this case
-        this.callback('[close] Connection died');
-      }
-    };
-
-    return;
+  async connect() {
+    try {
+      this.#ws = await this.#connectWs(this.url, "Websocket connection not established");
+      return "connection created"
+    } catch (error) {
+      return (error);
+    }
   }
 
   /*
@@ -92,6 +101,10 @@ export class Liter {
   */
   close() {
     this.#ws.close(1000, "Client close connection");
+    if (this.#wsPubSub !== null) {
+      this.#wsPubSub.close(1000, "Client close connection");
+      this.#subscriptionsStack = [];
+    }
   }
 
   /*
@@ -129,11 +142,129 @@ export class Liter {
     return this.#requestsStack;
   }
 
+  /*
+  subscriptionsStackState method return the lits of active subscriptions
+  */
+  get subscriptionsStackState() {
+    return this.#subscriptionsStack;
+  }
+
+
+  /*
+  exec method calls the private method promiseSend building the object 
+  */
+  async exec(id, command) {
+    try {
+      const response = await this.#promiseSend(
+        {
+          id: id,
+          type: "exec",
+          command: command
+        }
+      );
+      return (response);
+    } catch (error) {
+      return (error);
+    }
+  }
+
+  /*
+  pubsub method calls 
+  */
+  async pubsub(id, channel, payload, callback) {
+    //based on the value of of callback, create a new subscription or remove the subscription
+    if (callback !== null) {
+      //check if the channel subscription is already active
+      let subExist = false;
+      this.#subscriptionsStack.forEach((sub) => {
+        if (sub.channel == channel) subExist = true;
+      })
+      if (!subExist) {
+        //if the subscription does not exist 
+        try {
+          const response = await this.#promiseSend(
+            {
+              id: id,
+              type: "pubsub",
+              channel: channel,
+              payload: null
+            }
+          );
+          this.#subscriptionsStack.push(
+            {
+              channel: channel,
+              callback: callback
+            }
+          )
+          //if this is the first subscription, create the websocket connection dedicated to receive pubSub messages
+          if (this.#subscriptionsStack.length == 1) {
+            try {
+              this.#wsPubSub = await this.#connectWs(this.#wsPubSubUrl, "PubSub connection not established");
+              //register the onmessage event on pubSub websocket
+              this.#wsPubSub.addEventListener('message', this.#wsPubSubonMessage);
+            } catch (error) {
+              return (error);
+            }
+          }
+          return (response);
+        } catch (error) {
+          return (error);
+        }
+      } else {
+        //if the subscription exists
+        return ("Subscription to channel " + channel + "already exist");
+      }
+    } else {
+      //::::::::::::TODO::::::::::::
+      //say to server to remove subscription
+      //::::::::::::
+      let newSubscriptionsStack = [];
+      this.#subscriptionsStack.forEach((sub) => {
+        if (sub.channel != channel) newSubscriptionsStack.push(sub);
+      })
+      this.#subscriptionsStack = newSubscriptionsStack;
+      //check the remaing active subscription. If zero the websocket connection used for pubSub can be closed
+      if (this.#subscriptionsStack.length == 0) {
+        this.#wsPubSub.removeEventListener('message', this.#wsPubSubonMessage);
+        this.#wsPubSub.close(1000, "Client close pubSub connection");
+        this.#wsPubSub = null;
+      }
+      return ("Subscription to channel " + channel + "removed");
+    }
+  }
+
+
+  /* PRIVATE METHODS */
+
+  /*
+  connectWs private method is called to create the websocket conenction used to send command request, receive command request response, pubSub subscription request, 
+  */
+  #connectWs(url, errorMessage) {
+    return new Promise(function (resolve, reject) {
+      var ws = new WebSocket(url);
+      ws.onopen = function () {
+        resolve(ws);
+      };
+      ws.onerror = function (err) {
+        reject(errorMessage);
+      };
+    });
+  }
+
+  #wsPubSubonMessage = (event) => {
+    const pubSubMessage = JSON.parse(event.data);
+    console.log("______________________");
+    console.log(this.#subscriptionsStack);
+    this.#subscriptionsStack.forEach((sub) => {
+      if (sub.channel == pubSubMessage.channel) sub.callback(pubSubMessage.message);
+    })
+    console.log("______________________");
+  }
 
   /*
   promiseSend method send request to the server creating a Promise that resolve when a websocket onmessage event is fired.
   */
-  promiseSend(request) {
+  #promiseSend(request) {
     //request is sent to the server
     this.#ws.send(JSON.stringify(request));
     console.log(request); //TOGLIMI
@@ -156,22 +287,6 @@ export class Liter {
       if (this.#requestsStack.length == 1) this.#ws.addEventListener('message', this.#handlePromiseResolve);
     })
   }
-
-
-  // callbackSend(message) {
-  //   //define function that hadle how webSocket response is returned to client
-  //   //in this case is used a callback function
-  //   var handleResponseCallback = (event) => {
-  //     this.callback(`callbackSend Data received from server: ${event.data}`);
-  //     this.#ws.removeEventListener('message', handleResponseCallback);
-  //   }
-  //   //register the onmessage event on websocket
-  //   this.#ws.addEventListener('message', handleResponseCallback);
-  //   //message is sent to server
-  //   this.#ws.send(message);
-  // }
-
-  /* PRIVATE METHODS */
 
   /*
   private handlePromiseResolve method is called when onmessage event is fired.
