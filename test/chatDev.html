@@ -17,35 +17,23 @@
   <button id="open-connection">Open connection</button>
   <button id="close-connection">Close connection</button>
   <button id="promise-send">Send command</button>
+  <button id="pub-channel">Channel1 subscription</button>
+  <button id="rm-pub-channel">Remove channel1 subscription</button>
+  <button id="pub-channel2">Channel2 subscription</button>
+  <button id="rm-pub-channel2">Remove channel2 subscription</button>
   <script src="http://localhost:8080/main.bundle.js"></script>
   <script>
 
-
-
-    let show = function (message) {
-      console.log(message);
-      //document.getElementById('message').innerHTML = message;
-    }
-    let myLiter = new sqliteCloudJS.Liter("ws://localhost:8081/ws", show);
+    let myLiter = new sqliteCloudJS.Liter("ws://localhost:8081/ws", null);
     //set custom requestTimeout
-    myLiter.setRequestTimeout(2200);
-
-    // send message from the form
-    document.forms.publish.onsubmit = async function () {
-      try {
-        let outgoingMessage = this.message.value;
-        const response = await myLiter.syncSend(outgoingMessage);
-        return false;
-      } catch (error) {
-        console.log(error);
-      }
-    };
+    myLiter.setRequestTimeout(50000);
 
 
     //Connection Open
     const openEl = document.getElementById("open-connection");
-    openEl.addEventListener("click", () => {
-      myLiter.connect();
+    openEl.addEventListener("click", async () => {
+      const connectionResponse = await myLiter.connect();
+      console.log(connectionResponse);
     }, false);
 
     //Connection close
@@ -54,25 +42,51 @@
       myLiter.close();
     }, false);
 
-    //Promise Send
-    async function sendData(outgoingMessage) {
-      try {
-        const response = await myLiter.promiseSend(outgoingMessage);
-        console.log(response);
-        return false;
-      } catch (error) {
-        console.log(error);
-      }
+    //Exec sql command
+    async function exec(id, command) {
+      const response = await myLiter.exec(id, command);
+      console.log(response);
     }
     const syncSendEl = document.getElementById("promise-send");
     syncSendEl.addEventListener("click", () => {
-      sendData(
-        {
-          type: "exec",
-          command: "LIST DATABASES",
-          id: myLiter.makeid(5)
-        }
-      );
+      exec(myLiter.makeid(5), "LIST DATABASES");
+    }, false);
+
+
+    //Register to pubSub channel
+    let channel1Callback = function (message) {
+      console.log("ch1 callback: " + message);
+      //document.getElementById('message').innerHTML = message;
+    }
+
+    async function pubsub(id, channel, payload, callback) {
+      const response = await myLiter.pubsub(id, channel, payload, callback);
+      console.log(response);
+    }
+    const pubChEl = document.getElementById("pub-channel");
+    pubChEl.addEventListener("click", () => {
+      pubsub(myLiter.makeid(5), "channel1", null, channel1Callback);
+    }, false);
+
+    const pubCh2El = document.getElementById("pub-channel2");
+    pubCh2El.addEventListener("click", () => {
+      pubsub(myLiter.makeid(5), "channel2", null, channel2Callback);
+    }, false);
+
+    //Remove to pubSub channel
+
+    async function pubsub(id, channel, payload, callback) {
+      const response = await myLiter.pubsub(id, channel, payload, callback);
+      console.log(response);
+    }
+    const rmPubChEl = document.getElementById("rm-pub-channel");
+    rmPubChEl.addEventListener("click", () => {
+      pubsub(myLiter.makeid(5), "channel1", null, null);
+    }, false);
+
+    const rmPubCh2El = document.getElementById("rm-pub-channel2");
+    rmPubCh2El.addEventListener("click", () => {
+      pubsub(myLiter.makeid(5), "channel2", null, null);
     }, false);
 
     //Callback Send
@@ -90,6 +104,11 @@
     //Check connection state
     //setInterval(() => {
     //  console.log(myLiter.requestsStackState);
+    //}, 200)
+
+    //Check subscription state
+    //setInterval(() => {
+    //  console.log(myLiter.subscriptionsStackState);
     //}, 200)
 
   </script>
