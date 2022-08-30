@@ -24,9 +24,19 @@
   <script src="http://localhost:8080/main.bundle.js"></script>
   <script>
 
-    let myLiter = new sqliteCloudJS.Liter("ws://localhost:8081/ws", null);
+    let onErrorCallback = function (event) {
+      console.log("on Error");
+      console.log(event);
+    }
+
+    let onCloseCallback = function (event) {
+      console.log("on Close");
+      console.log(event);
+    }
+
+    let myLiter = new sqliteCloudJS.Liter("ws://localhost:8081/ws", onErrorCallback, onCloseCallback);
     //set custom requestTimeout
-    myLiter.setRequestTimeout(50000);
+    myLiter.setRequestTimeout(3000);
 
 
     //Connection Open
@@ -55,7 +65,12 @@
 
     //Register to pubSub channel
     let channel1Callback = function (message) {
-      console.log("ch1 callback: " + message);
+      //console.log("ch1 callback: " + message);
+      //document.getElementById('message').innerHTML = message;
+    }
+
+    let channel2Callback = function (message) {
+      //console.log("ch2 callback: " + message);
       //document.getElementById('message').innerHTML = message;
     }
 
@@ -104,7 +119,7 @@
     //Check connection state
     //setInterval(() => {
     //  console.log(myLiter.requestsStackState);
-    //}, 200)
+    //}, 1000)
 
     //Check subscription state
     //setInterval(() => {
