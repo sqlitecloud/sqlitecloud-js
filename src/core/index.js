@@ -1,3 +1,5 @@
+import { msg } from "./messages";
+
 export class Liter {
 
   /* PRIVATE PROPERTIES */
@@ -14,12 +16,13 @@ export class Liter {
 
   /*
   #wsPubSub private property stores the websocket used to receive pubSub messages.
+  #wsPubSubUrl private property stores the websocket url
+  #uuid private property stores the user identifier. This can be used to not received messages sent by the current user
   When a new message is received, based on the channel, is selected the callbacks to be called cycling through subscriptionsStack property
   */
   #wsPubSub = null;
   #wsPubSubUrl = null;
   #uuid = null;
-
 
   /*
   #requestsStack private property stores the list of pending requests, in this way the user can send multiple parallel requests.
@@ -46,16 +49,18 @@ export class Liter {
   /* PUBLIC PROPERTIES */
   /*
   requestTimeout property stores the time available to receive a response before the request times out.
+  filterSentMessages the library not return messages sent by the user
   */
   requestTimeout = 3000;
+  filterSentMessages = false;
 
 
   /* CONSTRUCTOR */
   /*
   Liter class constructor receives:
-   - project ID
-   - api key
-   - 
+   - project ID (required)
+   - api key (required)
+   - webSocket callback event (optional)
   */
 
   constructor(projectID, apikey, onError = null, onClose = null) {
@@ -72,18 +77,25 @@ export class Liter {
     this.requestTimeout = value;
   }
 
+  /*
+  setFilterSentMessages method allows the user to filter or not sent messagess
+  */
+  setFilterSentMessages(value) {
+    this.filterSentMessages = value;
+  }
+
 
   /*
   connect method opens websocket connection
   */
   async connect() {
     try {
-      this.#ws = await this.#connectWs(this.url, "Websocket connection established", "Websocket connection not established");
+      this.#ws = await this.#connectWs(this.url, msg.wsConnectError);
       //register the close event on websocket
       this.#ws.addEventListener('error', this.#onError);
       //register the close event on websocket
       this.#ws.addEventListener('close', this.#onClose);
-      return "connection created"
+      return msg.wsConnectOk;
     } catch (error) {
       return (error);
     }
@@ -98,22 +110,18 @@ export class Liter {
   */
   close(type = 0) {
     if (type == 0) {
-      this.#ws.close(1000, "Client close connection");
-      this.onError = null;
-      this.onClose = null;
+      this.#ws.close(1000, msg.wsCloseByClient);
       if (this.#wsPubSub !== null) {
-        this.#wsPubSub.close(1000, "Client close connection");
+        this.#wsPubSub.close(1000, msg.wsPubSubCloseByClient);
         this.#subscriptionsStack = new Map();
       }
     }
     if (type == 1) {
-      this.#ws.close(1000, "Client close connection");
-      this.onError = null;
-      this.onClose = null;
+      this.#ws.close(1000, msg.wsCloseByClient);
     }
     if (type == 2) {
       if (this.#wsPubSub !== null) {
-        this.#wsPubSub.close(1000, "Client close connection");
+        this.#wsPubSub.close(1000, msg.wsPubSubCloseByClient);
         this.#subscriptionsStack = new Map();
       }
     }
@@ -123,9 +131,36 @@ export class Liter {
   connectionState method returns the actual state of websocket connection
   */
   get connectionState() {
-    let connectionStateString = "WEBSOCKET NOT EXIST"
+    let connectionStateString = msg.wsNotExist;
     if (this.#ws !== null) {
       let connectionState = this.#ws.readyState;
+      switch (connectionState) {
+        case 0:
+          connectionStateString = msg.wsConnecting; "CONNECTING"
+          break;
+        case 1:
+          connectionStateString = msg.wsNotExist; "OPEN"
+          break;
+        case 2:
+          connectionStateString = msg.wsNotExist; "CLOSING"
+          break;
+        case 3:
+          connectionStateString = msg.wsNotExist; "CLOSED"
+          break;
+        default:
+          connectionStateString = msg.wsNotExist; "WEBSOCKET NOT EXIST"
+      }
+    }
+    return connectionStateString;
+  }
+
+  /*
+  pubSubState method returns the actual state of pubSubState websocket connection
+  */
+  get pubSubState() {
+    let connectionStateString = "PUBSUB CONNECTION NOT EXIST"
+    if (this.#wsPubSub !== null) {
+      let connectionState = this.#wsPubSub.readyState;
       switch (connectionState) {
         case 0:
           connectionStateString = "CONNECTING"
@@ -140,10 +175,9 @@ export class Liter {
           connectionStateString = "CLOSED"
           break;
         default:
-          connectionStateString = "WEBSOCKET NOT EXIST"
+          connectionStateString = "PUBSUB CONNECTION NOT EXIST"
       }
     }
-
     return connectionStateString;
   }
 
@@ -166,17 +200,21 @@ export class Liter {
   exec method calls the private method promiseSend building the object 
   */
   async exec(command) {
-    try {
-      const response = await this.#promiseSend(
-        {
-          id: this.#makeid(5),
-          type: "exec",
-          command: command
-        }
-      );
-      return (response);
-    } catch (error) {
-      return (error);
+    if (this.ws !== null) {
+      try {
+        const response = await this.#promiseSend(
+          {
+            id: this.#makeid(5),
+            type: "exec",
+            command: command
+          }
+        );
+        return (response);
+      } catch (error) {
+        return (error);
+      }
+    } else {
+      return ("Connect to Websocket before try to send command")
     }
   }
 
@@ -248,19 +286,20 @@ export class Liter {
   /*
   connectWs private method is called to create the websocket conenction used to send command request, receive command request response, pubSub subscription request, 
   */
-  #connectWs(url, onOpenMessage, errorMessage) {
+  #connectWs(url, errorMessage) {
     return new Promise((resolve, reject) => {
       var ws = new WebSocket(url);
       ws.onopen = function () {
-        console.log(onOpenMessage);
         resolve(ws);
       };
       ws.onerror = function (err) {
-        reject(errorMessage);
+        reject({
+          err: err,
+          message: errorMessage
+        });
       };
     });
   }
-
 
   /*
   onClose private method is called when close event is fired by websocket.
@@ -269,6 +308,9 @@ export class Liter {
   #onClose = (event) => {
     if (this.onClose !== null) {
       this.onClose(event);
+      // this.#ws = null;
+      // this.onError = null;
+      // this.onClose = null;
     }
   }
 
@@ -312,7 +354,7 @@ export class Liter {
             const secret = response.data.secret;
             try {
               this.#wsPubSubUrl = `wss://web1.sqlitecloud.io:8443/api/v1/wspsub?uuid=${uuid}&secret=${secret}`;
-              this.#wsPubSub = await this.#connectWs(this.#wsPubSubUrl, "PubSub connection established", "PubSub connection not established");
+              this.#wsPubSub = await this.#connectWs(this.#wsPubSubUrl, "PubSub connection not established");
               this.#uuid = uuid;
               //register the onmessage event on pubSub websocket
               this.#wsPubSub.addEventListener('message', this.#wsPubSubonMessage);
