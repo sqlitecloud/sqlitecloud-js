@@ -10,14 +10,17 @@
 <body class="bg-slate-200 p-4">
   <h2 class="text-2xl font-bold">SQLite Cloud SDK CHAT </h2>
   <!-- message form -->
-  <form class="mt-4 flex flex-row align-middle space-x-2" name="publish">
-    <input type="text" name="message">
-    <input type="submit" value="Send" class="send-button">
-  </form>
 
   <div class="mt-4 w-56 flex flex-col justify-start space-y-2">
     <button type="" class="button" id="open-connection">Open connection</button>
     <button type="" class="button" id="close-connection">Close connection</button>
+    <button type="" class="button" id="send-button">Send exec</button>
+    <button type="" class="button" id="listen">Register to channel</button>
+    <button type="" class="button" id="unlisten">Unlisten to channel</button>
+    <button type="" class="button" id="notify">Notify to channel</button>
+    <button type="" class="button" id="closeWs">Close WS</button>
+    <button type="" class="button" id="closeWsPubSub">Close WsPubSub</button>
+    <button type="" class="button" id="closeAll">Close ALL</button>
   </div>
 
   <div class="mt-4">

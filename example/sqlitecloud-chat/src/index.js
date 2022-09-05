@@ -1,41 +1,77 @@
-import { Liter } from "sdk-sqlitecloud-js"
+import { Liter } from "js-sdk"
 import './style.css';
 
-function makeid(length) {
-  var result = '';
-  var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  var charactersLength = characters.length;
-  for (var i = 0; i < length; i++) {
-    result += characters.charAt(Math.floor(Math.random() *
-      charactersLength));
-  }
-  return result;
+let onErrorCallback = function (event) {
+  console.log("on Error");
+  console.log(event);
 }
 
-let show = function (message) {
-  document.getElementById('message').innerHTML = message;
+let onCloseCallback = function (event) {
+  console.log("on Close");
+  console.log(event);
 }
-let myLiter = new Liter("ws://localhost:8081/ws", show);
-
-// send message from the form
-document.forms.publish.onsubmit = function () {
-  let outgoingMessage = this.message.value;
-
-  myLiter.send(outgoingMessage);
-  return false;
-};
 
 
+var projectId = "f9cdd1d5-7d16-454b-8cc0-548dc1712c26";
+var apikey = "Rfk00KgQkqIzfqVuTmO87xVLWUwBos3zPzwbXw5UDVY";
+let myLiter = new Liter(projectId, apikey, onErrorCallback, onCloseCallback);
+//set custom requestTimeout
+myLiter.setRequestTimeout(10000);
+
+//Connection Open
 const openEl = document.getElementById("open-connection");
-openEl.addEventListener("click", () => {
-  myLiter.connect();
+openEl.addEventListener("click", async () => {
+  const connectionResponse = await myLiter.connect();
+  console.log(connectionResponse);
 }, false);
 
-const closeEl = document.getElementById("close-connection");
-closeEl.addEventListener("click", () => {
-  myLiter.close();
+//Send exec
+const sendEl = document.getElementById("send-button");
+sendEl.addEventListener("click", async () => {
+  const response = await myLiter.exec("LIST DATABASES");
+  console.log(response);
 }, false);
 
-setInterval(() => {
-  document.getElementById('connection-state').innerHTML = myLiter.connectionState;
-}, 200)
+//Listen ch
+const listen = (message) => {
+  console.log(message)
+}
+
+const listenEl = document.getElementById("listen");
+listenEl.addEventListener("click", async () => {
+  const response = await myLiter.listen("chan1", listen);
+  console.log(response);
+}, false);
+
+
+const unlistenEl = document.getElementById("unlisten");
+unlistenEl.addEventListener("click", async () => {
+  const response = await myLiter.unlisten("chan1");
+  console.log(response);
+}, false);
+
+
+//Notify ch
+const notifyEl = document.getElementById("notify");
+notifyEl.addEventListener("click", async () => {
+  const response = await myLiter.notify("chan1", "messagio di prova");
+  console.log(response);
+}, false);
+
+//Close Ws
+const closeWS = document.getElementById("closeWs");
+closeWS.addEventListener("click", () => {
+  const response = myLiter.close(1);
+}, false);
+
+//Close Ws Pub SUb
+const closeWsPubSub = document.getElementById("closeWsPubSub");
+closeWsPubSub.addEventListener("click", () => {
+  const response = myLiter.close(2);
+}, false);
+
+//Close ALL
+const closeAll = document.getElementById("closeAll");
+closeAll.addEventListener("click", () => {
+  const response = myLiter.close(0);
+}, false);

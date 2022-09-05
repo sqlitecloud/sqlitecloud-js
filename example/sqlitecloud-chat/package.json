@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "start": "webpack serve --open --config ./webpack/webpack.dev.js",
+    "startssl": "cross-env webpack serve --open --config ./webpack/webpack.dev.js | local-ssl-proxy --key C:/Windows/System32/sqlitecloud.io+4-key.pem --cert C:/Windows/System32/sqlitecloud.io+4.pem  --source 3001 --target 8080",
     "build": "webpack --config ./webpack/webpack.prod.js"
   },
   "keywords": [],
@@ -25,6 +26,7 @@
     "webpack-merge": "^5.8.0"
   },
   "dependencies": {
-    "sdk-sqlitecloud-js": "file:../.."
+    "cross-env": "^7.0.3",
+    "js-sdk": "file:../.."
   }
 }
