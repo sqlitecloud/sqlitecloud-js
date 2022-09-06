@@ -89,40 +89,55 @@ export class Liter {
   connect method opens websocket connection
   */
   async connect() {
-    try {
-      this.#ws = await this.#connectWs(this.url, msg.wsConnectError);
-      //register the close event on websocket
-      this.#ws.addEventListener('error', this.#onError);
-      //register the close event on websocket
-      this.#ws.addEventListener('close', this.#onClose);
-      return msg.wsConnectOk;
-    } catch (error) {
-      return (error);
+    if (this.#ws == null) {
+      if (this.#wsPubSub == null) {
+        try {
+          this.#ws = await this.#connectWs(this.url, msg.wsConnectError);
+          //register the close event on websocket
+          this.#ws.addEventListener('error', this.#onError);
+          //register the close event on websocket
+          this.#ws.addEventListener('close', this.#onClose);
+          return msg.wsConnectOk;
+        } catch (error) {
+          return (error);
+        }
+      } else {
+        return msg.wsCantConnectedWsPubSubExist;
+      }
+    } else {
+      return msg.wsAlreadyConnected;
     }
   }
 
   /*
   close method closes websocket connection and if exist pubSub websocket connection
-  - type = 0 close all websocket
-  - type = 1 close only request websocket
-  - type = 2 close only pubSub websocket
-
+  - closePubSub = true (default true), this method close both WebSocket
+  - closePubSub = false this method close only main WebSocket
   */
-  close(type = 0) {
-    if (type == 0) {
-      this.#ws.close(1000, msg.wsCloseByClient);
-      if (this.#wsPubSub !== null) {
+  close(closePubSub = true) {
+    if (closePubSub) {
+      if (this.#wsPubSub !== null && this.#ws !== null) {
         this.#wsPubSub.close(1000, msg.wsPubSubCloseByClient);
         this.#subscriptionsStack = new Map();
+        this.#ws.close(1000, msg.wsCloseByClient);
+        return msg.wsClosingWsPubSubClosingProcess;
+      } else if (this.#wsPubSub == null && this.#ws !== null) {
+        this.#ws.close(1000, msg.wsCloseByClient);
+        return msg.wsClosingProcess;
+      } else if (this.#wsPubSub != null && this.#ws == null) {
+        this.#subscriptionsStack = new Map();
+        this.#wsPubSub.close(1000, msg.wsCloseByClient);
+        return msg.wsPubSubClosingProcess;
+      } else {
+        return msg.wsClosingError;
       }
     }
-    if (type == 1) {
-      this.#ws.close(1000, msg.wsCloseByClient);
-    }
-    if (type == 2) {
-      if (this.#wsPubSub !== null) {
-        this.#wsPubSub.close(1000, msg.wsPubSubCloseByClient);
-        this.#subscriptionsStack = new Map();
+    if (!closePubSub) {
+      if (this.#ws !== null) {
+        this.#ws.close(1000, msg.wsCloseByClient);
+        return msg.wsClosingProcess;
+      } else {
+        return msg.wsClosingError;
       }
     }
   }
@@ -136,19 +151,19 @@ export class Liter {
       let connectionState = this.#ws.readyState;
       switch (connectionState) {
         case 0:
-          connectionStateString = msg.wsConnecting; "CONNECTING"
+          connectionStateString = msg.wsConnecting;
           break;
         case 1:
-          connectionStateString = msg.wsNotExist; "OPEN"
+          connectionStateString = msg.wsOpen;
           break;
         case 2:
-          connectionStateString = msg.wsNotExist; "CLOSING"
+          connectionStateString = msg.wsClosing;
           break;
         case 3:
-          connectionStateString = msg.wsNotExist; "CLOSED"
+          connectionStateString = msg.wsClosed;
           break;
         default:
-          connectionStateString = msg.wsNotExist; "WEBSOCKET NOT EXIST"
+          connectionStateString = msg.wsNotExist;
       }
     }
     return connectionStateString;
@@ -158,24 +173,24 @@ export class Liter {
   pubSubState method returns the actual state of pubSubState websocket connection
   */
   get pubSubState() {
-    let connectionStateString = "PUBSUB CONNECTION NOT EXIST"
+    let connectionStateString = msg.wsPubSubNotExist;
     if (this.#wsPubSub !== null) {
       let connectionState = this.#wsPubSub.readyState;
       switch (connectionState) {
         case 0:
-          connectionStateString = "CONNECTING"
+          connectionStateString = msg.wsPubSubConnecting;
           break;
         case 1:
-          connectionStateString = "OPEN"
+          connectionStateString = msg.wsPubSubOpen;
           break;
         case 2:
-          connectionStateString = "CLOSING"
+          connectionStateString = msg.wsPubSubClosing;
           break;
         case 3:
-          connectionStateString = "CLOSED"
+          connectionStateString = msg.wsPubSubClosed;
           break;
         default:
-          connectionStateString = "PUBSUB CONNECTION NOT EXIST"
+          connectionStateString = msg.wsPubSubNotExist;
       }
     }
     return connectionStateString;
@@ -200,7 +215,7 @@ export class Liter {
   exec method calls the private method promiseSend building the object 
   */
   async exec(command) {
-    if (this.ws !== null) {
+    if (this.#ws !== null) {
       try {
         const response = await this.#promiseSend(
           {
@@ -214,7 +229,7 @@ export class Liter {
         return (error);
       }
     } else {
-      return ("Connect to Websocket before try to send command")
+      return (msg.wsExecErrorNoConnection);
     }
   }
 
@@ -223,18 +238,22 @@ export class Liter {
   notify method calls the private method promiseSend building the object 
   */
   async notify(channel, payload) {
-    try {
-      const response = await this.#promiseSend(
-        {
-          id: this.#makeid(5),
-          type: "notify",
-          channel: channel,
-          payload: payload
-        }
-      );
-      return (response);
-    } catch (error) {
-      return (error);
+    if (this.#ws !== null) {
+      try {
+        const response = await this.#promiseSend(
+          {
+            id: this.#makeid(5),
+            type: "notify",
+            channel: channel,
+            payload: payload
+          }
+        );
+        return (response);
+      } catch (error) {
+        return (error);
+      }
+    } else {
+      return (msg.wsNotifyErrorNoConnection);
     }
   }
 
@@ -243,11 +262,15 @@ export class Liter {
   listen method calls the private method #pubsub to register to a new channel 
   */
   async listen(channel, callback) {
-    try {
-      const response = await this.#pubsub("listen", channel, callback);
-      return (response);
-    } catch (error) {
-      return (error);
+    if (this.#ws !== null) {
+      try {
+        const response = await this.#pubsub("listen", channel, callback);
+        return (response);
+      } catch (error) {
+        return (error);
+      }
+    } else {
+      return (msg.wsListenError.errorNoConnection);
     }
   }
 
@@ -257,11 +280,17 @@ export class Liter {
   unlisten method calls the private method #pubsub to unregister to a channel 
   */
   async unlisten(channel) {
-    try {
-      const response = await this.#pubsub("unlisten", channel, null);
-      return (response);
-    } catch (error) {
-      return (error);
+    if (!this.#subscriptionsStack.has(channel)) return msg.wsUnlistenError.missingSubscritption + " " + channel;
+
+    if (this.#ws !== null) {
+      try {
+        const response = await this.#pubsub("unlisten", channel, null);
+        return (response);
+      } catch (error) {
+        return (error);
+      }
+    } else {
+      return (msg.wsUnlistenError.errorNoConnection);
     }
   }
 
@@ -305,12 +334,12 @@ export class Liter {
   onClose private method is called when close event is fired by websocket.
   if user provided a callback, this is invoked
   */
-  #onClose = (event) => {
+  #onClose = (event, msg = "") => {
     if (this.onClose !== null) {
       this.onClose(event);
-      // this.#ws = null;
-      // this.onError = null;
-      // this.onClose = null;
+      this.#ws.removeEventListener('close', this.#onClose);
+      this.#ws.removeEventListener('error', this.#onError);
+      this.#ws = null;
     }
   }
 
@@ -341,25 +370,28 @@ export class Liter {
               channel: channel.toLowerCase(),
             }
           );
-          this.#subscriptionsStack.set(channel.toLowerCase(),
-            {
-              channel: channel.toLowerCase(),
-              callback: callback
-            }
-          )
           //if this is the first subscription, create the websocket connection dedicated to receive pubSub messages
-          if (this.#subscriptionsStack.size == 1) {
+          if (this.#subscriptionsStack.size == 0) {
             //response qui ci sono le informazioni di autenticazione
             const uuid = response.data.uuid;
             const secret = response.data.secret;
             try {
               this.#wsPubSubUrl = `wss://web1.sqlitecloud.io:8443/api/v1/wspsub?uuid=${uuid}&secret=${secret}`;
               this.#wsPubSub = await this.#connectWs(this.#wsPubSubUrl, "PubSub connection not established");
+              //when the PubSub WebSocket is created the channel is added to the stack
+              this.#subscriptionsStack.set(channel.toLowerCase(),
+                {
+                  channel: channel.toLowerCase(),
+                  callback: callback
+                }
+              );
               this.#uuid = uuid;
               //register the onmessage event on pubSub websocket
               this.#wsPubSub.addEventListener('message', this.#wsPubSubonMessage);
-
-              this.#wsPubSub.onclose = function (evt) {
+              // TODO SISTMARE I DUE EVENTI DI ONERROR E ONCLOSE PUBSUB CREANDO DUE NUOVI METODI PRIVATI CHE RICHIAMANO PERO' I METODI PASSATI DALL'UTENTE
+              this.#wsPubSub.onclose = (evt) => {
+                this.#uuid = null;
+                this.#wsPubSub = null;
                 console.log("PUBSUB CLOSE (code:" + evt.code + ")");
               }
 
@@ -367,13 +399,18 @@ export class Liter {
               return (error);
             }
           }
-          return (response);
+          //build the object returned to client
+          let userResponse = {};
+          userResponse.status = response.status;
+          userResponse.data = {};
+          userResponse.data.channel = response.data.channel;
+          return userResponse;
         } catch (error) {
           return (error);
         }
       } else {
         //if the subscription exists
-        return ("Subscription to channel " + channel + "already exist");
+        return (msg.wsListenError.alreadySubscribed + " " + channel);
       }
     } else {
       try {
@@ -388,7 +425,7 @@ export class Liter {
         //check the remaing active subscription. If zero the websocket connection used for pubSub can be closed
         if (this.#subscriptionsStack.size == 0) {
           this.#wsPubSub.removeEventListener('message', this.#wsPubSubonMessage);
-          this.#wsPubSub.close(1000, "Client close pubSub connection");
+          this.#wsPubSub.close(1000, "Client close pubSub connection"); //TODO SISTEMARE MESSAGGIO 
           this.#wsPubSub = null;
         }
         return (response);
@@ -455,11 +492,37 @@ export class Liter {
     // - the new requests stack is stored
     // - if there are no pending requests remove the websocket onmessage event
     if (this.#requestsStack.has(response.id)) {
-      //build the obj returned to the user removing fields not usefull
-      const userResponse = {
-        status: response.status
-      };
-      if (response.data) userResponse.data = response.data;
+      //build the obj returned to the user removing based on type
+      let userResponse = {};
+      switch (response.type) {
+        case "exec":
+          userResponse = {
+            status: response.status,
+            data: response.data
+          };
+          break;
+        case "notify":
+          userResponse = {
+            status: response.status,
+          };
+          break;
+        case "listen":
+          //in this case the message is passed as is because the uuid and secret field, if present, will be used to create wsPubSub connection
+          //the messega will be cleaned from this fields in #pubsub method
+          userResponse = response;
+          break;
+        case "unlisten":
+          userResponse = {
+            status: response.status,
+            data: response.data
+          };
+          break;
+        default:
+          userResponse = response;
+      }
+
+
+
 
       this.#requestsStack.get(response.id).resolve(userResponse);
       clearTimeout(this.#requestsStack.get(response.id).onRequestTimeout);
@@ -481,7 +544,7 @@ export class Liter {
     // - if there are no pending requests remove the websocket onmessage event
     if (this.#requestsStack.has(requestID)) {
       clearTimeout(this.#requestsStack.get(requestID).onRequestTimeout);
-      this.#requestsStack.get(requestID).reject(`Error | Times out request ID: ${requestID} `);
+      this.#requestsStack.get(requestID).reject(msg.wsTimeoutError + " " + requestID);
       this.#requestsStack.delete(requestID);
       if (this.#requestsStack.size == 0) this.#ws.removeEventListener('message', this.#handlePromiseResolve);
     }
