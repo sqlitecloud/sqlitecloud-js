@@ -94,9 +94,9 @@ export class Liter {
         try {
           this.#ws = await this.#connectWs(this.url, msg.wsConnectError);
           //register the close event on websocket
-          this.#ws.addEventListener('error', this.#onError);
+          this.#ws.addEventListener('error', this.#onErrorWs);
           //register the close event on websocket
-          this.#ws.addEventListener('close', this.#onClose);
+          this.#ws.addEventListener('close', this.#onCloseWs);
           return msg.wsConnectOk;
         } catch (error) {
           return (error);
@@ -331,15 +331,39 @@ export class Liter {
   }
 
   /*
-  onClose private method is called when close event is fired by websocket.
+  onCloseWs private method is called when close event is fired by websocket.
   if user provided a callback, this is invoked
   */
-  #onClose = (event, msg = "") => {
+  #onCloseWs = (event) => {
     if (this.onClose !== null) {
-      this.onClose(event);
-      this.#ws.removeEventListener('close', this.#onClose);
-      this.#ws.removeEventListener('error', this.#onError);
+      this.onClose(msg.wsCloseComplete);
+      this.#ws.removeEventListener('close', this.#onCloseWs);
+      this.#ws.removeEventListener('error', this.#onErrorWs);
       this.#ws = null;
+    }
+  }
+
+  /*
+  onErrorWs private method is called when error event is fired by websocket.
+  if user provided a callback, this is invoked
+  */
+  #onErrorWs = (event) => {
+    if (this.onError !== null) {
+      this.onError(event, msg.wsOnError);
+    }
+  }
+
+  /*
+  onCloseWsPubSub private method is called when close event is fired by websocket.
+  if user provided a callback, this is invoked
+  */
+  #onCloseWsPubSub = (event) => {
+    if (this.onClose !== null) {
+      this.onClose(msg.wsPubSubCloseComplete);
+      this.#wsPubSub.removeEventListener('close', this.#onCloseWsPubSub);
+      this.#wsPubSub.removeEventListener('error', this.#onErrorWsPubSub);
+      this.#uuid = null;
+      this.#wsPubSub = null;
     }
   }
 
@@ -347,9 +371,9 @@ export class Liter {
   onError private method is called when error event is fired by websocket.
   if user provided a callback, this is invoked
   */
-  #onError = (event) => {
+  #onErrorWsPubSub = (event) => {
     if (this.onError !== null) {
-      this.onError(event);
+      this.onError(event, msg.wsPubSubOnError);
     }
   }
 
@@ -371,7 +395,7 @@ export class Liter {
             }
           );
           //if this is the first subscription, create the websocket connection dedicated to receive pubSub messages
-          if (this.#subscriptionsStack.size == 0) {
+          if (this.#subscriptionsStack.size == 0 && response.status == "success") {
             //response qui ci sono le informazioni di autenticazione
             const uuid = response.data.uuid;
             const secret = response.data.secret;
@@ -388,22 +412,33 @@ export class Liter {
               this.#uuid = uuid;
               //register the onmessage event on pubSub websocket
               this.#wsPubSub.addEventListener('message', this.#wsPubSubonMessage);
-              // TODO SISTMARE I DUE EVENTI DI ONERROR E ONCLOSE PUBSUB CREANDO DUE NUOVI METODI PRIVATI CHE RICHIAMANO PERO' I METODI PASSATI DALL'UTENTE
-              this.#wsPubSub.onclose = (evt) => {
-                this.#uuid = null;
-                this.#wsPubSub = null;
-                console.log("PUBSUB CLOSE (code:" + evt.code + ")");
-              }
-
+              //register the close event on websocket
+              this.#wsPubSub.addEventListener('error', this.#onErrorWsPubSub);
+              //register the close event on websocket
+              this.#wsPubSub.addEventListener('close', this.#onCloseWsPubSub);
             } catch (error) {
               return (error);
             }
           }
+          //if this isn't the first subscription, just add the supscription to the stack
+          if (this.#subscriptionsStack.size > 0 && response.status == "success") {
+            this.#subscriptionsStack.set(channel.toLowerCase(),
+              {
+                channel: channel.toLowerCase(),
+                callback: callback
+              }
+            );
+          }
           //build the object returned to client
           let userResponse = {};
           userResponse.status = response.status;
-          userResponse.data = {};
-          userResponse.data.channel = response.data.channel;
+          if (response.status == "success") {
+            userResponse.data = {};
+            userResponse.data.channel = response.data.channel;
+          }
+          if (response.status == "error") {
+            userResponse.data = response.data;
+          }
           return userResponse;
         } catch (error) {
           return (error);
@@ -448,7 +483,12 @@ export class Liter {
       sender: pubSubMessage.sender,
       payload: pubSubMessage.payload
     }
-    this.#subscriptionsStack.get(pubSubMessage.channel).callback(userPubSubMessage);
+    //this is the case in which the user decide to filter the message sent by himself
+    if (this.filterSentMessages && this.#uuid == pubSubMessage.sender) {
+
+    } else {
+      this.#subscriptionsStack.get(pubSubMessage.channel).callback(userPubSubMessage);
+    }
   }
 
   /*
@@ -520,9 +560,6 @@ export class Liter {
         default:
           userResponse = response;
       }
-
-
-
 
       this.#requestsStack.get(response.id).resolve(userResponse);
       clearTimeout(this.#requestsStack.get(response.id).onRequestTimeout);
