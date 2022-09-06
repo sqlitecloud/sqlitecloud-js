@@ -1,14 +1,13 @@
 import { Liter } from "js-sdk"
 import './style.css';
 
-let onErrorCallback = function (event) {
-  console.log("on Error");
+let onErrorCallback = function (event, msg) {
   console.log(event);
+  console.log(msg);
 }
 
-let onCloseCallback = function (event) {
-  console.log("on Close");
-  console.log(event);
+let onCloseCallback = function (msg) {
+  console.log(msg);
 }
 
 
@@ -17,6 +16,7 @@ var apikey = "Rfk00KgQkqIzfqVuTmO87xVLWUwBos3zPzwbXw5UDVY";
 let myLiter = new Liter(projectId, apikey, onErrorCallback, onCloseCallback);
 //set custom requestTimeout
 myLiter.setRequestTimeout(10000);
+myLiter.setFilterSentMessages(false);
 
 //Connection Open
 const openEl = document.getElementById("open-connection");
@@ -94,6 +94,13 @@ closeWsPubSub.addEventListener("click", () => {
 const check = document.getElementById("checkState");
 check.addEventListener("click", () => {
   const response = myLiter.connectionState;
+  console.log(response);
+}, false);
+
+//Check Stack
+const checkStack = document.getElementById("checkStack");
+checkStack.addEventListener("click", () => {
+  const response = myLiter.subscriptionsStackState;
   console.log(response);
 }, false);
 
