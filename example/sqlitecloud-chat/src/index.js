@@ -32,7 +32,7 @@ sendEl.addEventListener("click", async () => {
   console.log(response);
 }, false);
 
-//Listen ch
+//Listen ch 1
 const listen = (message) => {
   console.log(message)
 }
@@ -50,6 +50,24 @@ unlistenEl.addEventListener("click", async () => {
   console.log(response);
 }, false);
 
+//Listen ch 2
+const listen2 = (message) => {
+  console.log(message)
+}
+
+const listenEl2 = document.getElementById("listen2");
+listenEl2.addEventListener("click", async () => {
+  const response = await myLiter.listen("chan2", listen2);
+  console.log(response);
+}, false);
+
+
+const unlistenEl2 = document.getElementById("unlisten2");
+unlistenEl2.addEventListener("click", async () => {
+  const response = await myLiter.unlisten("chan2");
+  console.log(response);
+}, false);
+
 
 //Notify ch
 const notifyEl = document.getElementById("notify");
@@ -61,17 +79,21 @@ notifyEl.addEventListener("click", async () => {
 //Close Ws
 const closeWS = document.getElementById("closeWs");
 closeWS.addEventListener("click", () => {
-  const response = myLiter.close(1);
+  const response = myLiter.close(false);
+  console.log(response);
 }, false);
 
 //Close Ws Pub SUb
 const closeWsPubSub = document.getElementById("closeWsPubSub");
 closeWsPubSub.addEventListener("click", () => {
-  const response = myLiter.close(2);
+  const response = myLiter.close();
+  console.log(response);
 }, false);
 
-//Close ALL
-const closeAll = document.getElementById("closeAll");
-closeAll.addEventListener("click", () => {
-  const response = myLiter.close(0);
+//Check state Ws Pub SUb
+const check = document.getElementById("checkState");
+check.addEventListener("click", () => {
+  const response = myLiter.connectionState;
+  console.log(response);
 }, false);
+
