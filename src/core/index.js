@@ -97,7 +97,10 @@ export class Liter {
           this.#ws.addEventListener('error', this.#onErrorWs);
           //register the close event on websocket
           this.#ws.addEventListener('close', this.#onCloseWs);
-          return msg.wsConnectOk;
+          return {
+            status: "success",
+            message: msg.wsConnectOk
+          }
         } catch (error) {
           return (error);
         }
@@ -245,7 +248,7 @@ export class Liter {
             id: this.#makeid(5),
             type: "notify",
             channel: channel,
-            payload: payload
+            payload: JSON.stringify(payload)
           }
         );
         return (response);
@@ -323,6 +326,7 @@ export class Liter {
       };
       ws.onerror = function (err) {
         reject({
+          status: "error",
           err: err,
           message: errorMessage
         });
@@ -481,7 +485,7 @@ export class Liter {
     const userPubSubMessage = {
       channel: pubSubMessage.channel,
       sender: pubSubMessage.sender,
-      payload: pubSubMessage.payload
+      payload: JSON.parse(pubSubMessage.payload)
     }
     //this is the case in which the user decide to filter the message sent by himself
     if (this.filterSentMessages && this.#uuid == pubSubMessage.sender) {
