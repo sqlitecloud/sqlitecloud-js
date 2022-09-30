@@ -5,14 +5,22 @@ import "./style.css";
 //mui
 import CssBaseline from '@mui/material/CssBaseline';
 import Box from '@mui/material/Box';
-import Grid from '@mui/material/Unstable_Grid2';
-
-//SqliteCloud
+import LinearProgress from '@mui/material/LinearProgress';
+import Alert from '@mui/material/Alert';
+import Paper from '@mui/material/Paper';
+import Stack from '@mui/material/Stack';
+import { styled } from '@mui/material/styles';
+const Item = styled(Paper)(({ theme }) => ({
+  backgroundColor: theme.palette.mode === 'dark' ? '#1A2027' : '#fff',
+  ...theme.typography.body2,
+  padding: theme.spacing(1),
+  textAlign: 'center',
+  color: theme.palette.text.secondary,
+}));
+//sqlitecloud
 const config = require('./config').config;
 const utils = require('./utils');
 import { StateProvider } from './context/StateContext';
-//SqliteCloud components
-import ChannelsList from "./ChannelsList"
 
 //Liter
 import { Liter } from "js-sdk"
@@ -67,11 +75,36 @@ const App = () => {
       <CssBaseline />
       <StateProvider>
         <Box sx={{ flexGrow: 1 }}>
-          <Grid container spacing={3}>
-            <ChannelsList channelsList={channelsList} />
-            <Grid sx={{ flexGrow: 1 }}>
-            </Grid>
-          </Grid>
+          {
+            connectionResponse.status == undefined &&
+            <Box sx={{ width: '100%' }}>
+              <LinearProgress />
+            </Box>
+          }
+          {
+            connectionResponse.status == "success" &&
+            <>
+              <Stack sx={{ width: '100%' }} spacing={2}>
+                <Alert severity="success">{connectionResponse.message}</Alert>
+              </Stack>
+              {
+                channelsList !== undefined &&
+                <Box sx={{ width: '100%' }}>
+                  <Stack spacing={2}>
+                    {
+                      channelsList.columns.map((channel, i) => <Item key={i}>{channel}</Item>)
+                    }
+                  </Stack>
+                </Box>
+              }
+            </>
+          }
+          {
+            connectionResponse.status == "error" &&
+            <Stack sx={{ width: '100%' }} spacing={2}>
+              <Alert severity="error">{connectionResponse.message}</Alert>
+            </Stack>
+          }
         </Box>
       </StateProvider>
     </Fragment>
