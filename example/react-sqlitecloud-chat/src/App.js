@@ -13,6 +13,7 @@ const utils = require('./utils');
 import { StateProvider } from './context/StateContext';
 //SqliteCloud components
 import ChannelsList from "./ChannelsList"
+import Messages from "./Messages"
 
 //Liter
 import { Liter } from "js-sdk"
@@ -32,17 +33,20 @@ const App = () => {
   let onCloseCallback = function (msg) {
     console.log(msg);
   }
-  let myLiter = new Liter(projectId, apikey, onErrorCallback, onCloseCallback);
+
+  const [liter, setLiter] = useState(null);
+
 
   useEffect(() => {
     const onMountWrapper = async () => {
+      let locaLiter = new Liter(projectId, apikey, onErrorCallback, onCloseCallback);
       if (config.debug.renderingProcess) utils.logThis("App: ON useEffect");
-      const connectionResponse = await myLiter.connect();
+      const connectionResponse = await locaLiter.connect();
       if (config.debug.renderingProcess) utils.logThis(connectionResponse.message);
       if (connectionResponse.status == "success") {
+        setLiter(locaLiter)
         setConnectionResponse(connectionResponse);
-        // const channelsListResponse = await myLiter.exec("LIST DATABASES");
-        const channelsListResponse = await myLiter.exec("LIST CHANNELS");
+        const channelsListResponse = await locaLiter.exec("LIST CHANNELS");
         console.log(channelsListResponse)
         if (channelsListResponse.status == "success") {
           if (config.debug.renderingProcess) utils.logThis("Received channels list");
@@ -64,13 +68,18 @@ const App = () => {
 
   return (
     <Fragment>
-      <CssBaseline />
+      {/* <CssBaseline /> */}
       <StateProvider>
-        <Box sx={{ flexGrow: 1 }}>
-          <Grid container spacing={3}>
-            <ChannelsList channelsList={channelsList} />
-            <Grid sx={{ flexGrow: 1 }}>
-            </Grid>
+        <Box sx={{
+          height: "100%",
+          flexGrow: 1,
+        }}>
+          <Grid
+            container
+            sx={{ height: "100%" }}
+          >
+            <ChannelsList liter={liter} channelsList={channelsList} />
+            <Messages />
           </Grid>
         </Box>
       </StateProvider>

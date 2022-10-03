@@ -39,14 +39,14 @@ const listen = (message) => {
 
 const listenEl = document.getElementById("listen");
 listenEl.addEventListener("click", async () => {
-  const response = await myLiter.listen("chan1", listen);
+  const response = await myLiter.listen("chname0", listen);
   console.log(response);
 }, false);
 
 
 const unlistenEl = document.getElementById("unlisten");
 unlistenEl.addEventListener("click", async () => {
-  const response = await myLiter.unlisten("chan1");
+  const response = await myLiter.unlisten("chname0");
   console.log(response);
 }, false);
 
@@ -72,7 +72,7 @@ unlistenEl2.addEventListener("click", async () => {
 //Notify ch
 const notifyEl = document.getElementById("notify");
 notifyEl.addEventListener("click", async () => {
-  const response = await myLiter.notify("chan1", "messagio di prova");
+  const response = await myLiter.notify("chname0", "messagio di prova");
   console.log(response);
 }, false);
 

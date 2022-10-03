@@ -1,6 +1,6 @@
 const config = {
   debug: {
-    renderingProcess: true,
+    renderingProcess: false,
   },
   credential: {
     projectId: "f9cdd1d5-7d16-454b-8cc0-548dc1712c26",

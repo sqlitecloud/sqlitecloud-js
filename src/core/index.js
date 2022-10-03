@@ -480,12 +480,22 @@ export class Liter {
   */
   #wsPubSubonMessage = (event) => {
     const pubSubMessage = JSON.parse(event.data);
+    
+    //since payload can be both a string or JSON, this function based on check of it is or not a valid JSON return the correct parsed paylod
+    function payloadParser(str) {
+      try {
+        JSON.parse(str);
+      } catch (e) {
+        return str;
+      }
+      return JSON.parse(str);
+    }
 
     //build the obj returned to the user removing fields not usefull
     const userPubSubMessage = {
       channel: pubSubMessage.channel,
       sender: pubSubMessage.sender,
-      payload: JSON.parse(pubSubMessage.payload)
+      payload: payloadParser(pubSubMessage.payload)
     }
     //this is the case in which the user decide to filter the message sent by himself
     if (this.filterSentMessages && this.#uuid == pubSubMessage.sender) {

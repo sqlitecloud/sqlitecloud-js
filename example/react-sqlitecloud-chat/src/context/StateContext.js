@@ -4,9 +4,14 @@ const StateContext = createContext({});
 
 const StateProvider = ({ children }) => {
 
+  //
+  const [msgQueue, setMsgQueue] = useState([]);
+  console.log(msgQueue)
   return (
     <StateContext.Provider
-      value={{}}
+      value={{
+        msgQueue, setMsgQueue
+      }}
     >
       {children}
     </StateContext.Provider>
