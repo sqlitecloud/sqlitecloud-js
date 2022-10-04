@@ -1,5 +1,5 @@
 //core
-import React, { Fragment, useEffect, useRef, useContext } from "react";
+import React, { Fragment, useEffect, useState, useContext } from "react";
 //react-router
 import { useSearchParams } from 'react-router-dom';
 //moment
@@ -10,6 +10,8 @@ import { CardActionArea } from '@mui/material';
 import CardHeader from '@mui/material/CardHeader';
 import Avatar from '@mui/material/Avatar';
 import { green } from '@mui/material/colors';
+import Badge from '@mui/material/Badge';
+
 
 //SqliteCloud
 const config = require('./config').config;
@@ -28,15 +30,9 @@ const ChannelElement = ({ liter, index, name, selectionState, setSelectedChannel
 
   //read from context state dedicated to save all received messages
   const { chsMap, chsMapRef, setChsMap } = useContext(StateContext);
+  const [prevMsgLenght, setPrevMsgLenght] = useState(0);
+  const [alertNewMsg, setAlertNewMsg] = useState(0);
 
-  //when loading for the first time check if the actual query params is equal to channel name.
-  //in this case set the selected channel equal to the channel index
-  useEffect(() => {
-    const queryChannel = searchParams.get("channel");
-    if (queryChannel == name) setSelectedChannel(index);
-    chsMap.set(name, []);
-    setChsMap(chsMap);
-  }, [])
 
   //we need to create a refernce to context state since listen callback is called inside an event listern
   //see here https://medium.com/geographit/accessing-react-state-in-event-listeners-with-usestate-and-useref-hooks-8cceee73c559
@@ -52,6 +48,22 @@ const ChannelElement = ({ liter, index, name, selectionState, setSelectedChannel
     }
   }
 
+
+  //when loading for the first time check if the actual query params is equal to channel name.
+  //in this case set the selected channel equal to the channel index
+  useEffect(() => {
+    const registerToCh = async () => {
+      const response = await liter.listen(name, listen);
+      console.log(response);
+    }
+    registerToCh();
+    const queryChannel = searchParams.get("channel");
+    if (queryChannel == name) setSelectedChannel(index);
+    chsMap.set(name, []);
+    setChsMap(chsMap);
+  }, [])
+
+
   //Based on selectionState value channel listeing in started or stopped
   useEffect(() => {
     const registerToCh = async () => {
@@ -64,13 +76,22 @@ const ChannelElement = ({ liter, index, name, selectionState, setSelectedChannel
     }
 
     if (selectionState) {
-      registerToCh();
+      // registerToCh();
     }
 
     if (!selectionState) {
-      unRegisterToCh();
+      // unRegisterToCh();
     }
   }, [selectionState])
+
+  useEffect(() => {
+    if (!selectionState && chsMap.get(name).length !== prevMsgLenght) {
+      setAlertNewMsg(chsMap.get(name).length - prevMsgLenght);
+    } else {
+      setAlertNewMsg(0);
+      setPrevMsgLenght(chsMap.get(name).length);
+    }
+  }, [chsMap])
 
   return (
     <Card
@@ -81,21 +102,24 @@ const ChannelElement = ({ liter, index, name, selectionState, setSelectedChannel
       }}>
       <CardActionArea
         onClick={() => {
+          setAlertNewMsg(0);
           setSelectedChannel(index);
           setSearchParams({ channel: name });
         }}
       >
         <CardHeader
           avatar={
-            <Avatar
-              aria-label="channel-name"
-              sx={{
-                bgcolor: selectionState ? white : accent,
-                color: selectionState ? accent : white
-              }}
-            >
-              {name.charAt(0).toUpperCase()}
-            </Avatar>
+            <Badge badgeContent={alertNewMsg} color="secondary">
+              <Avatar
+                aria-label="channel-name"
+                sx={{
+                  bgcolor: selectionState ? white : accent,
+                  color: selectionState ? accent : white
+                }}
+              >
+                {name.charAt(0).toUpperCase()}
+              </Avatar>
+            </Badge>
           }
           title={name}
           subheader="21:34"
