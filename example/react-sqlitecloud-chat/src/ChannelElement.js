@@ -11,8 +11,6 @@ import CardHeader from '@mui/material/CardHeader';
 import Avatar from '@mui/material/Avatar';
 import { green } from '@mui/material/colors';
 import Badge from '@mui/material/Badge';
-
-
 //SqliteCloud
 const config = require('./config').config;
 const utils = require('./utils');
@@ -22,7 +20,7 @@ import { StateContext } from "./context/StateContext"
 const ChannelElement = ({ liter, index, name, selectionState, setSelectedChannel }) => {
   if (config.debug.renderingProcess) utils.logThis("ChannelElement: ON RENDER");
   //colors used to indicated if the channel is selected or no
-  const accent = green[500]; // #f44336
+  const accent = green[500];
   const white = "#FFF";
 
   //react router hooks used to set query string
@@ -54,44 +52,26 @@ const ChannelElement = ({ liter, index, name, selectionState, setSelectedChannel
   useEffect(() => {
     const registerToCh = async () => {
       const response = await liter.listen(name, listen);
-      console.log(response);
     }
     registerToCh();
     const queryChannel = searchParams.get("channel");
     if (queryChannel == name) setSelectedChannel(index);
-    chsMap.set(name, []);
-    setChsMap(chsMap);
+    let newChsMap = new Map(JSON.parse(JSON.stringify(Array.from(chsMapRef.current))));
+    newChsMap.set(name, []);
+    chsMapRef.current = newChsMap;
+    setChsMap(newChsMap);
   }, [])
 
 
-  //Based on selectionState value channel listeing in started or stopped
   useEffect(() => {
-    const registerToCh = async () => {
-      const response = await liter.listen(name, listen);
-      console.log(response);
-    }
-    const unRegisterToCh = async () => {
-      const response = await liter.unlisten(name);
-      console.log(response);
-    }
-
-    if (selectionState) {
-      // registerToCh();
-    }
-
-    if (!selectionState) {
-      // unRegisterToCh();
-    }
-  }, [selectionState])
-
-  useEffect(() => {
-    if (!selectionState && chsMap.get(name).length !== prevMsgLenght) {
-      setAlertNewMsg(chsMap.get(name).length - prevMsgLenght);
+    if (!selectionState && chsMapRef.current.get(name).length !== prevMsgLenght) {
+      setAlertNewMsg(chsMapRef.current.get(name).length - prevMsgLenght);
     } else {
       setAlertNewMsg(0);
-      setPrevMsgLenght(chsMap.get(name).length);
+      setPrevMsgLenght(chsMapRef.current.get(name).length);
     }
-  }, [chsMap])
+  }, [chsMapRef.current])
+
 
   return (
     <Card

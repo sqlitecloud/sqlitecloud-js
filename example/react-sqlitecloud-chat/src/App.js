@@ -6,7 +6,6 @@ import "./style.css";
 import CssBaseline from '@mui/material/CssBaseline';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Unstable_Grid2';
-
 //SqliteCloud
 const config = require('./config').config;
 const utils = require('./utils');
@@ -47,10 +46,15 @@ const App = () => {
         setLiter(locaLiter)
         setConnectionResponse(connectionResponse);
         const channelsListResponse = await locaLiter.exec("LIST CHANNELS");
-        console.log(channelsListResponse)
         if (channelsListResponse.status == "success") {
           if (config.debug.renderingProcess) utils.logThis("Received channels list");
-          setChannelsList(channelsListResponse.data);
+          // setChannelsList(channelsListResponse.data.columns);
+          setChannelsList([
+            "chname0",
+            "chname1",
+            "chname2",
+            "chname3",
+          ]);
         } else {
           if (config.debug.renderingProcess) utils.logThis("Error receiving database list");
         }
@@ -76,10 +80,11 @@ const App = () => {
         }}>
           <Grid
             container
+            spacing={0}
             sx={{ height: "100%" }}
           >
             <ChannelsList liter={liter} channelsList={channelsList} />
-            <Messages liter={liter}/>
+            <Messages liter={liter} channelsList={channelsList} />
           </Grid>
         </Box>
       </StateProvider>
