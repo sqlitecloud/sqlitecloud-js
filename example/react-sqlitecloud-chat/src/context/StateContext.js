@@ -1,16 +1,17 @@
-import React, { useState, createContext } from "react";
+import React, { useState, useRef, createContext } from "react";
 
 const StateContext = createContext({});
 
 const StateProvider = ({ children }) => {
 
-  //
-  const [msgQueue, setMsgQueue] = useState([]);
-  console.log(msgQueue)
+  //queue used to store all received mgs from PubSub
+  const [chsMap, setChsMap] = useState(new Map());
+  const chsMapRef = useRef(chsMap);
+
   return (
     <StateContext.Provider
       value={{
-        msgQueue, setMsgQueue
+        chsMap, chsMapRef, setChsMap
       }}
     >
       {children}

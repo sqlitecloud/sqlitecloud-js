@@ -1,28 +1,35 @@
 //core
 import React, { Fragment, useEffect, useState, useContext } from "react";
+//react-router
+import { useSearchParams } from 'react-router-dom';
 //mui
-import LinearProgress from '@mui/material/LinearProgress';
-import Grid from '@mui/material/Unstable_Grid2';
 import Paper from '@mui/material/Paper';
 //SqliteCloud
 const config = require('./config').config;
 const utils = require('./utils');
 //SqliteCloud context
 import { StateContext } from "./context/StateContext"
+//SqliteCloud componets
+import SingleMessage from "./SingleMessage";
+import MessageEditor from "./MessageEditor";
 
-const Messages = () => {
+const Messages = ({ liter }) => {
   if (config.debug.renderingProcess) utils.logThis("Messages: ON RENDER");
-  //read from context state dedicated to save all received messages
-  const { msgQueue } = useContext(StateContext);
-  const [lastMsg, setLastMsg] = useState("");
+  //react router hooks used to set query string
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  console.log("msgQueue");
+  //read from context state dedicated to save all received messages
+  const { chsMap } = useContext(StateContext);
+  const [messages, setMessages] = useState([]);
   useEffect(() => {
-    // if (msgQueue) {
-    //   console.log("HEERE")
-    //   setLastMsg(msgQueue.shift());
-    // }
-  }, [msgQueue])
+    const queryChannel = searchParams.get("channel");
+    if (queryChannel) {
+      if (chsMap.get(queryChannel)) {
+        setMessages(chsMap.get(queryChannel));
+      }
+    }
+  }, [chsMap, searchParams])
+
 
   return (
     <Paper elevation={3}
@@ -32,7 +39,14 @@ const Messages = () => {
         maxWidth: '437px',
       }}
     >
-      {lastMsg}
+      {
+        messages.map((msg, i) => {
+          return (
+            <SingleMessage key={i} msg={msg} />
+          )
+        })
+      }
+      <MessageEditor liter={liter} />
     </Paper>
   );
 }

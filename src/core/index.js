@@ -480,7 +480,7 @@ export class Liter {
   */
   #wsPubSubonMessage = (event) => {
     const pubSubMessage = JSON.parse(event.data);
-    
+
     //since payload can be both a string or JSON, this function based on check of it is or not a valid JSON return the correct parsed paylod
     function payloadParser(str) {
       try {
@@ -495,7 +495,8 @@ export class Liter {
     const userPubSubMessage = {
       channel: pubSubMessage.channel,
       sender: pubSubMessage.sender,
-      payload: payloadParser(pubSubMessage.payload)
+      payload: payloadParser(pubSubMessage.payload),
+      ownMessage: this.#uuid == pubSubMessage.sender
     }
     //this is the case in which the user decide to filter the message sent by himself
     if (this.filterSentMessages && this.#uuid == pubSubMessage.sender) {

@@ -17,20 +17,6 @@ root.render(
           path={config.routes.prefix}
           element={<Navigate to="/" replace />}
         />
-        {/* la Route che deve renderizzare la home è indicata come index in quanto raggiungibile al path '/' definito per la Route madre */}
-        {/* <Route index element={<Home />} /> */}
-        {/* <Route
-          path={config.routes.prefix + "/project/:projectId"}
-          element={<Project />}
-        /> */}
-        {/* <Route
-          path={config.routes.prefix + "/type/:projectType/group/:groupType"}
-          element={<Group />}
-        /> */}
-        {/* <Route
-          path="*"
-          element={<PageNotFound />}
-        /> */}
       </Route>
     </Routes>
   </BrowserRouter >

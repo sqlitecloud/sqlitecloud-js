@@ -68,7 +68,7 @@ const App = () => {
 
   return (
     <Fragment>
-      {/* <CssBaseline /> */}
+      <CssBaseline />
       <StateProvider>
         <Box sx={{
           height: "100%",
@@ -79,7 +79,7 @@ const App = () => {
             sx={{ height: "100%" }}
           >
             <ChannelsList liter={liter} channelsList={channelsList} />
-            <Messages />
+            <Messages liter={liter}/>
           </Grid>
         </Box>
       </StateProvider>

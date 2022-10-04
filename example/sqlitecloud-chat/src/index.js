@@ -1,6 +1,17 @@
 import { Liter } from "js-sdk"
 import './style.css';
 
+function makeid(length) {
+  var result = '';
+  var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  var charactersLength = characters.length;
+  for (var i = 0; i < length; i++) {
+    result += characters.charAt(Math.floor(Math.random() *
+      charactersLength));
+  }
+  return result;
+}
+
 let onErrorCallback = function (event, msg) {
   console.log(event);
   console.log(msg);
@@ -57,22 +68,29 @@ const listen2 = (message) => {
 
 const listenEl2 = document.getElementById("listen2");
 listenEl2.addEventListener("click", async () => {
-  const response = await myLiter.listen("chan2", listen2);
+  const response = await myLiter.listen("chname1", listen2);
   console.log(response);
 }, false);
 
 
 const unlistenEl2 = document.getElementById("unlisten2");
 unlistenEl2.addEventListener("click", async () => {
-  const response = await myLiter.unlisten("chan2");
+  const response = await myLiter.unlisten("chname1");
   console.log(response);
 }, false);
 
 
-//Notify ch
-const notifyEl = document.getElementById("notify");
+//Notify ch1
+const notifyEl = document.getElementById("notify1");
 notifyEl.addEventListener("click", async () => {
-  const response = await myLiter.notify("chname0", "messagio di prova");
+  const response = await myLiter.notify("chname0", makeid(20));
+  console.log(response);
+}, false);
+
+//Notify ch2
+const notifyEl2 = document.getElementById("notify2");
+notifyEl2.addEventListener("click", async () => {
+  const response = await myLiter.notify("chname1", makeid(20));
   console.log(response);
 }, false);
 
