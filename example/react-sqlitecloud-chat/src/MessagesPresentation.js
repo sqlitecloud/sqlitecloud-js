@@ -21,8 +21,6 @@ const MessagesPresentation = ({ messages, liter }) => {
   const contRef = useRef(null);
 
   useLayoutEffect(() => {
-    console.log("vfdsafdsa")
-    console.log(contRef.current)
     contRef.current.scrollTo(0, contRef.current.scrollHeight);
   }, [messages])
 
@@ -32,17 +30,19 @@ const MessagesPresentation = ({ messages, liter }) => {
       direction="column"
       justifyContent={"flex-end"}
       wrap="no-wrap"
-      xs={6}
+      maxWidth={"lg"}
       sx={{
         flexGrow: 1,
-        pb: 8
+        width: "100%",
+        pb: 4,
+        px: 2
       }}
     >
       <Grid
         ref={contRef}
         sx={{
           maxHeight: "calc(100vh - 255px)",
-          overflowY: "scroll"
+          overflowY: "auto"
         }}
       >
         {

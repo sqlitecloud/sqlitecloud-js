@@ -54,6 +54,22 @@ const App = () => {
             "chname1",
             "chname2",
             "chname3",
+            "chname4",
+            "chname5",
+            "chname6",
+            "chname7",
+            "chname8",
+            "chname9",
+            "chname10",
+            "chname11",
+            "chname12",
+            "chname13",
+            "chname14",
+            "chname16",
+            "chname17",
+            "chname18",
+            "chname19",
+            "chname20"
           ]);
         } else {
           if (config.debug.renderingProcess) utils.logThis("Error receiving database list");

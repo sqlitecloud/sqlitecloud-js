@@ -21,6 +21,7 @@ const ChannelsList = ({ liter, channelsList }) => {
         width: '100%',
         height: '100%',
         maxWidth: '437px',
+        overflowY: 'scroll'
       }}
     >
       <Paper elevation={0}
