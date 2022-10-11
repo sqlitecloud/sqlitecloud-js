@@ -5,7 +5,6 @@ import LinearProgress from '@mui/material/LinearProgress';
 import Grid from '@mui/material/Unstable_Grid2';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
-
 //SqliteCloud
 const config = require('./config').config;
 const utils = require('./utils');
@@ -30,19 +29,20 @@ const ChannelsList = ({ liter, channelsList }) => {
           height: '100%',
         }}
       >
-        {
-          channelsList == undefined &&
-          <LinearProgress />
-        }
-        {
-          channelsList !== undefined &&
-          <Stack spacing={1}>
-
-            {
-              channelsList.map((channel, i) => <ChannelElement key={i} index={i} liter={liter} name={channel} selectionState={selectedChannel == i} setSelectedChannel={setSelectedChannel} />)
-            }
-          </Stack>
-        }
+        <Stack>
+          {
+            channelsList == undefined &&
+            <LinearProgress sx={{m:4}} />
+          }
+          {
+            channelsList !== undefined &&
+            <>
+              {
+                channelsList.map((channel, i) => <ChannelElement key={i} index={i} liter={liter} name={channel} selectionState={selectedChannel == i} setSelectedChannel={setSelectedChannel} />)
+              }
+            </>
+          }
+        </Stack>
       </Paper>
     </Grid>
   );

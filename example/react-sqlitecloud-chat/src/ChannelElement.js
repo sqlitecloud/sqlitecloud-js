@@ -5,17 +5,68 @@ import { useSearchParams } from 'react-router-dom';
 //moment
 const moment = require('moment');
 //mui
+import { styled } from '@mui/material/styles';
+import CircularProgress from '@mui/material/CircularProgress';
 import Card from '@mui/material/Card';
-import { CardActionArea } from '@mui/material';
 import CardHeader from '@mui/material/CardHeader';
+import { CardActionArea } from '@mui/material';
 import Avatar from '@mui/material/Avatar';
-import { green } from '@mui/material/colors';
 import Badge from '@mui/material/Badge';
+import { green } from '@mui/material/colors';
 //SqliteCloud
 const config = require('./config').config;
 const utils = require('./utils');
 //SqliteCloud context
 import { StateContext } from "./context/StateContext"
+
+
+const SuccessBadge = styled(Badge)(({ theme }) => ({
+  '& .MuiBadge-badge': {
+    backgroundColor: '#44b700',
+    color: '#44b700',
+    boxShadow: `0 0 0 2px ${theme.palette.background.paper}`,
+    '&::after': {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '100%',
+      borderRadius: '50%',
+      animation: 'ripple 1.2s infinite ease-in-out',
+      border: '1px solid currentColor',
+      content: '""'
+    }
+  },
+  '@keyframes ripple': {
+    '0%': {
+      transform: 'scale(.8)',
+      opacity: 1,
+    },
+    '100%': {
+      transform: 'scale(2.4)',
+      opacity: 0,
+    },
+  },
+}));
+
+const ErrorBadge = styled(Badge)(({ theme }) => ({
+  '& .MuiBadge-badge': {
+    color: `${theme.palette.error.main}`,
+    background: `${theme.palette.error.main}`,
+    boxShadow: `0 0 0 2px ${theme.palette.background.paper}`,
+    '&::after': {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '100%',
+      borderRadius: '50%',
+      border: '1px solid currentColor',
+      content: '""',
+    },
+  }
+}));
+
 
 const ChannelElement = ({ liter, index, name, selectionState, setSelectedChannel }) => {
   if (config.debug.renderingProcess) utils.logThis("ChannelElement: ON RENDER");
@@ -26,19 +77,25 @@ const ChannelElement = ({ liter, index, name, selectionState, setSelectedChannel
   //react router hooks used to set query string
   const [searchParams, setSearchParams] = useSearchParams();
 
+  //this state store the listen command result
+  const [listenResponse, setListenResponse] = useState(null);
+  //timestamp last message
+  const [msgTimestamp, setMsgTimestamp] = useState("21:04");
+
   //read from context state dedicated to save all received messages
   const { chsMap, chsMapRef, setChsMap } = useContext(StateContext);
   const [prevMsgLenght, setPrevMsgLenght] = useState(0);
   const [alertNewMsg, setAlertNewMsg] = useState(0);
 
 
-  //we need to create a refernce to context state since listen callback is called inside an event listern
+  //we need to create a reference to context state since the listen callback is called inside an event listener
   //see here https://medium.com/geographit/accessing-react-state-in-event-listeners-with-usestate-and-useref-hooks-8cceee73c559
+  //whene a new message arrives it is added in the chsMap in correspondence of the element which has the channel name as its key
   const listen = (message) => {
     if (message.channel == name) {
       let newChsMap = new Map(JSON.parse(JSON.stringify(Array.from(chsMapRef.current))));
       let newMessages = JSON.parse(JSON.stringify(newChsMap.get(name)));
-      message.time = moment().format('MMMM Do YYYY, h:mm:ss a');
+      message.time = moment().format('MMMM Do YYYY, h:mm:ss a'); //TIZIANO MIGLIORARE FORMATO ORA DI RICEZIONE
       newMessages.push(message);
       newChsMap.set(name, newMessages)
       chsMapRef.current = newChsMap;
@@ -52,6 +109,7 @@ const ChannelElement = ({ liter, index, name, selectionState, setSelectedChannel
   useEffect(() => {
     const registerToCh = async () => {
       const response = await liter.listen(name, listen);
+      setListenResponse(response);
     }
     registerToCh();
     const queryChannel = searchParams.get("channel");
@@ -87,25 +145,71 @@ const ChannelElement = ({ liter, index, name, selectionState, setSelectedChannel
           setSearchParams({ channel: name });
         }}
       >
-        <CardHeader
-          avatar={
-            <Badge badgeContent={alertNewMsg} color="secondary">
-              <Avatar
-                aria-label="channel-name"
-                sx={{
-                  bgcolor: selectionState ? white : accent,
-                  color: selectionState ? accent : white
-                }}
+        {
+          !listenResponse &&
+          <CardHeader
+            avatar={
+              <CircularProgress />
+            }
+            title={name}
+            subheader={"Connecting..."}
+          />
+        }
+        {
+          listenResponse && listenResponse.status == "error" &&
+          <CardHeader
+            avatar={
+              <ErrorBadge
+                overlap="circular"
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                variant="dot"
               >
-                {name.charAt(0).toUpperCase()}
-              </Avatar>
-            </Badge>
-          }
-          title={name}
-          subheader="21:34"
-        />
+                <Avatar
+                  aria-label="channel-name"
+                  sx={{
+                    bgcolor: selectionState ? white : accent,
+                    color: selectionState ? accent : white
+                  }}
+                >
+                  {name.charAt(0).toUpperCase()}
+                </Avatar>
+              </ErrorBadge>
+            }
+            title={name}
+            subheader={listenResponse.message}
+          />
+        }
+        {
+          listenResponse && listenResponse.status == "success" &&
+          <CardHeader
+            avatar={
+              <Badge badgeContent={alertNewMsg} color="primary"
+                overlap="circular"
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+              >
+                <SuccessBadge
+                  overlap="circular"
+                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                  variant="dot"
+                >
+                  <Avatar
+                    aria-label="channel-name"
+                    sx={{
+                      bgcolor: selectionState ? white : accent,
+                      color: selectionState ? accent : white
+                    }}
+                  >
+                    {name.charAt(0).toUpperCase()}
+                  </Avatar>
+                </SuccessBadge>
+              </Badge>
+            }
+            title={name}
+            subheader={msgTimestamp}
+          />
+        }
       </CardActionArea>
-    </Card>
+    </Card >
   );
 }
 
