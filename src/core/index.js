@@ -102,7 +102,10 @@ export class Liter {
             message: msg.wsConnectOk
           }
         } catch (error) {
-          return (error);
+          return {
+            status: "error",
+            data: error
+          };
         }
       } else {
         return msg.wsCantConnectedWsPubSubExist;
@@ -268,12 +271,18 @@ export class Liter {
     if (this.#ws !== null) {
       try {
         const response = await this.#pubsub("listen", channel, callback);
-        return (response);
+        return response;
       } catch (error) {
-        return (error);
+        return ({
+          status: "error",
+          data: error
+        });
       }
     } else {
-      return (msg.wsListenError.errorNoConnection);
+      return ({
+        status: "error",
+        message: msg.wsListenError.errorNoConnection
+      })
     }
   }
 
@@ -596,7 +605,10 @@ export class Liter {
     // - if there are no pending requests remove the websocket onmessage event
     if (this.#requestsStack.has(requestID)) {
       clearTimeout(this.#requestsStack.get(requestID).onRequestTimeout);
-      this.#requestsStack.get(requestID).reject(msg.wsTimeoutError + " " + requestID);
+      this.#requestsStack.get(requestID).reject({
+        status: "error",
+        message: msg.wsTimeoutError + " " + requestID
+      });
       this.#requestsStack.delete(requestID);
       if (this.#requestsStack.size == 0) this.#ws.removeEventListener('message', this.#handlePromiseResolve);
     }
