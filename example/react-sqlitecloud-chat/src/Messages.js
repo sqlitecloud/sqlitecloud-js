@@ -1,7 +1,5 @@
 //core
-import React, { Fragment, useEffect, useState, useContext } from "react";
-//react-router
-import { useSearchParams } from 'react-router-dom';
+import React, { useContext } from "react";
 //mui
 import Grid from '@mui/material/Unstable_Grid2';
 //SqliteCloud
@@ -13,42 +11,14 @@ import { StateContext } from "./context/StateContext"
 import MessagesBar from "./MessagesBar";
 import MessagesPresentation from "./MessagesPresentation";
 
-const Messages = ({ liter, channelsList }) => {
+const Messages = ({ liter, selectedChannel, show, showEditor }) => {
   if (config.debug.renderingProcess) utils.logThis("Messages: ON RENDER");
   //read from context all channels registered  
   const { chsMap } = useContext(StateContext);
-  //react router hooks used to set and get query string
-  const [searchParams, setSearchParams] = useSearchParams();
-  //get actual setted channel in query string
-  const queryChannel = searchParams.get("channel");
-  //if the channel setted in query string is present in chsMap this variable will be setted to true
-  const [show, setShow] = useState(false);
-
-  useEffect(() => {
-    //if channel list has been received from backend start the checks
-    if (channelsList) {
-      //convert channelsList array into Map
-      let channelsMap = new Map();
-      channelsList.forEach((ch, i) => {
-        channelsMap.set(ch, i);
-      })
-      //check if the channel in query string exist
-      if (channelsMap.has(queryChannel)) {
-        //if true show message components
-        setShow(true);
-      } else {
-        //if false not show message components and remove query string from url
-        setSearchParams({});
-        setShow(false);
-      }
-    }
-  }, [channelsList, queryChannel])
-
-
   return (
     <>
       {
-        show &&
+        show && chsMap.size > 0 &&
         <Grid
           position="relative"
           container
@@ -61,8 +31,8 @@ const Messages = ({ liter, channelsList }) => {
             height: "100%",
           }}
         >
-          <MessagesBar channel={queryChannel} />
-          <MessagesPresentation messages={chsMap.get(queryChannel)} liter={liter} />
+          <MessagesBar channel={selectedChannel} />
+          <MessagesPresentation messages={chsMap.get(selectedChannel)} liter={liter} showEditor={showEditor} />
         </Grid>
       }
     </>

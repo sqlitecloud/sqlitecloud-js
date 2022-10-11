@@ -18,6 +18,7 @@ import { StateContext } from "./context/StateContext"
 
 
 const MessagesBar = ({ channel }) => {
+  console.log(channel)
   if (config.debug.renderingProcess) utils.logThis("MessagesBar: ON RENDER");
   const accent = green[500];
   const white = "#FFF";

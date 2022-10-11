@@ -15,7 +15,7 @@ import SingleMessage from "./SingleMessage";
 import MessageEditor from "./MessageEditor";
 
 
-const MessagesPresentation = ({ messages, liter }) => {
+const MessagesPresentation = ({ messages, liter, showEditor }) => {
   if (config.debug.renderingProcess) utils.logThis("MessagesPresentation: ON RENDER");
 
   const contRef = useRef(null);
@@ -39,6 +39,9 @@ const MessagesPresentation = ({ messages, liter }) => {
       }}
     >
       <Grid
+        container
+        direction="column"
+        wrap="no-wrap"
         ref={contRef}
         sx={{
           maxHeight: "calc(100vh - 255px)",
@@ -48,14 +51,17 @@ const MessagesPresentation = ({ messages, liter }) => {
         {
           messages.map((msg, i) => {
             return (
-              <SingleMessage key={i} msg={msg} />
+              <SingleMessage key={i} msg={msg} showEditor={showEditor} />
             )
           })
         }
       </Grid>
-      <Grid>
-        <MessageEditor liter={liter} />
-      </Grid>
+      {
+        showEditor &&
+        <Grid>
+          <MessageEditor liter={liter} />
+        </Grid>
+      }
     </Grid>
   );
 }

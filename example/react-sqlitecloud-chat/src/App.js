@@ -45,9 +45,26 @@ const App = () => {
   const queryDBName = searchParams.get("dbName");
   //if present, this is the channel you want to listen to 
   const queryChannel = searchParams.get("channel");
+  const [selectedChannel, setSelectedChannel] = useState(queryChannel);
   //state used to store the available available channels. In case queryDBName !== null available channels are db tables
   const [channelsList, setChannelsList] = useState(undefined);
+  //based on value of query channel show or not Messages component
+  const [showMessages, setShowMessages] = useState(false);
+  //show message editor based on query paramters
+  const [showEditor, setShowEditor] = useState(false);
 
+
+  const checkChannelExist = (channelsList, channelName) => {
+    if (channelsList) {
+      let channelsMap = new Map();
+      channelsList.forEach((ch, i) => {
+        channelsMap.set(ch, i);
+      })
+      return channelsMap.has(channelName);
+    } else {
+      return false;
+    }
+  }
 
   useEffect(() => {
     const onMountWrapper = async () => {
@@ -72,25 +89,47 @@ const App = () => {
         setChannelsListResponse(channelsListResponse);
         if (channelsListResponse.status == "success") {
           if (config.debug.renderingProcess) utils.logThis("Received channels list");
-          console.log(channelsListResponse.data.rows); //TOGLIMI
+          var channels = [];
           if (queryDBName !== null) {
-            var channels = [];
             channelsListResponse.data.rows.forEach(c => {
               channels.push(c.chname);
             })
             setChannelsList(channels);
+            setShowEditor(false);
           } else {
             if (channelsListResponse.data.rows == undefined) {
-              setChannelsList([
+              channels = [
                 "chname0",
                 "chname1",
                 "chname2",
                 "chname3",
                 "chname4",
-              ]);
+              ];
+              setChannelsList(channels);
             } else {
-              setChannelsList(channelsListResponse.data.rows);
+              channelsListResponse.data.rows.forEach(c => {
+                channels.push(c.chname);
+              })
+              setChannelsList(channels);
             }
+            setShowEditor(true);
+          }
+          //check if the channel in query string exist
+          const testChannelExist = checkChannelExist(channels, queryChannel);
+          //convert channelsList array into Map
+          if (testChannelExist) {
+            //if true show message components
+            setShowMessages(true);
+          } else {
+            //if false not show message components and remove query string from url
+            if (queryDBName !== null) {
+              setSearchParams({
+                dbName: queryDBName
+              });
+            } else {
+              setSearchParams({});
+            }
+            setShowMessages(false);
           }
         } else {
           if (config.debug.renderingProcess) utils.logThis(channelsListResponse.data.message);
@@ -102,6 +141,10 @@ const App = () => {
     onMountWrapper();
   }, []);
 
+
+  useEffect(() => {
+    setShowMessages(checkChannelExist(channelsList, selectedChannel));
+  }, [selectedChannel])
 
   return (
     <Fragment>
@@ -128,8 +171,8 @@ const App = () => {
                 <Alert severity="error">{channelsListResponse.data.message}</Alert>
               </Stack>
             }
-            <ChannelsList liter={liter} channelsList={channelsList} />
-            {/* <Messages liter={liter} channelsList={channelsList} /> */}
+            <ChannelsList liter={liter} channelsList={channelsList} setSelectedChannel={setSelectedChannel} />
+            <Messages liter={liter} show={showMessages} showEditor={showEditor} selectedChannel={selectedChannel} />
           </Grid>
         </Box>
       </StateProvider>

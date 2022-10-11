@@ -25,10 +25,9 @@ const MessageEditor = ({ liter }) => {
 
   const handleKey = (event) => {
     if (event.keyCode == 13 && event.shiftKey) {
-    
     } else if (event.keyCode == 13) {
       event.preventDefault();
-      sendMsg();
+      if (value !== "") sendMsg();
       return false;
     }
   };
@@ -40,7 +39,7 @@ const MessageEditor = ({ liter }) => {
     if (event) event.preventDefault();
     const queryChannel = searchParams.get("channel");
     if (queryChannel) {
-      const response = await liter.notify(queryChannel, value);
+      const response = await liter.notify(queryChannel, { message: value });
       if (response.status == "success") {
         setValue("");
         editorRef.current.focus();

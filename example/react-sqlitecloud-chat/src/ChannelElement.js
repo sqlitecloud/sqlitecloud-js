@@ -68,7 +68,7 @@ const ErrorBadge = styled(Badge)(({ theme }) => ({
 }));
 
 
-const ChannelElement = ({ liter, index, name, selectionState, setSelectedChannel }) => {
+const ChannelElement = ({ liter, index, name, selectionState, setSelectedChannel, setSelectedChannelIndex }) => {
   if (config.debug.renderingProcess) utils.logThis("ChannelElement: ON RENDER");
   //colors used to indicated if the channel is selected or no
   const accent = green[500];
@@ -76,14 +76,16 @@ const ChannelElement = ({ liter, index, name, selectionState, setSelectedChannel
 
   //react router hooks used to set query string
   const [searchParams, setSearchParams] = useSearchParams();
+  //if present, this is the database whose tables you want to register to
+  const queryDBName = searchParams.get("dbName");
 
   //this state store the listen command result
   const [listenResponse, setListenResponse] = useState(null);
   //timestamp last message
-  const [msgTimestamp, setMsgTimestamp] = useState("21:04");
+  const [msgTimestamp, setMsgTimestamp] = useState("");
 
   //read from context state dedicated to save all received messages
-  const { chsMap, chsMapRef, setChsMap } = useContext(StateContext);
+  const { chsMapRef, setChsMap } = useContext(StateContext);
   const [prevMsgLenght, setPrevMsgLenght] = useState(0);
   const [alertNewMsg, setAlertNewMsg] = useState(0);
 
@@ -93,16 +95,17 @@ const ChannelElement = ({ liter, index, name, selectionState, setSelectedChannel
   //whene a new message arrives it is added in the chsMap in correspondence of the element which has the channel name as its key
   const listen = (message) => {
     if (message.channel == name) {
+      console.log(message) //TOGLIMI
       let newChsMap = new Map(JSON.parse(JSON.stringify(Array.from(chsMapRef.current))));
       let newMessages = JSON.parse(JSON.stringify(newChsMap.get(name)));
       message.time = moment().format('MMMM Do YYYY, h:mm:ss a'); //TIZIANO MIGLIORARE FORMATO ORA DI RICEZIONE
+      setMsgTimestamp(message.time);
       newMessages.push(message);
       newChsMap.set(name, newMessages)
       chsMapRef.current = newChsMap;
       setChsMap(newChsMap);
     }
   }
-
 
   //when loading for the first time check if the actual query params is equal to channel name.
   //in this case set the selected channel equal to the channel index
@@ -113,7 +116,7 @@ const ChannelElement = ({ liter, index, name, selectionState, setSelectedChannel
     }
     registerToCh();
     const queryChannel = searchParams.get("channel");
-    if (queryChannel == name) setSelectedChannel(index);
+    if (queryChannel == name) setSelectedChannelIndex(index);
     let newChsMap = new Map(JSON.parse(JSON.stringify(Array.from(chsMapRef.current))));
     newChsMap.set(name, []);
     chsMapRef.current = newChsMap;
@@ -131,6 +134,22 @@ const ChannelElement = ({ liter, index, name, selectionState, setSelectedChannel
   }, [chsMapRef.current])
 
 
+  const updateSelectChannel = () => {
+    setAlertNewMsg(0);
+    setSelectedChannelIndex(index);
+    setSelectedChannel(name);
+    if (queryDBName !== null) {
+      setSearchParams({
+        dbName: queryDBName,
+        channel: name,
+      });
+    } else {
+      setSearchParams({
+        channel: name
+      });
+    }
+  }
+
   return (
     <Card
       elevation={0}
@@ -138,13 +157,7 @@ const ChannelElement = ({ liter, index, name, selectionState, setSelectedChannel
         m: 1,
         backgroundColor: selectionState ? accent : white
       }}>
-      <CardActionArea
-        onClick={() => {
-          setAlertNewMsg(0);
-          setSelectedChannel(index);
-          setSearchParams({ channel: name });
-        }}
-      >
+      <CardActionArea onClick={updateSelectChannel} disabled={!listenResponse}>
         {
           !listenResponse &&
           <CardHeader
