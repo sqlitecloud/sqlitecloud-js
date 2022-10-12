@@ -11,7 +11,7 @@ const utils = require('./utils');
 //SqliteCloute Components
 import ChannelElement from './ChannelElement'
 
-const ChannelsList = ({ liter, channelsList, setSelectedChannel }) => {
+const ChannelsList = ({ liter, channelsList, setSelectedChannel, setOpenMobMsg }) => {
   if (config.debug.renderingProcess) utils.logThis("ChannelsList: ON RENDER");
   const [selectedChannelIndex, setSelectedChannelIndex] = useState(-1);
   return (
@@ -19,7 +19,7 @@ const ChannelsList = ({ liter, channelsList, setSelectedChannel }) => {
       sx={{
         width: '100%',
         height: '100%',
-        maxWidth: '437px',
+        maxWidth: { xs: '100%', sm: '437px' },
         overflowY: 'scroll'
       }}
     >
@@ -38,7 +38,7 @@ const ChannelsList = ({ liter, channelsList, setSelectedChannel }) => {
             channelsList !== undefined &&
             <>
               {
-                channelsList.map((channel, i) => <ChannelElement key={i} index={i} liter={liter} name={channel} selectionState={selectedChannelIndex == i} setSelectedChannelIndex={setSelectedChannelIndex} setSelectedChannel={setSelectedChannel} />)
+                channelsList.map((channel, i) => <ChannelElement key={i} index={i} liter={liter} name={channel} selectionState={selectedChannelIndex == i} setSelectedChannelIndex={setSelectedChannelIndex} setSelectedChannel={setSelectedChannel} setOpenMobMsg={setOpenMobMsg}/>)
               }
             </>
           }

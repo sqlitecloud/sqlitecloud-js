@@ -68,7 +68,7 @@ const ErrorBadge = styled(Badge)(({ theme }) => ({
 }));
 
 
-const ChannelElement = ({ liter, index, name, selectionState, setSelectedChannel, setSelectedChannelIndex }) => {
+const ChannelElement = ({ liter, index, name, selectionState, setSelectedChannel, setSelectedChannelIndex, setOpenMobMsg  }) => {
   if (config.debug.renderingProcess) utils.logThis("ChannelElement: ON RENDER");
   //colors used to indicated if the channel is selected or no
   const accent = green[500];
@@ -148,6 +148,7 @@ const ChannelElement = ({ liter, index, name, selectionState, setSelectedChannel
         channel: name
       });
     }
+    setOpenMobMsg(true);
   }
 
   return (

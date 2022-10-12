@@ -44,7 +44,7 @@ const MessagesPresentation = ({ messages, liter, showEditor }) => {
         wrap="no-wrap"
         ref={contRef}
         sx={{
-          maxHeight: "calc(100vh - 255px)",
+          maxHeight: "calc(100vh - 140px)",
           overflowY: "auto"
         }}
       >

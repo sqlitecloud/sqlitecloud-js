@@ -146,6 +146,9 @@ const App = () => {
     setShowMessages(checkChannelExist(channelsList, selectedChannel));
   }, [selectedChannel])
 
+  //state used to open or close mobile sidebar holding messages
+  const [openMobMsg, setOpenMobMsg] = useState(false);
+
   return (
     <Fragment>
       <CssBaseline />
@@ -157,6 +160,7 @@ const App = () => {
           <Grid
             container
             spacing={0}
+            wrap="no-wrap"
             sx={{ height: "100%" }}
           >
             {
@@ -171,8 +175,8 @@ const App = () => {
                 <Alert severity="error">{channelsListResponse.data.message}</Alert>
               </Stack>
             }
-            <ChannelsList liter={liter} channelsList={channelsList} setSelectedChannel={setSelectedChannel} />
-            <Messages liter={liter} show={showMessages} showEditor={showEditor} selectedChannel={selectedChannel} />
+            <ChannelsList liter={liter} channelsList={channelsList} setSelectedChannel={setSelectedChannel} setOpenMobMsg={setOpenMobMsg} />
+            <Messages liter={liter} show={showMessages} showEditor={showEditor} selectedChannel={selectedChannel} openMobMsg={openMobMsg} setOpenMobMsg={setOpenMobMsg} />
           </Grid>
         </Box>
       </StateProvider>
