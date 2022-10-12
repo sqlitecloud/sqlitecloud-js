@@ -19,10 +19,9 @@ import { StateContext } from "./context/StateContext"
 //SqliteCloud componets
 
 
-const MessagesBar = ({ channel, setOpenMobMsg }) => {
+const MessagesBar = ({ channel, setOpenMobMsg, setSelectedChannel, setSelectedChannelIndex }) => {
   if (config.debug.renderingProcess) utils.logThis("MessagesBar: ON RENDER");
   const theme = useTheme();
-  console.log(theme.palette.primary.contrastText)
   const accent = green[500];
   const white = "#FFF";
 
@@ -31,11 +30,25 @@ const MessagesBar = ({ channel, setOpenMobMsg }) => {
   //react router hooks used to set and get query string
   const [searchParams, setSearchParams] = useSearchParams();
 
+  const backButton = () => {
+    setSelectedChannelIndex(-1);
+    setSelectedChannel(null);
+    const queryDBName = searchParams.get("dbName");
+    if (queryDBName !== null) {
+      setSearchParams({
+        dbName: queryDBName
+      });
+    } else {
+      setSearchParams({});
+    }
+    setOpenMobMsg(false)
+  }
+
   return (
     <AppBar elevation={0} position="absolute">
       <Toolbar>
         <IconButton
-          onClick={() => { setOpenMobMsg(false) }}
+          onClick={backButton}
           aria-label="back"
           size="large"
           sx={{

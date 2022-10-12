@@ -12,14 +12,22 @@ import { StateContext } from "./context/StateContext"
 import MessagesBar from "./MessagesBar";
 import MessagesPresentation from "./MessagesPresentation";
 
-const Messages = ({ liter, selectedChannel, show, showEditor, openMobMsg, setOpenMobMsg }) => {
+const Messages = ({ liter, selectedChannel, show, showEditor, openMobMsg, setOpenMobMsg, setSelectedChannel, setSelectedChannelIndex }) => {
   if (config.debug.renderingProcess) utils.logThis("Messages: ON RENDER");
   //read from context all channels registered  
   const { chsMap } = useContext(StateContext);
+
+  const toggleDrawer = (anchor, open) => (event) => {
+    if (event.type === 'keydown' && (event.key === 'Tab' || event.key === 'Shift')) {
+      return;
+    }
+    setOpenMobMsg(false)
+  };
+
   return (
     <>
       {
-        show && chsMap.size > 0 &&
+        show && selectedChannel && chsMap.size > 0 &&
         <>
           <Grid
             position="relative"
@@ -34,7 +42,7 @@ const Messages = ({ liter, selectedChannel, show, showEditor, openMobMsg, setOpe
               height: "100%",
             }}
           >
-            <MessagesBar channel={selectedChannel} setOpenMobMsg={setOpenMobMsg} />
+            <MessagesBar channel={selectedChannel} setOpenMobMsg={setOpenMobMsg} setSelectedChannel={setSelectedChannel} setSelectedChannelIndex={setSelectedChannelIndex} />
             <MessagesPresentation messages={chsMap.get(selectedChannel)} liter={liter} showEditor={showEditor} />
           </Grid>
           <Drawer
@@ -49,9 +57,9 @@ const Messages = ({ liter, selectedChannel, show, showEditor, openMobMsg, setOpe
               }
             }}
             open={openMobMsg}
-            onClose={() => { setOpenMobMsg(false) }}
+            onClose={toggleDrawer}
           >
-            <MessagesBar channel={selectedChannel} setOpenMobMsg={setOpenMobMsg} />
+            <MessagesBar channel={selectedChannel} setOpenMobMsg={setOpenMobMsg} setSelectedChannel={setSelectedChannel} setSelectedChannelIndex={setSelectedChannelIndex} />
             <MessagesPresentation messages={chsMap.get(selectedChannel)} liter={liter} showEditor={showEditor} />
           </Drawer>
         </>

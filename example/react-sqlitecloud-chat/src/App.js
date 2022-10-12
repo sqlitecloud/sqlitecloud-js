@@ -46,6 +46,7 @@ const App = () => {
   //if present, this is the channel you want to listen to 
   const queryChannel = searchParams.get("channel");
   const [selectedChannel, setSelectedChannel] = useState(queryChannel);
+  const [selectedChannelIndex, setSelectedChannelIndex] = useState(-1);
   //state used to store the available available channels. In case queryDBName !== null available channels are db tables
   const [channelsList, setChannelsList] = useState(undefined);
   //based on value of query channel show or not Messages component
@@ -55,14 +56,17 @@ const App = () => {
 
 
   const checkChannelExist = (channelsList, channelName) => {
+    let chIndex = -1;
     if (channelsList) {
       let channelsMap = new Map();
       channelsList.forEach((ch, i) => {
-        channelsMap.set(ch, i);
+        if (ch == channelName) chIndex = i;
+        // channelsMap.set(ch, i);
       })
-      return channelsMap.has(channelName);
+      // return channelsMap.has(channelName);
+      return chIndex;
     } else {
-      return false;
+      return chIndex;
     }
   }
 
@@ -117,9 +121,11 @@ const App = () => {
           //check if the channel in query string exist
           const testChannelExist = checkChannelExist(channels, queryChannel);
           //convert channelsList array into Map
-          if (testChannelExist) {
+          if (testChannelExist !== -1) {
             //if true show message components
             setShowMessages(true);
+            setSelectedChannelIndex(testChannelExist);
+            setOpenMobMsg(true);
           } else {
             //if false not show message components and remove query string from url
             if (queryDBName !== null) {
@@ -130,6 +136,8 @@ const App = () => {
               setSearchParams({});
             }
             setShowMessages(false);
+            setSelectedChannelIndex(-1);
+            setOpenMobMsg(false);
           }
         } else {
           if (config.debug.renderingProcess) utils.logThis(channelsListResponse.data.message);
@@ -142,12 +150,24 @@ const App = () => {
   }, []);
 
 
-  useEffect(() => {
-    setShowMessages(checkChannelExist(channelsList, selectedChannel));
-  }, [selectedChannel])
-
   //state used to open or close mobile sidebar holding messages
   const [openMobMsg, setOpenMobMsg] = useState(false);
+
+
+  useEffect(() => {
+    var testChannelExist = checkChannelExist(channelsList, selectedChannel);
+    if (testChannelExist == -1) {
+      setShowMessages(false);
+      setSelectedChannelIndex(testChannelExist);
+      setOpenMobMsg(false);
+    }
+    if (testChannelExist != -1) {
+      setShowMessages(true);
+      setSelectedChannelIndex(testChannelExist);
+      setOpenMobMsg(true);
+    }
+  }, [selectedChannel])
+
 
   return (
     <Fragment>
@@ -175,8 +195,13 @@ const App = () => {
                 <Alert severity="error">{channelsListResponse.data.message}</Alert>
               </Stack>
             }
-            <ChannelsList liter={liter} channelsList={channelsList} setSelectedChannel={setSelectedChannel} setOpenMobMsg={setOpenMobMsg} />
-            <Messages liter={liter} show={showMessages} showEditor={showEditor} selectedChannel={selectedChannel} openMobMsg={openMobMsg} setOpenMobMsg={setOpenMobMsg} />
+            {
+              connectionResponse && connectionResponse.status == "success" &&
+              <>
+                <ChannelsList liter={liter} channelsList={channelsList} selectedChannelIndex={selectedChannelIndex} setSelectedChannelIndex={setSelectedChannelIndex} setSelectedChannel={setSelectedChannel} setOpenMobMsg={setOpenMobMsg} />
+                <Messages liter={liter} show={showMessages} showEditor={showEditor} setSelectedChannelIndex={setSelectedChannelIndex} setSelectedChannel={setSelectedChannel} selectedChannel={selectedChannel} openMobMsg={openMobMsg} setOpenMobMsg={setOpenMobMsg} />
+              </>
+            }
           </Grid>
         </Box>
       </StateProvider>

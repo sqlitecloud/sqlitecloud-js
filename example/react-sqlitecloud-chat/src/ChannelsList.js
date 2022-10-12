@@ -11,9 +11,8 @@ const utils = require('./utils');
 //SqliteCloute Components
 import ChannelElement from './ChannelElement'
 
-const ChannelsList = ({ liter, channelsList, setSelectedChannel, setOpenMobMsg }) => {
+const ChannelsList = ({ liter, channelsList, setSelectedChannel, setOpenMobMsg, selectedChannelIndex, setSelectedChannelIndex }) => {
   if (config.debug.renderingProcess) utils.logThis("ChannelsList: ON RENDER");
-  const [selectedChannelIndex, setSelectedChannelIndex] = useState(-1);
   return (
     <Grid
       sx={{
@@ -32,13 +31,16 @@ const ChannelsList = ({ liter, channelsList, setSelectedChannel, setOpenMobMsg }
         <Stack>
           {
             channelsList == undefined &&
-            <LinearProgress sx={{ m: 4 }} />
+            <LinearProgress
+              sx={{
+                m: 4,
+              }} />
           }
           {
             channelsList !== undefined &&
             <>
               {
-                channelsList.map((channel, i) => <ChannelElement key={i} index={i} liter={liter} name={channel} selectionState={selectedChannelIndex == i} setSelectedChannelIndex={setSelectedChannelIndex} setSelectedChannel={setSelectedChannel} setOpenMobMsg={setOpenMobMsg}/>)
+                channelsList.map((channel, i) => <ChannelElement key={i} index={i} liter={liter} name={channel} selectionState={selectedChannelIndex == i} setSelectedChannelIndex={setSelectedChannelIndex} setSelectedChannel={setSelectedChannel} setOpenMobMsg={setOpenMobMsg} />)
               }
             </>
           }
