@@ -4,7 +4,6 @@ import React, { useContext } from "react";
 import Grid from '@mui/material/Unstable_Grid2';
 import Drawer from '@mui/material/Drawer';
 //SqliteCloud
-import { config } from './config';
 import { logThis } from './utils';
 //SqliteCloud context
 import { StateContext } from "./context/StateContext"
@@ -13,7 +12,7 @@ import MessagesBar from "./MessagesBar";
 import MessagesPresentation from "./MessagesPresentation";
 
 const Messages = ({ liter, selectedChannel, show, showEditor, openMobMsg, setOpenMobMsg, setSelectedChannel, setSelectedChannelIndex }) => {
-  if (config.debug.renderingProcess) logThis("Messages: ON RENDER");
+  if (process.env.DEBUG == "true") logThis("Messages: ON RENDER");
   //read from context all channels registered  
   const { chsMap } = useContext(StateContext);
 

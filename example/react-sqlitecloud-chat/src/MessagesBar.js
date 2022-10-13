@@ -12,7 +12,6 @@ import IconButton from '@mui/material/IconButton';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { green } from '@mui/material/colors';
 //SqliteCloud
-import { config } from './config';
 import { logThis } from './utils';
 //SqliteCloud context
 import { StateContext } from "./context/StateContext"
@@ -20,7 +19,7 @@ import { StateContext } from "./context/StateContext"
 
 
 const MessagesBar = ({ channel, setOpenMobMsg, setSelectedChannel, setSelectedChannelIndex }) => {
-  if (config.debug.renderingProcess) logThis("MessagesBar: ON RENDER");
+  if (process.env.DEBUG == "true") logThis("MessagesBar: ON RENDER");
   const theme = useTheme();
   const accent = green[500];
   const white = "#FFF";

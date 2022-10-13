@@ -6,7 +6,6 @@ import { useSearchParams } from 'react-router-dom';
 import Grid from '@mui/material/Unstable_Grid2';
 import { green } from '@mui/material/colors';
 //SqliteCloud
-import { config } from './config';
 import { logThis } from './utils';
 //SqliteCloud context
 import { StateContext } from "./context/StateContext"
@@ -16,7 +15,7 @@ import MessageEditor from "./MessageEditor";
 
 
 const MessagesPresentation = ({ messages, liter, showEditor }) => {
-  if (config.debug.renderingProcess) logThis("MessagesPresentation: ON RENDER");
+  if (process.env.DEBUG == "true") logThis("MessagesPresentation: ON RENDER");
 
   const contRef = useRef(null);
 

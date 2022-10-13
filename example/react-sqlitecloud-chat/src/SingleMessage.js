@@ -11,7 +11,6 @@ import Avatar from '@mui/material/Avatar';
 import Divider from '@mui/material/Divider';
 import { green, red, blue, cyan, teal } from '@mui/material/colors';
 //SqliteCloud
-import { config } from './config';
 import { logThis } from './utils';
 //SqliteCloud context
 
@@ -35,7 +34,7 @@ function NewlineText({ text }) {
 }
 
 const SingleMessage = ({ msg, showEditor }) => {
-  if (config.debug.renderingProcess) logThis("SingleMessage: ON RENDER");
+  if (process.env.DEBUG == "true") logThis("SingleMessage: ON RENDER");
   //colors used to indicated if the channel is selected or no
   const accent = green[500];
   const me = cyan[100];

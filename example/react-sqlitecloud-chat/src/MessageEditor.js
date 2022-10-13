@@ -8,12 +8,11 @@ import Paper from '@mui/material/Paper';
 import InputBase from '@mui/material/InputBase';
 import IconButton from '@mui/material/IconButton';
 //SqliteCloud
-import { config } from './config';
 import { logThis } from './utils';
 //SqliteCloud context
 
 const MessageEditor = ({ liter }) => {
-  if (config.debug.renderingProcess) logThis("MessageEditor: ON RENDER");
+  if (process.env.DEBUG == "true") logThis("MessageEditor: ON RENDER");
 
   const editorRef = useRef(null)
   const formRef = useRef(null)

@@ -11,7 +11,6 @@ import Grid from '@mui/material/Unstable_Grid2';
 import Alert from '@mui/material/Alert';
 import Stack from '@mui/material/Stack';
 //SqliteCloud
-import { config } from './config';
 import { logThis } from './utils';
 //SqliteCloud Context
 import { StateProvider } from './context/StateContext';
@@ -23,10 +22,10 @@ import Messages from "./Messages"
 import { Liter } from "js-sdk"
 
 const App = () => {
-  if (config.debug.renderingProcess) logThis("App: ON RENDER");
+  if (process.env.DEBUG == "true") logThis("App: ON RENDER");
   //credentials to establish the websocket connection
-  var projectId = config.credential.projectId;
-  var apikey = config.credential.apikey;
+  var projectId = process.env.PROJECT_ID;
+  var apikey = process.env.API_KEY;
 
   //state dedicated to Liter instance used to handle websocket connection
   const [liter, setLiter] = useState(null);
@@ -71,15 +70,17 @@ const App = () => {
     }
   }
 
+  //config.debug.renderingProcess
+
   useEffect(() => {
     const onMountWrapper = async () => {
-      if (config.debug.renderingProcess) logThis("App: ON useEffect");
+      if (process.env.DEBUG == "true") logThis("App: ON useEffect");
       //init Liter instance using provided credentials
       let locaLiter = new Liter(projectId, apikey, onErrorCallback, onCloseCallback);
       //try to enstablish websocket connection
       const connectionResponse = await locaLiter.connect();
       setConnectionResponse(connectionResponse);
-      if (config.debug.renderingProcess) logThis(connectionResponse.message);
+      if (process.env.DEBUG == "true") logThis(connectionResponse.message);
       if (connectionResponse.status == "success") {
         setLiter(locaLiter)
         //based on query parameters select if retrieve tabales db or channels
@@ -93,7 +94,7 @@ const App = () => {
         }
         setChannelsListResponse(channelsListResponse);
         if (channelsListResponse.status == "success") {
-          if (config.debug.renderingProcess) logThis("Received channels list");
+          if (process.env.DEBUG == "true") logThis("Received channels list");
           var channels = [];
           if (queryDBName !== null) {
             channelsListResponse.data.rows.forEach(c => {
@@ -141,10 +142,10 @@ const App = () => {
             setOpenMobMsg(false);
           }
         } else {
-          if (config.debug.renderingProcess) logThis(channelsListResponse.data.message);
+          if (process.env.DEBUG == "true") logThis(channelsListResponse.data.message);
         }
       } else {
-        if (config.debug.renderingProcess) logThis(connectionResponse.data.message);
+        if (process.env.DEBUG == "true") logThis(connectionResponse.data.message);
       }
     }
     onMountWrapper();

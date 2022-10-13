@@ -14,7 +14,6 @@ import Avatar from '@mui/material/Avatar';
 import Badge from '@mui/material/Badge';
 import { green } from '@mui/material/colors';
 //SqliteCloud
-import { config } from './config';
 import { logThis } from './utils';
 //SqliteCloud context
 import { StateContext } from "./context/StateContext"
@@ -69,7 +68,7 @@ const ErrorBadge = styled(Badge)(({ theme }) => ({
 
 
 const ChannelElement = ({ liter, index, name, selectionState, setSelectedChannel, setSelectedChannelIndex, setOpenMobMsg }) => {
-  if (config.debug.renderingProcess) logThis("ChannelElement: ON RENDER");
+  if (process.env.DEBUG == "true") logThis("ChannelElement: ON RENDER");
   //colors used to indicated if the channel is selected or no
   const accent = green[500];
   const white = "#FFF";
