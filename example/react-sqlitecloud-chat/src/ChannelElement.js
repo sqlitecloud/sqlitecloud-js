@@ -189,7 +189,7 @@ const ChannelElement = ({ liter, index, name, selectionState, setSelectedChannel
               </ErrorBadge>
             }
             title={name}
-            subheader={listenResponse.message}
+            subheader={listenResponse.data.message}
           />
         }
         {
