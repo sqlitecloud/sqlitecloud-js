@@ -1,7 +1,7 @@
-const moment = require('moment');
+import { format } from 'date-fns';
 
 const logThis = (msg) => {
-  let prefix = moment().format('YYYY/MM/DD HH:mm:ss.SSS');
+  let prefix = format(new Date(), "yyyy-MM-dd'T'HH:mm:ss.SSS");
   console.log(prefix + " - " + msg);
 }
-module.exports.logThis = logThis;
+export { logThis };
