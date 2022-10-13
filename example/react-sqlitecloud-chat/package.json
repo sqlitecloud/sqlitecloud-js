@@ -6,6 +6,7 @@
   "scripts": {
     "start": "webpack serve --open --config ./webpack/webpack.dev.js",
     "startssl": "cross-env webpack serve --open --config ./webpack/webpack.dev.js | local-ssl-proxy --key C:/Windows/System32/sqlitecloud.io+4-key.pem --cert C:/Windows/System32/sqlitecloud.io+4.pem  --source 3001 --target 8080",
+    "analyze": "webpack --config ./webpack/webpack.analyze.js",
     "build": "webpack --config ./webpack/webpack.prod.js"
   },
   "keywords": [],
@@ -20,6 +21,7 @@
     "html-webpack-plugin": "^5.5.0",
     "style-loader": "^3.3.1",
     "webpack": "^5.74.0",
+    "webpack-bundle-analyzer": "^4.6.1",
     "webpack-cli": "^4.10.0",
     "webpack-dev-server": "^4.10.0",
     "webpack-merge": "^5.8.0"
@@ -30,8 +32,8 @@
     "@mui/icons-material": "^5.10.6",
     "@mui/material": "^5.10.7",
     "cross-env": "^7.0.3",
+    "date-fns": "^2.29.3",
     "js-sdk": "file:../..",
-    "moment": "^2.29.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-json-view": "^1.21.3",
