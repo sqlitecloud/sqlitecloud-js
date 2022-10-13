@@ -569,7 +569,7 @@ export class Liter {
         //check the remaing active subscription. If zero the websocket connection used for pubSub can be closed
         if (this.#subscriptionsStack.size == 0) {
           this.#wsPubSub.removeEventListener('message', this.#wsPubSubonMessage);
-          this.#wsPubSub.close(1000, "Client close pubSub connection"); //TODO SISTEMARE MESSAGGIO 
+          this.#wsPubSub.close(1000, msg.wsPubSubCloseByClient);
           this.#wsPubSub = null;
         }
         return (response);
