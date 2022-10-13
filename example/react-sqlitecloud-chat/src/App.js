@@ -11,8 +11,9 @@ import Grid from '@mui/material/Unstable_Grid2';
 import Alert from '@mui/material/Alert';
 import Stack from '@mui/material/Stack';
 //SqliteCloud
-const config = require('./config').config;
-import { logThis } from './utils'
+import { config } from './config';
+import { logThis } from './utils';
+//SqliteCloud Context
 import { StateProvider } from './context/StateContext';
 //SqliteCloud components
 import ChannelsList from "./ChannelsList"

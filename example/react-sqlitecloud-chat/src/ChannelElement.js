@@ -14,8 +14,8 @@ import Avatar from '@mui/material/Avatar';
 import Badge from '@mui/material/Badge';
 import { green } from '@mui/material/colors';
 //SqliteCloud
-const config = require('./config').config;
-import { logThis } from './utils'
+import { config } from './config';
+import { logThis } from './utils';
 //SqliteCloud context
 import { StateContext } from "./context/StateContext"
 

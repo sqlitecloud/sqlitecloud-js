@@ -12,8 +12,8 @@ import IconButton from '@mui/material/IconButton';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { green } from '@mui/material/colors';
 //SqliteCloud
-const config = require('./config').config;
-import { logThis } from './utils'
+import { config } from './config';
+import { logThis } from './utils';
 //SqliteCloud context
 import { StateContext } from "./context/StateContext"
 //SqliteCloud componets

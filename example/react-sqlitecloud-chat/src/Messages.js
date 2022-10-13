@@ -4,8 +4,8 @@ import React, { useContext } from "react";
 import Grid from '@mui/material/Unstable_Grid2';
 import Drawer from '@mui/material/Drawer';
 //SqliteCloud
-const config = require('./config').config;
-import { logThis } from './utils'
+import { config } from './config';
+import { logThis } from './utils';
 //SqliteCloud context
 import { StateContext } from "./context/StateContext"
 //SqliteCloud componets

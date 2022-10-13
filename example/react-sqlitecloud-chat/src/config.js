@@ -1,6 +1,6 @@
 const config = {
   debug: {
-    renderingProcess: false,
+    renderingProcess: true,
   },
   credential: {
     projectId: "f9cdd1d5-7d16-454b-8cc0-548dc1712c26",
@@ -10,4 +10,4 @@ const config = {
     prefix: "/app",
   },
 }
-module.exports.config = config;
+export { config };

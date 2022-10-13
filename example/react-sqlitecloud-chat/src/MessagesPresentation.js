@@ -6,8 +6,8 @@ import { useSearchParams } from 'react-router-dom';
 import Grid from '@mui/material/Unstable_Grid2';
 import { green } from '@mui/material/colors';
 //SqliteCloud
-const config = require('./config').config;
-import { logThis } from './utils'
+import { config } from './config';
+import { logThis } from './utils';
 //SqliteCloud context
 import { StateContext } from "./context/StateContext"
 //SqliteCloud componets

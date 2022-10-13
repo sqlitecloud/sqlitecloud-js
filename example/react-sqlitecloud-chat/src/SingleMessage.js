@@ -11,8 +11,8 @@ import Avatar from '@mui/material/Avatar';
 import Divider from '@mui/material/Divider';
 import { green, red, blue, cyan, teal } from '@mui/material/colors';
 //SqliteCloud
-const config = require('./config').config;
-import { logThis } from './utils'
+import { config } from './config';
+import { logThis } from './utils';
 //SqliteCloud context
 
 function NewlineText({ text }) {
