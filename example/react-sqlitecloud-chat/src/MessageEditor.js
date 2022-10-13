@@ -9,11 +9,11 @@ import InputBase from '@mui/material/InputBase';
 import IconButton from '@mui/material/IconButton';
 //SqliteCloud
 const config = require('./config').config;
-const utils = require('./utils');
+import { logThis } from './utils'
 //SqliteCloud context
 
 const MessageEditor = ({ liter }) => {
-  if (config.debug.renderingProcess) utils.logThis("MessageEditor: ON RENDER");
+  if (config.debug.renderingProcess) logThis("MessageEditor: ON RENDER");
 
   const editorRef = useRef(null)
   const formRef = useRef(null)

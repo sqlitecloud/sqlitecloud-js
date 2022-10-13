@@ -7,7 +7,7 @@ import Grid from '@mui/material/Unstable_Grid2';
 import { green } from '@mui/material/colors';
 //SqliteCloud
 const config = require('./config').config;
-const utils = require('./utils');
+import { logThis } from './utils'
 //SqliteCloud context
 import { StateContext } from "./context/StateContext"
 //SqliteCloud componets
@@ -16,7 +16,7 @@ import MessageEditor from "./MessageEditor";
 
 
 const MessagesPresentation = ({ messages, liter, showEditor }) => {
-  if (config.debug.renderingProcess) utils.logThis("MessagesPresentation: ON RENDER");
+  if (config.debug.renderingProcess) logThis("MessagesPresentation: ON RENDER");
 
   const contRef = useRef(null);
 

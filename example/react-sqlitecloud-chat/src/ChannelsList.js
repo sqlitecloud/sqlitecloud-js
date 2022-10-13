@@ -7,12 +7,12 @@ import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 //SqliteCloud
 const config = require('./config').config;
-const utils = require('./utils');
+import { logThis } from './utils'
 //SqliteCloute Components
 import ChannelElement from './ChannelElement'
 
 const ChannelsList = ({ liter, channelsList, setSelectedChannel, setOpenMobMsg, selectedChannelIndex, setSelectedChannelIndex }) => {
-  if (config.debug.renderingProcess) utils.logThis("ChannelsList: ON RENDER");
+  if (config.debug.renderingProcess) logThis("ChannelsList: ON RENDER");
   return (
     <Grid
       sx={{

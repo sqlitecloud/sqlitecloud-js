@@ -5,7 +5,7 @@ import Grid from '@mui/material/Unstable_Grid2';
 import Drawer from '@mui/material/Drawer';
 //SqliteCloud
 const config = require('./config').config;
-const utils = require('./utils');
+import { logThis } from './utils'
 //SqliteCloud context
 import { StateContext } from "./context/StateContext"
 //SqliteCloud componets
@@ -13,7 +13,7 @@ import MessagesBar from "./MessagesBar";
 import MessagesPresentation from "./MessagesPresentation";
 
 const Messages = ({ liter, selectedChannel, show, showEditor, openMobMsg, setOpenMobMsg, setSelectedChannel, setSelectedChannelIndex }) => {
-  if (config.debug.renderingProcess) utils.logThis("Messages: ON RENDER");
+  if (config.debug.renderingProcess) logThis("Messages: ON RENDER");
   //read from context all channels registered  
   const { chsMap } = useContext(StateContext);
 

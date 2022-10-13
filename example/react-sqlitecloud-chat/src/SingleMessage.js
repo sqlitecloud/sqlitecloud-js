@@ -12,7 +12,7 @@ import Divider from '@mui/material/Divider';
 import { green, red, blue, cyan, teal } from '@mui/material/colors';
 //SqliteCloud
 const config = require('./config').config;
-const utils = require('./utils');
+import { logThis } from './utils'
 //SqliteCloud context
 
 function NewlineText({ text }) {
@@ -35,11 +35,11 @@ function NewlineText({ text }) {
 }
 
 const SingleMessage = ({ msg, showEditor }) => {
-  if (config.debug.renderingProcess) utils.logThis("SingleMessage: ON RENDER");
+  if (config.debug.renderingProcess) logThis("SingleMessage: ON RENDER");
   //colors used to indicated if the channel is selected or no
-  const accent = green[500]; 
-  const me = cyan[100]; 
-  const other = teal[100]; 
+  const accent = green[500];
+  const me = cyan[100];
+  const other = teal[100];
   const white = "#FFF";
 
 

@@ -13,14 +13,14 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { green } from '@mui/material/colors';
 //SqliteCloud
 const config = require('./config').config;
-const utils = require('./utils');
+import { logThis } from './utils'
 //SqliteCloud context
 import { StateContext } from "./context/StateContext"
 //SqliteCloud componets
 
 
 const MessagesBar = ({ channel, setOpenMobMsg, setSelectedChannel, setSelectedChannelIndex }) => {
-  if (config.debug.renderingProcess) utils.logThis("MessagesBar: ON RENDER");
+  if (config.debug.renderingProcess) logThis("MessagesBar: ON RENDER");
   const theme = useTheme();
   const accent = green[500];
   const white = "#FFF";

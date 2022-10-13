@@ -12,7 +12,7 @@ import Alert from '@mui/material/Alert';
 import Stack from '@mui/material/Stack';
 //SqliteCloud
 const config = require('./config').config;
-const utils = require('./utils');
+import { logThis } from './utils'
 import { StateProvider } from './context/StateContext';
 //SqliteCloud components
 import ChannelsList from "./ChannelsList"
@@ -22,7 +22,7 @@ import Messages from "./Messages"
 import { Liter } from "js-sdk"
 
 const App = () => {
-  if (config.debug.renderingProcess) utils.logThis("App: ON RENDER");
+  if (config.debug.renderingProcess) logThis("App: ON RENDER");
   //credentials to establish the websocket connection
   var projectId = config.credential.projectId;
   var apikey = config.credential.apikey;
@@ -72,13 +72,13 @@ const App = () => {
 
   useEffect(() => {
     const onMountWrapper = async () => {
-      if (config.debug.renderingProcess) utils.logThis("App: ON useEffect");
+      if (config.debug.renderingProcess) logThis("App: ON useEffect");
       //init Liter instance using provided credentials
       let locaLiter = new Liter(projectId, apikey, onErrorCallback, onCloseCallback);
       //try to enstablish websocket connection
       const connectionResponse = await locaLiter.connect();
       setConnectionResponse(connectionResponse);
-      if (config.debug.renderingProcess) utils.logThis(connectionResponse.message);
+      if (config.debug.renderingProcess) logThis(connectionResponse.message);
       if (connectionResponse.status == "success") {
         setLiter(locaLiter)
         //based on query parameters select if retrieve tabales db or channels
@@ -92,7 +92,7 @@ const App = () => {
         }
         setChannelsListResponse(channelsListResponse);
         if (channelsListResponse.status == "success") {
-          if (config.debug.renderingProcess) utils.logThis("Received channels list");
+          if (config.debug.renderingProcess) logThis("Received channels list");
           var channels = [];
           if (queryDBName !== null) {
             channelsListResponse.data.rows.forEach(c => {
@@ -140,10 +140,10 @@ const App = () => {
             setOpenMobMsg(false);
           }
         } else {
-          if (config.debug.renderingProcess) utils.logThis(channelsListResponse.data.message);
+          if (config.debug.renderingProcess) logThis(channelsListResponse.data.message);
         }
       } else {
-        if (config.debug.renderingProcess) utils.logThis(connectionResponse.data.message);
+        if (config.debug.renderingProcess) logThis(connectionResponse.data.message);
       }
     }
     onMountWrapper();

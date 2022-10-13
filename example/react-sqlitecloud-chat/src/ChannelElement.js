@@ -2,8 +2,8 @@
 import React, { Fragment, useEffect, useState, useContext } from "react";
 //react-router
 import { useSearchParams } from 'react-router-dom';
-//moment
-const moment = require('moment');
+//date-fns
+import { format } from 'date-fns';
 //mui
 import { styled } from '@mui/material/styles';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -15,7 +15,7 @@ import Badge from '@mui/material/Badge';
 import { green } from '@mui/material/colors';
 //SqliteCloud
 const config = require('./config').config;
-const utils = require('./utils');
+import { logThis } from './utils'
 //SqliteCloud context
 import { StateContext } from "./context/StateContext"
 
@@ -68,8 +68,8 @@ const ErrorBadge = styled(Badge)(({ theme }) => ({
 }));
 
 
-const ChannelElement = ({ liter, index, name, selectionState, setSelectedChannel, setSelectedChannelIndex, setOpenMobMsg  }) => {
-  if (config.debug.renderingProcess) utils.logThis("ChannelElement: ON RENDER");
+const ChannelElement = ({ liter, index, name, selectionState, setSelectedChannel, setSelectedChannelIndex, setOpenMobMsg }) => {
+  if (config.debug.renderingProcess) logThis("ChannelElement: ON RENDER");
   //colors used to indicated if the channel is selected or no
   const accent = green[500];
   const white = "#FFF";
@@ -98,7 +98,7 @@ const ChannelElement = ({ liter, index, name, selectionState, setSelectedChannel
       console.log(message) //TOGLIMI
       let newChsMap = new Map(JSON.parse(JSON.stringify(Array.from(chsMapRef.current))));
       let newMessages = JSON.parse(JSON.stringify(newChsMap.get(name)));
-      message.time = moment().format('MMMM Do YYYY, h:mm:ss a'); //TIZIANO MIGLIORARE FORMATO ORA DI RICEZIONE
+      message.time = format(new Date(), "yyyy-MM-dd' | 'HH:mm:ss")
       setMsgTimestamp(message.time);
       newMessages.push(message);
       newChsMap.set(name, newMessages)
