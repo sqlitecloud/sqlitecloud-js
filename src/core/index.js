@@ -99,7 +99,9 @@ export class Liter {
           this.#ws.addEventListener('close', this.#onCloseWs);
           return {
             status: "success",
-            message: msg.wsConnectOk
+            data: {
+              message: msg.wsConnectOk
+            }
           }
         } catch (error) {
           return {
@@ -108,10 +110,20 @@ export class Liter {
           };
         }
       } else {
-        return msg.wsCantConnectedWsPubSubExist;
+        return {
+          status: "warning",
+          data: {
+            message: msg.wsCantConnectedWsPubSubExist
+          }
+        };
       }
     } else {
-      return msg.wsAlreadyConnected;
+      return {
+        status: "warning",
+        data: {
+          message: msg.wsAlreadyConnected
+        }
+      }
     }
   }
 
@@ -126,16 +138,44 @@ export class Liter {
         this.#wsPubSub.close(1000, msg.wsPubSubCloseByClient);
         this.#subscriptionsStack = new Map();
         this.#ws.close(1000, msg.wsCloseByClient);
-        return msg.wsClosingWsPubSubClosingProcess;
+        return (
+          {
+            status: "success",
+            data: {
+              message: msg.wsClosingWsPubSubClosingProcess
+            }
+          }
+        )
       } else if (this.#wsPubSub == null && this.#ws !== null) {
         this.#ws.close(1000, msg.wsCloseByClient);
-        return msg.wsClosingProcess;
+        return (
+          {
+            status: "success",
+            data: {
+              message: msg.wsClosingProcess
+            }
+          }
+        )
       } else if (this.#wsPubSub != null && this.#ws == null) {
         this.#subscriptionsStack = new Map();
         this.#wsPubSub.close(1000, msg.wsCloseByClient);
-        return msg.wsPubSubClosingProcess;
+        return (
+          {
+            status: "success",
+            data: {
+              message: msg.wsPubSubClosingProcess
+            }
+          }
+        )
       } else {
-        return msg.wsClosingError;
+        return (
+          {
+            status: "error",
+            data: {
+              message: msg.wsClosingError
+            }
+          }
+        )
       }
     }
     if (!closePubSub) {
@@ -143,7 +183,14 @@ export class Liter {
         this.#ws.close(1000, msg.wsCloseByClient);
         return msg.wsClosingProcess;
       } else {
-        return msg.wsClosingError;
+        return (
+          {
+            status: "error",
+            data: {
+              message: msg.wsClosingError
+            }
+          }
+        )
       }
     }
   }
@@ -232,10 +279,18 @@ export class Liter {
         );
         return (response);
       } catch (error) {
-        return (error);
+        return {
+          status: "error",
+          data: error
+        };
       }
     } else {
-      return (msg.wsExecErrorNoConnection);
+      return {
+        status: "error",
+        data: {
+          message: msg.wsExecErrorNoConnection
+        }
+      }
     }
   }
 
@@ -256,10 +311,20 @@ export class Liter {
         );
         return (response);
       } catch (error) {
-        return (error);
+        return {
+          status: "error",
+          data: error
+        };
       }
     } else {
-      return (msg.wsNotifyErrorNoConnection);
+      return (
+        {
+          status: "error",
+          data: {
+            message: msg.wsNotifyErrorNoConnection
+          }
+        }
+      );
     }
   }
 
@@ -292,17 +357,36 @@ export class Liter {
   unlisten method calls the private method #pubsub to unregister to a channel 
   */
   async unlisten(channel) {
-    if (!this.#subscriptionsStack.has(channel)) return msg.wsUnlistenError.missingSubscritption + " " + channel;
+    if (!this.#subscriptionsStack.has(channel)) {
+      return (
+        {
+          status: "error",
+          data: {
+            message: msg.wsUnlistenError.missingSubscritption + " " + channel
+          }
+        }
+      )
+    }
 
     if (this.#ws !== null) {
       try {
         const response = await this.#pubsub("unlisten", channel, null);
         return (response);
       } catch (error) {
-        return (error);
+        return {
+          status: "error",
+          data: error
+        };
       }
     } else {
-      return (msg.wsUnlistenError.errorNoConnection);
+      return (
+        {
+          status: "error",
+          data: {
+            message: msg.wsUnlistenError.errorNoConnection
+          }
+        }
+      )
     }
   }
 
@@ -335,7 +419,6 @@ export class Liter {
       };
       ws.onerror = function (err) {
         reject({
-          status: "error",
           err: err,
           message: errorMessage
         });
@@ -430,7 +513,10 @@ export class Liter {
               //register the close event on websocket
               this.#wsPubSub.addEventListener('close', this.#onCloseWsPubSub);
             } catch (error) {
-              return (error);
+              return {
+                status: "error",
+                data: error
+              };
             }
           }
           //if this isn't the first subscription, just add the supscription to the stack
@@ -454,11 +540,21 @@ export class Liter {
           }
           return userResponse;
         } catch (error) {
-          return (error);
+          return {
+            status: "error",
+            data: error
+          };
         }
       } else {
         //if the subscription exists
-        return (msg.wsListenError.alreadySubscribed + " " + channel);
+        return (
+          {
+            status: "warning",
+            data: {
+              message: msg.wsListenError.alreadySubscribed + " " + channel
+            }
+          }
+        )
       }
     } else {
       try {
@@ -478,7 +574,10 @@ export class Liter {
         }
         return (response);
       } catch (error) {
-        return (error);
+        return {
+          status: "error",
+          data: error
+        };
       }
     }
   }
@@ -606,7 +705,6 @@ export class Liter {
     if (this.#requestsStack.has(requestID)) {
       clearTimeout(this.#requestsStack.get(requestID).onRequestTimeout);
       this.#requestsStack.get(requestID).reject({
-        status: "error",
         message: msg.wsTimeoutError + " " + requestID
       });
       this.#requestsStack.delete(requestID);
