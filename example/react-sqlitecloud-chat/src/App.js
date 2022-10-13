@@ -77,6 +77,8 @@ const App = () => {
       if (process.env.DEBUG == "true") logThis("App: ON useEffect");
       //init Liter instance using provided credentials
       let locaLiter = new Liter(projectId, apikey, onErrorCallback, onCloseCallback);
+      //set websocket request timeout
+      locaLiter.setRequestTimeout(5000);
       //try to enstablish websocket connection
       const connectionResponse = await locaLiter.connect();
       setConnectionResponse(connectionResponse);
