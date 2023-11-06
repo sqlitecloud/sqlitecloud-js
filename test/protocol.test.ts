@@ -5,10 +5,10 @@
 /* eslint-disable */
 
 // published library
-var sqlitecloud = require('sqlitecloud-nodejs-sdk')
+// var sqlitecloud = require('sqlitecloud-nodejs-sdk')
 
 // code being refactored:
-//import sqlitecloud from '../src/protocol'
+import sqlitecloud from '../src/protocol'
 
 const cert = `-----BEGIN CERTIFICATE-----
 MIID6zCCAtOgAwIBAgIUI0lTm5CfVf3mVP8606CkophcyB4wDQYJKoZIhvcNAQEL

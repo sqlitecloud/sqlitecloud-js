@@ -45,48 +45,46 @@ const CMD_COMPRESSED = '%'
 const CMD_COMMAND = '^'
 // const CMD_RECONNECT = '@'
 const CMD_ARRAY = '='
-/*  
-this method analyzes the first character to check if corresponding data type has LEN
-*/
-const hasCommandlen = firstCharacter => {
+
+/** Analyze first character to check if corresponding data type has LEN */
+function hasCommandLength(firstCharacter: string): boolean {
   return firstCharacter == CMD_INT || firstCharacter == CMD_FLOAT || firstCharacter == CMD_NULL ? false : true
 }
-/*  
-this method analyzes a command with explict LEN and extract it
-*/
-const parseLen = data => {
+
+/** Analyze a command with explict LEN and extract it */
+function parseLength(data: Buffer) {
   return parseInt(data.subarray(1, data.indexOf(' ')).toString('utf8'))
 }
-/*
-this method receive a compressed buffer, uncompress it using lz4 algorithm and return the uncompressed buffer and corresponding datatype
-*/
-const uncompressBuffer = buffer => {
+
+/** Receive a compressed buffer, decompress with lz4, return buffer and datatype */
+function decompressBuffer(buffer: Buffer): { buffer: Buffer; dataType: string } {
   const spaceIndex = buffer.indexOf(' ')
   buffer = buffer.subarray(spaceIndex + 1, buffer.length)
-  //extract compressed size
+
+  // extract compressed size
   const compressedSize = parseInt(buffer.subarray(0, buffer.indexOf(' ') + 1).toString('utf8'))
   buffer = buffer.subarray(buffer.indexOf(' ') + 1, buffer.length)
-  //extract uncompressed size
-  const uncompressedSize = parseInt(buffer.subarray(0, buffer.indexOf(' ') + 1).toString('utf8'))
+
+  // extract decompressed size
+  const decompressedSize = parseInt(buffer.subarray(0, buffer.indexOf(' ') + 1).toString('utf8'))
   buffer = buffer.subarray(buffer.indexOf(' ') + 1, buffer.length)
-  //extract compressed dataType
+
+  // extract compressed dataType
   const dataType = buffer.subarray(0, 1).toString('utf8')
-  const uncompressedBuffer = Buffer.alloc(uncompressedSize)
-  const uncompressionResult = lz4.decodeBlock(buffer.subarray(buffer.length - compressedSize, buffer.length), uncompressedBuffer)
-  buffer = Buffer.concat([buffer.subarray(0, buffer.length - compressedSize), uncompressedBuffer])
-  if (uncompressionResult <= 0 || uncompressionResult !== uncompressedSize) {
-    throw new Error(`lz4 uncompression error error at offset ${uncompressionResult}`)
+  const decompressedBuffer = Buffer.alloc(decompressedSize)
+  const decompressionResult = lz4.decodeBlock(buffer.subarray(buffer.length - compressedSize, buffer.length), decompressedBuffer)
+  buffer = Buffer.concat([buffer.subarray(0, buffer.length - compressedSize), decompressedBuffer])
+  if (decompressionResult <= 0 || decompressionResult !== decompressedSize) {
+    throw new Error(`lz4 decompression error at offset ${decompressionResult}`)
   }
-  return {
-    buffer: buffer,
-    dataType: dataType
-  }
+
+  return { buffer, dataType: dataType }
 }
 
 /*
 this method received the complete buffer and parse it based on the current dataType
 */
-const parseData = buffer => {
+const parseData = (buffer: any[] | Buffer) => {
   let parsedData
   let dataType = Array.isArray(buffer) ? buffer[0].subarray(0, 1).toString('utf8') : buffer.subarray(0, 1).toString('utf8')
   var spaceIndex = buffer.indexOf(' ')
@@ -94,13 +92,13 @@ const parseData = buffer => {
     if (Array.isArray(buffer)) {
       //CMD_ROWSET_CHUNK case
       for (var i = 0; i < buffer.length; i++) {
-        const uncompressionResult = uncompressBuffer(buffer[i])
+        const uncompressionResult = decompressBuffer(buffer[i])
         buffer[i] = uncompressionResult.buffer
         dataType = uncompressionResult.dataType
       }
     } else {
       //all other cases
-      const uncompressionResult = uncompressBuffer(buffer)
+      const uncompressionResult = decompressBuffer(buffer)
       buffer = uncompressionResult.buffer
       dataType = uncompressionResult.dataType
     }
@@ -159,9 +157,9 @@ const parseData = buffer => {
       if (itemsNumber > 0) {
         for (var i = 0; i < itemsNumber; i++) {
           const dataType = arrayItems.subarray(0, 1).toString('utf8')
-          const hasCommandLen = hasCommandlen(dataType)
+          const hasCommandLen = hasCommandLength(dataType)
           if (hasCommandLen) {
-            const lenToRead = parseLen(arrayItems)
+            const lenToRead = parseLength(arrayItems)
             parsedData.push(parseData(arrayItems.subarray(0, arrayItems.indexOf(' ') + 1 + lenToRead)))
             arrayItems = arrayItems.subarray(arrayItems.indexOf(' ') + 1 + lenToRead, arrayItems.length)
           } else {
@@ -187,7 +185,7 @@ const parseData = buffer => {
       var colsName = []
       for (var i = 0; i < nCols; i++) {
         const dataType = rowset.subarray(0, 1).toString('utf8')
-        const lenToRead = parseLen(rowset)
+        const lenToRead = parseLength(rowset)
         colsName.push(parseData(rowset.subarray(0, rowset.indexOf(' ') + 1 + lenToRead)))
         rowset = rowset.subarray(rowset.indexOf(' ') + 1 + lenToRead, rowset.length)
       }
@@ -195,9 +193,9 @@ const parseData = buffer => {
       var data = []
       for (var j = 0; j < nRows * nCols; j++) {
         const dataType = rowset.subarray(0, 1).toString('utf8')
-        const hasCommandLen = hasCommandlen(dataType)
+        const hasCommandLen = hasCommandLength(dataType)
         if (hasCommandLen) {
-          const lenToRead = parseLen(rowset)
+          const lenToRead = parseLength(rowset)
           data.push(rowset.subarray(0, rowset.indexOf(' ') + 1 + lenToRead))
           rowset = rowset.subarray(rowset.indexOf(' ') + 1 + lenToRead, rowset.length)
         } else {
@@ -238,7 +236,7 @@ const parseData = buffer => {
           //extract cols name
           for (var j = 0; j < nCols; j++) {
             const dataType = rowset.subarray(0, 1).toString('utf8')
-            const lenToRead = parseLen(rowset)
+            const lenToRead = parseLength(rowset)
             colsName.push(parseData(rowset.subarray(0, rowset.indexOf(' ') + 1 + lenToRead)))
             rowset = rowset.subarray(rowset.indexOf(' ') + 1 + lenToRead, rowset.length)
           }
@@ -246,9 +244,9 @@ const parseData = buffer => {
         //extract single rowset item
         for (let k = 0; k < nRowsSingleChunk * nCols; k++) {
           const dataType = rowset.subarray(0, 1).toString('utf8')
-          const hasCommandLen = hasCommandlen(dataType)
+          const hasCommandLen = hasCommandLength(dataType)
           if (hasCommandLen) {
-            const lenToRead = parseLen(rowset)
+            const lenToRead = parseLength(rowset)
             data.push(rowset.subarray(0, rowset.indexOf(' ') + 1 + lenToRead))
             rowset = rowset.subarray(rowset.indexOf(' ') + 1 + lenToRead, rowset.length)
           } else {
@@ -284,7 +282,7 @@ export class SQCloudRowset {
   /*
   SQCloudRowset constructor
   */
-  constructor(parsedData) {
+  constructor(parsedData: { version: any; nRows: any; nCols: any; colsName: any; data: any }) {
     this.#data = parsedData.data
     this._version = parsedData.version
     this._nRows = parsedData.nRows
@@ -312,14 +310,14 @@ export class SQCloudRowset {
   /*
   private method check if provided rows and cols not exceed rowset dimensions  
   */
-  #sanityCheck(row, col) {
+  #sanityCheck(row: number, col: number) {
     if (row >= this._nRows || col >= this._nCols) return false
     return true
   }
   /*
   method that parse and return item at specific position
   */
-  getItem(row, col) {
+  getItem(row: number, col: number) {
     if (!this.#sanityCheck(row, col)) throw new RangeError(`row value has to be less than ${this._nRows} and col value has to be less than ${this._nCols}`)
     else {
       const item = this.#data[row * this._nCols + col]
@@ -406,7 +404,32 @@ export default class SQLiteCloud {
       }
     - debug_sdk
   */
-  constructor(config, debug_sdk = false) {
+  constructor(
+    config: {
+      clientId: any
+      user: any
+      password: any
+      host: any
+      port: any
+      compression: any
+      queryTimeout: any
+      tlsOptions: any
+      disableTLS?: any
+      connectionString?: any
+      passwordHashed?: any
+      database?: any
+      dbCreate?: any
+      dbMemory?: any
+      sqliteMode?: any
+      zeroText?: any
+      nonlinearizable?: any
+      noBlob?: any
+      maxData?: any
+      maxRows?: any
+      maxRowset?: any
+    },
+    debug_sdk = false
+  ) {
     this.#debug_sdk = debug_sdk
     this.#clientId = config.clientId
     this.#disableTLS = config.disableTLS ? config.disableTLS : false
@@ -457,14 +480,14 @@ export default class SQLiteCloud {
   /*
   COMPOSE SCSP PROTOCOL
   */
-  #composeScspStrings(str) {
+  #composeScspStrings(str: string | NodeJS.ArrayBufferView | ArrayBuffer | SharedArrayBuffer) {
     const strLen = Buffer.byteLength(str, 'utf-8')
     return `+${strLen} ${str}`
   }
   /*
   check if all bytes have been received
   */
-  #receivedAllBytes(buffer, lenToRead) {
+  #receivedAllBytes(buffer: string | string[], lenToRead: number) {
     return buffer.length - buffer.indexOf(' ') - 1 == lenToRead ? true : false
   }
   /*
@@ -493,7 +516,7 @@ export default class SQLiteCloud {
         if (timeoutError) reject(timeoutError)
       }
       //try to connect
-      let client
+      let client: { authorized: any; authorizationError: any; destroy: () => void } | null
       if (!this.#disableTLS) {
         client = new tls.connect(this.#port, this.#host, this.#tlsOptions, async () => {
           if (client.authorized) {
@@ -518,7 +541,7 @@ export default class SQLiteCloud {
           .on('end', () => {
             if (this.#debug_sdk) logThis(this.#clientId, 'end connection')
           })
-          .once('error', error => {
+          .once('error', (error: any) => {
             if (this.#debug_sdk) logThis(this.#clientId, 'received error')
             if (this.#debug_sdk) console.log(error)
             client.destroy()
@@ -543,7 +566,7 @@ export default class SQLiteCloud {
           .on('end', () => {
             if (this.#debug_sdk) logThis(this.#clientId, 'end connection')
           })
-          .once('error', error => {
+          .once('error', (error: any) => {
             if (this.#debug_sdk) logThis(this.#clientId, 'received error')
             if (this.#debug_sdk) console.log(error)
             client.destroy()
@@ -563,22 +586,22 @@ export default class SQLiteCloud {
     //commands is sent to the server
     let buffer = Buffer.alloc(0) //variable where all received data are concatenated
     //dedicated variable to rowset_chunk data type
-    const rowsetChunkArray = [] //used only in case of rowset_chunk datatype to store all received chunk avoiding buffer copy
+    const rowsetChunkArray: Buffer[] = [] //used only in case of rowset_chunk datatype to store all received chunk avoiding buffer copy
     if (this.#debug_sdk) logThis(this.#clientId, 'recevied new command to be sent: ' + commands)
     //define the Promise that waits for the server response
     return new Promise((resolve, reject) => {
       //define what to do if an answer does not arrive within the set timeout
-      let readDataTimeout
-      const readData = data => {
+      let readDataTimeout: NodeJS.Timeout
+      const readData = (data: string | Uint8Array) => {
         if (this.#debug_sdk) logThis(this.#clientId, 'onData event: ' + data)
         //on first ondata event, dataType is read from data, on subsequent ondata event, is read from buffer that is the concatanations of data received on each ondata event
         const dataType = buffer.length === 0 ? data.subarray(0, 1).toString('utf8') : buffer.subarray(0, 1).toString('utf8')
         buffer = Buffer.concat([buffer, data])
-        const hasCommandLen = hasCommandlen(dataType)
+        const hasCommandLen = hasCommandLength(dataType)
         if (this.#debug_sdk) logThis(this.#clientId, 'New data has command LEN? ' + hasCommandLen)
         if (hasCommandLen) {
           let lenToRead
-          lenToRead = parseLen(buffer)
+          lenToRead = parseLength(buffer)
           if (this.#debug_sdk) logThis(this.#clientId, 'Reading new data with LEN: ' + lenToRead)
           //in case of compressed data, extract the dataType of compressed data
           if (dataType === CMD_COMPRESSED) {
@@ -645,7 +668,7 @@ export default class SQLiteCloud {
         }, this.#queryTimeout)
         this.#client.on('data', readData)
       })
-      this.#client.once('error', error => {
+      this.#client.once('error', (error: any) => {
         if (this.#debug_sdk) logThis(this.#clientId, 'received error')
         if (this.#debug_sdk) console.log(error)
         client.destroy()
