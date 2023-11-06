@@ -7,27 +7,6 @@ import tls from 'tls'
 import net from 'net'
 import lz4 from 'lz4'
 
-const logThis = (id = 'SQLiteCloud', msg: string) => {
-  const dateObject = new Date()
-  // adjust 0 before single digit date
-  const date = `0 ${dateObject.getDate()}`.slice(-2)
-  // current month
-  const month = `0${dateObject.getMonth() + 1}`.slice(-2)
-  // current year
-  const year = dateObject.getFullYear()
-  // current hours
-  const hours = dateObject.getHours()
-  // current minutes
-  const minutes = dateObject.getMinutes()
-  // current seconds
-  const seconds = dateObject.getSeconds()
-  // current milliseconds
-  const milliseconds = dateObject.getMilliseconds()
-  // prints date & time in YYYY/MM/DD HH:MM:SS format
-  const prefix = `${year}/${month}/${date} ${hours}:${minutes}:${seconds}:${milliseconds}`
-  console.log(`!!!!!!!!! ${id}: ${prefix} - ${msg}`)
-}
-
 // defined in https://github.com/sqlitecloud/sdk/blob/master/PROTOCOL.md
 const CMD_STRING = '+'
 const CMD_ZEROSTRING = '!'
@@ -46,13 +25,21 @@ const CMD_COMMAND = '^'
 // const CMD_RECONNECT = '@'
 const CMD_ARRAY = '='
 
+//
+// utility functions
+//
+
+function logThis(id = 'SQLiteCloud', msg: string): void {
+  console.log(`!!!!!!!!! ${id}: ${new Date().toISOString()} - ${msg}`)
+}
+
 /** Analyze first character to check if corresponding data type has LEN */
 function hasCommandLength(firstCharacter: string): boolean {
   return firstCharacter == CMD_INT || firstCharacter == CMD_FLOAT || firstCharacter == CMD_NULL ? false : true
 }
 
 /** Analyze a command with explict LEN and extract it */
-function parseLength(data: Buffer) {
+function parseCommandLength(data: Buffer) {
   return parseInt(data.subarray(1, data.indexOf(' ')).toString('utf8'))
 }
 
@@ -84,7 +71,7 @@ function decompressBuffer(buffer: Buffer): { buffer: Buffer; dataType: string } 
 /*
 this method received the complete buffer and parse it based on the current dataType
 */
-const parseData = (buffer: any[] | Buffer) => {
+function parseData(buffer: Buffer) {
   let parsedData
   let dataType = Array.isArray(buffer) ? buffer[0].subarray(0, 1).toString('utf8') : buffer.subarray(0, 1).toString('utf8')
   var spaceIndex = buffer.indexOf(' ')
@@ -160,7 +147,7 @@ const parseData = (buffer: any[] | Buffer) => {
           const dataType = arrayItems.subarray(0, 1).toString('utf8')
           const hasCommandLen = hasCommandLength(dataType)
           if (hasCommandLen) {
-            const lenToRead = parseLength(arrayItems)
+            const lenToRead = parseCommandLength(arrayItems)
             parsedData.push(parseData(arrayItems.subarray(0, arrayItems.indexOf(' ') + 1 + lenToRead)))
             arrayItems = arrayItems.subarray(arrayItems.indexOf(' ') + 1 + lenToRead, arrayItems.length)
           } else {
@@ -186,7 +173,7 @@ const parseData = (buffer: any[] | Buffer) => {
       var colsName = []
       for (var i = 0; i < nCols; i++) {
         const dataType = rowset.subarray(0, 1).toString('utf8')
-        const lenToRead = parseLength(rowset)
+        const lenToRead = parseCommandLength(rowset)
         colsName.push(parseData(rowset.subarray(0, rowset.indexOf(' ') + 1 + lenToRead)))
         rowset = rowset.subarray(rowset.indexOf(' ') + 1 + lenToRead, rowset.length)
       }
@@ -196,7 +183,7 @@ const parseData = (buffer: any[] | Buffer) => {
         const dataType = rowset.subarray(0, 1).toString('utf8')
         const hasCommandLen = hasCommandLength(dataType)
         if (hasCommandLen) {
-          const lenToRead = parseLength(rowset)
+          const lenToRead = parseCommandLength(rowset)
           data.push(rowset.subarray(0, rowset.indexOf(' ') + 1 + lenToRead))
           rowset = rowset.subarray(rowset.indexOf(' ') + 1 + lenToRead, rowset.length)
         } else {
@@ -237,7 +224,7 @@ const parseData = (buffer: any[] | Buffer) => {
           //extract cols name
           for (var j = 0; j < nCols; j++) {
             const dataType = rowset.subarray(0, 1).toString('utf8')
-            const lenToRead = parseLength(rowset)
+            const lenToRead = parseCommandLength(rowset)
             colsName.push(parseData(rowset.subarray(0, rowset.indexOf(' ') + 1 + lenToRead)))
             rowset = rowset.subarray(rowset.indexOf(' ') + 1 + lenToRead, rowset.length)
           }
@@ -247,7 +234,7 @@ const parseData = (buffer: any[] | Buffer) => {
           const dataType = rowset.subarray(0, 1).toString('utf8')
           const hasCommandLen = hasCommandLength(dataType)
           if (hasCommandLen) {
-            const lenToRead = parseLength(rowset)
+            const lenToRead = parseCommandLength(rowset)
             data.push(rowset.subarray(0, rowset.indexOf(' ') + 1 + lenToRead))
             rowset = rowset.subarray(rowset.indexOf(' ') + 1 + lenToRead, rowset.length)
           } else {
@@ -271,6 +258,11 @@ const parseData = (buffer: any[] | Buffer) => {
   }
   return parsedData
 }
+
+//
+// exported classes
+//
+
 /*
 custom class used to return rowset data
 */
@@ -433,7 +425,6 @@ export default class SQLiteCloud {
   ) {
     this.#debug_sdk = debug_sdk
     this.#clientId = config.clientId
-    this.#disableTLS = config.disableTLS ? config.disableTLS : false
     if (config.connectionString) {
       //TODOO exctract from connectionString tls options
     } else {
@@ -518,39 +509,10 @@ export default class SQLiteCloud {
       }
       //try to connect
       let client: { authorized: any; authorizationError: any; destroy: () => void } | null
-      if (!this.#disableTLS) {
-        client = new tls.connect(this.#port, this.#host, this.#tlsOptions, async () => {
-          if (client.authorized) {
-            if (this.#debug_sdk) logThis(this.#clientId, 'connection authorized')
-            if (this.#debug_sdk) logThis(this.#clientId, 'sending init commands: ' + this.#initCommands)
-            try {
-              this.#client = client
-              const response = await this.sendCommands(this.#initCommands)
-              resolve(response)
-            } catch (error) {
-              logThis(this.#clientId, 'initCommandsResponse error')
-              reject(error)
-            }
-          } else {
-            if (this.#debug_sdk) logThis(this.#clientId, 'connection NOT authorized')
-            reject(new Error('Connection NOT authorized', { cause: client.authorizationError }))
-          }
-        })
-          .on('close', () => {
-            if (this.#debug_sdk) logThis(this.#clientId, 'connection closed')
-          })
-          .on('end', () => {
-            if (this.#debug_sdk) logThis(this.#clientId, 'end connection')
-          })
-          .once('error', (error: any) => {
-            if (this.#debug_sdk) logThis(this.#clientId, 'received error')
-            if (this.#debug_sdk) console.log(error)
-            client.destroy()
-            reject(new Error('Connection on error event', { cause: error }))
-          })
-      } else {
-        client = new net.connect(this.#port, this.#host, this.#tlsOptions, async () => {
-          if (this.#debug_sdk) logThis(this.#clientId, 'connection created')
+
+      client = new tls.connect(this.#port, this.#host, this.#tlsOptions, async () => {
+        if (client.authorized) {
+          if (this.#debug_sdk) logThis(this.#clientId, 'connection authorized')
           if (this.#debug_sdk) logThis(this.#clientId, 'sending init commands: ' + this.#initCommands)
           try {
             this.#client = client
@@ -560,20 +522,23 @@ export default class SQLiteCloud {
             logThis(this.#clientId, 'initCommandsResponse error')
             reject(error)
           }
+        } else {
+          if (this.#debug_sdk) logThis(this.#clientId, 'connection NOT authorized')
+          reject(new Error('Connection NOT authorized', { cause: client.authorizationError }))
+        }
+      })
+        .on('close', () => {
+          if (this.#debug_sdk) logThis(this.#clientId, 'connection closed')
         })
-          .on('close', () => {
-            if (this.#debug_sdk) logThis(this.#clientId, 'connection closed')
-          })
-          .on('end', () => {
-            if (this.#debug_sdk) logThis(this.#clientId, 'end connection')
-          })
-          .once('error', (error: any) => {
-            if (this.#debug_sdk) logThis(this.#clientId, 'received error')
-            if (this.#debug_sdk) console.log(error)
-            client.destroy()
-            reject(new Error('Connection on error event', { cause: error }))
-          })
-      }
+        .on('end', () => {
+          if (this.#debug_sdk) logThis(this.#clientId, 'end connection')
+        })
+        .once('error', (error: any) => {
+          if (this.#debug_sdk) logThis(this.#clientId, 'received error')
+          if (this.#debug_sdk) console.log(error)
+          client.destroy()
+          reject(new Error('Connection on error event', { cause: error }))
+        })
     })
   }
 
@@ -612,7 +577,7 @@ export default class SQLiteCloud {
         if (this.#debug_sdk) logThis(this.#clientId, 'New data has command LEN? ' + hasCommandLen)
         if (hasCommandLen) {
           let lenToRead
-          lenToRead = parseLength(buffer)
+          lenToRead = parseCommandLength(buffer)
           if (this.#debug_sdk) logThis(this.#clientId, 'Reading new data with LEN: ' + lenToRead)
           //in case of compressed data, extract the dataType of compressed data
           if (dataType === CMD_COMPRESSED) {

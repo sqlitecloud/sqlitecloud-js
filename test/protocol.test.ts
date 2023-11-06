@@ -54,12 +54,17 @@ describe('protocol', () => {
 
   beforeEach(async () => {
     if (!client) {
-      const connectingClient = new sqlitecloud(configDev1, false)
-      expect(connectingClient).toBeDefined()
+      try {
+        const connectingClient = new sqlitecloud(configDev1, true)
+        expect(connectingClient).toBeDefined()
 
-      let connection = await connectingClient.connect()
-      expect(connection).toBe('OK')
-      client = connectingClient
+        let connection = await connectingClient.connect()
+        expect(connection).toBe('OK')
+        client = connectingClient
+      } catch (error) {
+        console.error(error)
+        throw error
+      }
     }
   })
 
@@ -86,6 +91,7 @@ describe('protocol', () => {
     it('should test null', async () => {
       const commandResponse = await client.sendCommands('TEST NULL')
       expect(commandResponse).toBeNull()
+      await client.disconnect()
     })
 
     it('should test float', async () => {
