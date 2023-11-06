@@ -10,16 +10,17 @@
   "scripts": {
     "test": "jest --coverage",
     "test:watch": "jest --watch",
-    "format": "prettier --write 'src/**/*.ts'",
-    "lint": "eslint ./src/ --fix",
     "build": "tsc --project tsconfig.build.json",
+    "prettier": "prettier --write 'src/**/*'",
+    "lint": "eslint ./src/ --fix",
     "clean": "rm -rf ./lib/",
     "typecheck": "tsc --noEmit",
     "prepare": "npm run build",
     "prepublishOnly": "npm test && npm run format && npm run lint",
     "preversion": "npm run lint",
     "version": "npm run format && git add -A src",
-    "postversion": "git push && git push --tags"
+    "postversion": "git push && git push --tags",
+    "npmgui": "npx npm-gui@latest"
   },
   "repository": {
     "type": "git",
@@ -43,9 +44,13 @@
     "cloud"
   ],
   "bugs": {
-    "url": "https://github.com/ryansonshine/typescript-npm-package-template/issues"
+    "url": "https://github.com/sqlitecloud/js-sdk/issues"
   },
-  "homepage": "https://github.com/ryansonshine/typescript-npm-package-template#readme",
+  "homepage": "https://github.com/sqlitecloud/js-sdk#readme",
+  "dependencies": {
+    "lz4": "^0.6.5",
+    "sqlitecloud-nodejs-sdk": "^1.0.2"
+  },
   "devDependencies": {
     "@types/jest": "^27.5.2",
     "@types/node": "^12.20.11",
@@ -63,10 +68,6 @@
     "ts-jest": "^27.0.5",
     "ts-node": "^10.2.1",
     "typescript": "^4.2.4"
-  },
-  "dependencies": {
-    "lz4": "^0.6.5",
-    "sqlitecloud-nodejs-sdk": "^1.0.2"
   },
   "config": {},
   "lint-staged": {

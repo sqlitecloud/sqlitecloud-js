@@ -1,4 +1,4 @@
-export const myPackage = (taco = ''): string => `${taco} from my package`;
+export const myPackage = (taco = ''): string => `${taco} from my package`
 
 /**
  * Adds numbers, magic!
@@ -7,10 +7,10 @@ export const myPackage = (taco = ''): string => `${taco} from my package`;
  * @returns The sum of the two numbers
  */
 export function add(a: number, b: number): number {
-  return a + b;
+  return a + b
 }
 
-const ciao = add(2, 2);
-console.log(ciao);
+const ciao = add(2, 2)
+console.log(ciao)
 
-export { multiply } from './sqlitecloud';
+export { multiply } from './multiply'
