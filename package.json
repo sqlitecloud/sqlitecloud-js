@@ -1,21 +1,80 @@
 {
-  "name": "js-sdk",
-  "version": "1.0.0-beta.0",
-  "description": "",
-  "main": "dist/main.bundle.js",
+  "name": "sqlitecloud-js",
+  "version": "0.0.16-development",
+  "description": "SQLiteCloud drivers for Typescript/Javascript in edge, web and node clients",
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "files": [
+    "lib/**/*"
+  ],
   "scripts": {
-    "start": "webpack serve --open --config ./webpack/webpack.dev.js",
-    "build": "webpack --config ./webpack/webpack.prod.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest --coverage",
+    "test:watch": "jest --watch",
+    "format": "prettier --write 'src/**/*.ts'",
+    "lint": "eslint ./src/ --fix",
+    "build": "tsc --project tsconfig.build.json",
+    "clean": "rm -rf ./lib/",
+    "typecheck": "tsc --noEmit",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm test && npm run format && npm run lint",
+    "preversion": "npm run lint",
+    "version": "npm run format && git add -A src",
+    "postversion": "git push && git push --tags"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sqlitecloud/js-sdk.git"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "SQLiteCloud, Inc.",
+    "email": "support@sqlitecloud.io",
+    "url": "https://sqlitecloud.io/"
+  },
+  "engines": {
+    "node": ">=18.0"
+  },
+  "keywords": [
+    "sql",
+    "sqlite",
+    "sqlite3",
+    "sqlitecloud",
+    "database",
+    "cloud"
+  ],
+  "bugs": {
+    "url": "https://github.com/ryansonshine/typescript-npm-package-template/issues"
+  },
+  "homepage": "https://github.com/ryansonshine/typescript-npm-package-template#readme",
   "devDependencies": {
-    "webpack": "^5.74.0",
-    "webpack-cli": "^4.10.0",
-    "webpack-dev-server": "^4.10.0",
-    "webpack-merge": "^5.8.0"
+    "@types/jest": "^27.5.2",
+    "@types/node": "^12.20.11",
+    "@typescript-eslint/eslint-plugin": "^4.22.0",
+    "@typescript-eslint/parser": "^4.22.0",
+    "eslint": "^7.25.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-prettier": "^3.4.0",
+    "husky": "^6.0.0",
+    "jest": "^27.2.0",
+    "lint-staged": "^13.2.1",
+    "prettier": "^2.2.1",
+    "semantic-release": "^21.0.1",
+    "ts-jest": "^27.0.5",
+    "ts-node": "^10.2.1",
+    "typescript": "^4.2.4"
   },
-  "dependencies": {}
+  "dependencies": {
+    "lz4": "^0.6.5",
+    "sqlitecloud-nodejs-sdk": "^1.0.2"
+  },
+  "config": {},
+  "lint-staged": {
+    "*.ts": "eslint --cache --cache-location .eslintcache --fix"
+  },
+  "release": {
+    "branches": [
+      "main"
+    ]
+  }
 }
