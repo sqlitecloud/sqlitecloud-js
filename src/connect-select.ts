@@ -4,10 +4,10 @@
 /* eslint-disable */
 
 //var sqlitecloud = require('sqlitecloud')
-var sqlitecloud = require('sqlitecloud-nodejs-sdk')
+//var sqlitecloud = require('sqlitecloud-nodejs-sdk')
 //var sqlitecloud = require('sqlitecloud')
 
-//import sqlitecloud from './sqlitecloud'
+import sqlitecloud from './sqlitecloud'
 
 const cert = `-----BEGIN CERTIFICATE-----
 MIID6zCCAtOgAwIBAgIUI0lTm5CfVf3mVP8606CkophcyB4wDQYJKoZIhvcNAQEL
