@@ -4,11 +4,11 @@
 
 /* eslint-disable */
 
-//var sqlitecloud = require('sqlitecloud')
-//var sqlitecloud = require('sqlitecloud-nodejs-sdk')
-//var sqlitecloud = require('sqlitecloud')
+// published library
+var sqlitecloud = require('sqlitecloud-nodejs-sdk')
 
-import sqlitecloud from '../src/protocol'
+// code being refactored:
+//import sqlitecloud from '../src/protocol'
 
 const cert = `-----BEGIN CERTIFICATE-----
 MIID6zCCAtOgAwIBAgIUI0lTm5CfVf3mVP8606CkophcyB4wDQYJKoZIhvcNAQEL
@@ -152,8 +152,11 @@ describe('protocol', () => {
     })
 
     it('should test rowset', async () => {
-      const commandResponse = await client.sendCommands('TEST ROWSET')
-      expect(commandResponse).toEqual({ _nCols: 2, _nRows: 41, _version: 1, colsName: ['key', 'value'] })
+      const response = await client.sendCommands('TEST ROWSET')
+      expect(response.nRows).toBe(41)
+      expect(response.nCols).toBe(2)
+      expect(response.version).toBe(1)
+      expect(response.colsName).toEqual(['key', 'value'])
     })
 
     it('should test rowset chunk', async () => {
@@ -168,10 +171,10 @@ describe('protocol', () => {
       expect(response.nCols).toBe(1)
       expect(response.nRows).toBe(1)
       expect(response.version).toBe(1)
-      const item = response.getItem(0, 0)
-      expect(item).toBe(
-        'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
-      )
+
+      const stringResponse = response.getItem(0, 0) as string
+      expect(stringResponse.startsWith('xxxxxxxxxxxxx')).toBeTruthy()
+      expect(stringResponse).toHaveLength(1000)
     })
 
     it('should select database', async () => {
@@ -180,36 +183,23 @@ describe('protocol', () => {
       expect(response.nRows).toBeUndefined()
       expect(response.version).toBeUndefined()
     })
-    /*
-    it('should select * from tracks', async () => {
-      //      let response = await client.sendCommands('USE DATABASE chinook.sqlite;')
 
-      let response = await client.sendCommands('USE DATABASE chinook.sqlite; ')
-      //response = await client.sendCommands('SELECT * FROM tracks UNION ALL SELECT * FROM tracks;')
-            response = await client.sendCommands('SELECT * FROM tracks;')
-      response = await client.sendCommands('SELECT * FROM albums;')
-
-      //      let response = await client.sendCommands('USE DATABASE chinook.sqlite; SELECT * FROM tracks UNION ALL SELECT * FROM tracks;')
+    it('should select * from tracks limit 10 (no chunks)', async () => {
+      let response = await client.sendCommands('USE DATABASE chinook.sqlite;')
+      response = await client.sendCommands('SELECT * FROM tracks LIMIT 10;')
       expect(response.nCols).toBe(9)
-      expect(response.nRows).toBe(7006)
-      expect(response.version).toBe(1)
-
-      console.log(response)
-
-      response = await client.sendCommands('USE DATABASE chinook.sqlite; SELECT * FROM tracks UNION ALL SELECT * FROM tracks;')
-      console.log('---10 ', response)
-
-      const version = response.version
-      const numberOfRows = response.nRows
-      const numberOfColumns = response.nCols
-      console.log(`---10 version: ${version} numberOfRows: ${numberOfRows} x numberOfColumns: ${numberOfColumns}`)
-
-      const dumped = response.dump()
-      console.log('---10 dumped ', dumped)
+      expect(response.nRows).toBe(10)
     })
-*/
+
+    it('should select * from tracks (with chunks)', async () => {
+      let response = await client.sendCommands('USE DATABASE chinook.sqlite;')
+      response = await client.sendCommands('SELECT * FROM tracks;')
+      expect(response.nCols).toBe(9)
+      expect(response.nRows).toBe(999)
+    })
+
     it('should select * from albums', async () => {
-      let response = await client.sendCommands('USE DATABASE chinook.sqlite; ')
+      let response = await client.sendCommands('USE DATABASE chinook.sqlite;')
       response = await client.sendCommands('SELECT * FROM albums;')
       expect(response.nCols).toBe(3)
       expect(response.nRows).toBe(347)
