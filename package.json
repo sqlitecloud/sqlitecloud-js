@@ -24,7 +24,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sqlitecloud/js-sdk.git"
+    "url": "git+https://github.com/sqlitecloud/sqlitecloud-js.git"
   },
   "license": "MIT",
   "author": {
@@ -44,9 +44,9 @@
     "cloud"
   ],
   "bugs": {
-    "url": "https://github.com/sqlitecloud/js-sdk/issues"
+    "url": "https://github.com/sqlitecloud/sqlitecloud-js/issues"
   },
-  "homepage": "https://github.com/sqlitecloud/js-sdk#readme",
+  "homepage": "https://github.com/sqlitecloud/sqlitecloud-js#readme",
   "dependencies": {
     "lz4": "^0.6.5",
     "sqlitecloud-nodejs-sdk": "^1.0.2"

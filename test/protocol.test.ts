@@ -4,6 +4,8 @@
 
 /* eslint-disable */
 
+// https://github.com/jest-community/vscode-jest/blob/master/README.md#autorun
+
 // published library
 // var sqlitecloud = require('sqlitecloud-nodejs-sdk')
 
@@ -51,11 +53,22 @@ describe('protocol', () => {
   let client: sqlitecloud
 
   beforeEach(async () => {
-    client = new sqlitecloud(configDev1, false)
-    expect(client).toBeDefined()
+    if (!client) {
+      const connectingClient = new sqlitecloud(configDev1, false)
+      expect(connectingClient).toBeDefined()
 
-    let connection = await client.connect()
-    expect(connection).toBe('OK')
+      let connection = await connectingClient.connect()
+      expect(connection).toBe('OK')
+      client = connectingClient
+    }
+  })
+
+  afterEach(async () => {
+    if (client) {
+      await client.disconnect()
+      // @ts-ignore
+      client = undefined
+    }
   })
 
   describe('connect', () => {
@@ -161,7 +174,9 @@ describe('protocol', () => {
 
     it('should test rowset chunk', async () => {
       const response = await client.sendCommands('TEST ROWSET_CHUNK')
-      expect(response).toEqual(3)
+      expect(response.nCols).toBe(1)
+      expect(response.nRows).toBe(147)
+      expect(response.colsName).toEqual(['key'])
     })
   })
 
@@ -195,7 +210,7 @@ describe('protocol', () => {
       let response = await client.sendCommands('USE DATABASE chinook.sqlite;')
       response = await client.sendCommands('SELECT * FROM tracks;')
       expect(response.nCols).toBe(9)
-      expect(response.nRows).toBe(999)
+      expect(response.nRows).toBe(3503)
     })
 
     it('should select * from albums', async () => {

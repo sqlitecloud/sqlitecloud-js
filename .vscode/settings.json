@@ -1,4 +1,18 @@
 {
+  "files.exclude": {
+    "**/.swc": true,
+    "**/node_modules": true
+  },
+  "jest.autoRun": {
+    "onStartup": []
+  },
+  "jestrunner.runMode": {
+    "type": "on-save",
+    "testFileOnly": true,
+    "coverage": true
+  },
+  "jestrunner.runOptions": ["--runInBand", "--detectOpenHandles", "--watchAll=false", "--testTimeout=30000"],
+  "svg.preview.background": "transparent",
   "editor.formatOnSave": true,
   "[typescript]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"

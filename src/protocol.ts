@@ -102,6 +102,7 @@ const parseData = (buffer: any[] | Buffer) => {
       buffer = uncompressionResult.buffer
       dataType = uncompressionResult.dataType
     }
+    spaceIndex = buffer.indexOf(' ') /// !!!!!!! QUI LA RIGA AGGIUNTA
   }
   switch (dataType) {
     case CMD_INT:
@@ -575,6 +576,16 @@ export default class SQLiteCloud {
       }
     })
   }
+
+  disconnect() {
+    return new Promise((resolve, reject) => {
+      this.#client.end(() => {
+        if (this.#debug_sdk) logThis(this.#clientId, 'closing connection')
+        resolve(`Closed connection for clientId ${this.#clientId}`)
+      })
+    })
+  }
+
   /*
   method send commands to the server creating a Promise that 
   - resolve when all data  have been received and parsed accordingly to SCSP protocol
