@@ -1,5 +1,6 @@
-//
-// index.ts
+/**
+ * protocol.test.ts - test low level communication protocol
+ */
 
 /* eslint-disable */
 
@@ -46,86 +47,24 @@ const configDev1 = {
   }
 }
 
-async function testSDK() {
-  try {
-    console.log('START TEST')
-    const client = new sqlitecloud(configDev1, false)
-    const connection = await client.connect()
-    console.log(connection) //TOGLi
-    /*
-     TEST INTEGER
-     TEST FLOAT
-     TEST NULL
-     
-     TEST STRING
-     TEST ZERO_STRING
-     TEST STRING0
-     
-     TEST COMMAND
-     TEST JSON
-     TEST BLOB
-     TEST BLOB0
-     TEST ERROR
-     TEST EXTERROR
-     TEST ARRAY
-     
-     TEST ROWSET
-     TEST ROWSET_CHUNK
-     TEST ARRAY0 //NON FUNZIONA
-    */
-    let commandResponse = await client.sendCommands('TEST FLOAT')
-    console.log(commandResponse)
-    // const responseCompression = await client.sendCommands("SET CLIENT KEY COMPRESSION TO 1;");
-    // const responseCommand = await client.sendCommands("USE DATABASE :memory:; select printf('%.*c', 50000, 'x') AS AAA");
-
-    commandResponse = await client.sendCommands("USE DATABASE :memory:; select printf('%.*c', 10000000, 'x') AS DDD")
-    console.log(commandResponse)
-
-    commandResponse = await client.sendCommands('USE DATABASE chinook.sqlite;')
-    console.log(commandResponse)
-
-    commandResponse = await client.sendCommands('SELECT * FROM tracks UNION ALL SELECT * FROM tracks;')
-    console.log(commandResponse)
-
-    commandResponse = await client.sendCommands('USE DATABASE chinook.sqlite; SELECT * FROM tracks UNION ALL SELECT * FROM tracks;')
-    console.log('---10 ', commandResponse)
-
-    const version = commandResponse.version
-    const numberOfRows = commandResponse.nRows
-    const numberOfColumns = commandResponse.nCols
-    console.log(`---10 version: ${version} numberOfRows: ${numberOfRows} x numberOfColumns: ${numberOfColumns}`)
-
-    const dumped = commandResponse.dump()
-    console.log('---10 dumped ', dumped)
-
-    //    console.log(responseCommand2.dumped);
-    //		responseCommand2.dump = responseCommand.dump();
-    //   console.log(responseCommand2.dump);
-  } catch (error) {
-    console.error('--------error', error)
-  }
-}
-
-//testSDK()
-
 describe('protocol', () => {
+  let client: sqlitecloud
+
+  beforeEach(async () => {
+    client = new sqlitecloud(configDev1, false)
+    expect(client).toBeDefined()
+
+    let connection = await client.connect()
+    expect(connection).toBe('OK')
+  })
+
   describe('connect', () => {
     it('should connect', async () => {
-      const client = new sqlitecloud(configDev1, false)
-      const connection = await client.connect()
-      expect(connection).toBeDefined()
+      // ...in beforeEach
     })
   })
 
-  describe('sendCommands', () => {
-    let client: sqlitecloud
-    let connection
-
-    beforeEach(async () => {
-      client = new sqlitecloud(configDev1, false)
-      connection = await client.connect()
-    })
-
+  describe('send test commands', () => {
     it('should test integer', async () => {
       const commandResponse = await client.sendCommands('TEST INTEGER')
       expect(commandResponse).toBe(123456)
@@ -177,13 +116,19 @@ describe('protocol', () => {
     })
 
     it('should test blob', async () => {
-      const commandResponse = await client.sendCommands('TEST BLOB')
-      expect(commandResponse).toBe(3)
+      const response = await client.sendCommands('TEST BLOB')
+      expect(typeof response).toBe('object')
+      expect(response).toBeInstanceOf(Buffer)
+      const bufferResponse = response as any as Buffer
+      expect(bufferResponse.length).toBe(1000)
     })
 
     it('should test blob0', async () => {
-      const commandResponse = await client.sendCommands('TEST BLOB0')
-      expect(commandResponse).toBe(3)
+      const response = await client.sendCommands('TEST BLOB0')
+      expect(typeof response).toBe('object')
+      expect(response).toBeInstanceOf(Buffer)
+      const bufferResponse = response as any as Buffer
+      expect(bufferResponse.length).toBe(0)
     })
 
     it('should test error', async () => {
@@ -195,48 +140,29 @@ describe('protocol', () => {
     })
 
     it('should test array', async () => {
-      const commandResponse = await client.sendCommands('TEST ARRAY')
-      expect(commandResponse).toEqual(3)
+      const response = await client.sendCommands('TEST ARRAY')
+      expect(Array.isArray(response)).toBe(true)
+
+      const arrayResponse = response as any as Array<any>
+      expect(arrayResponse.length).toBe(5)
+      expect(arrayResponse[0]).toBe('Hello World')
+      expect(arrayResponse[1]).toBe(12345)
+      expect(arrayResponse[2]).toBe(3.141)
+      expect(arrayResponse[3]).toBeNull()
     })
 
     it('should test rowset', async () => {
       const commandResponse = await client.sendCommands('TEST ROWSET')
-      expect(commandResponse).toEqual(3)
+      expect(commandResponse).toEqual({ _nCols: 2, _nRows: 41, _version: 1, colsName: ['key', 'value'] })
     })
 
     it('should test rowset chunk', async () => {
-      const commandResponse = await client.sendCommands('TEST ROWSET_CHUNK')
-      expect(commandResponse).toEqual(3)
+      const response = await client.sendCommands('TEST ROWSET_CHUNK')
+      expect(response).toEqual(3)
     })
+  })
 
-    it('should test array0', async () => {
-      const commandResponse = await client.sendCommands('TEST ARRAY0')
-      expect(commandResponse).toEqual(3)
-    })
-
-    /*
-
-TEST INTEGER
-		 TEST FLOAT
-		 TEST NULL
-		 
-		 TEST STRING
-		 TEST ZERO_STRING
-		 TEST STRING0
-		 
-		 TEST COMMAND
-		 TEST JSON
-		 TEST BLOB
-		 TEST BLOB0
-		 TEST ERROR
-		 TEST EXTERROR
-		 TEST ARRAY
-		 
-		 TEST ROWSET
-		 TEST ROWSET_CHUNK
-		 TEST ARRAY0 //NON FUNZIONA
-     */
-
+  describe('send select commands', () => {
     it('should select long formatted string', async () => {
       let response = await client.sendCommands("USE DATABASE :memory:; select printf('%.*c', 1000, 'x') AS DDD")
       expect(response.nCols).toBe(1)
@@ -254,13 +180,14 @@ TEST INTEGER
       expect(response.nRows).toBeUndefined()
       expect(response.version).toBeUndefined()
     })
-
+    /*
     it('should select * from tracks', async () => {
       //      let response = await client.sendCommands('USE DATABASE chinook.sqlite;')
 
       let response = await client.sendCommands('USE DATABASE chinook.sqlite; ')
       //response = await client.sendCommands('SELECT * FROM tracks UNION ALL SELECT * FROM tracks;')
-      response = await client.sendCommands('SELECT * FROM tracks;')
+            response = await client.sendCommands('SELECT * FROM tracks;')
+      response = await client.sendCommands('SELECT * FROM albums;')
 
       //      let response = await client.sendCommands('USE DATABASE chinook.sqlite; SELECT * FROM tracks UNION ALL SELECT * FROM tracks;')
       expect(response.nCols).toBe(9)
@@ -279,6 +206,16 @@ TEST INTEGER
 
       const dumped = response.dump()
       console.log('---10 dumped ', dumped)
+    })
+*/
+    it('should select * from albums', async () => {
+      let response = await client.sendCommands('USE DATABASE chinook.sqlite; ')
+      response = await client.sendCommands('SELECT * FROM albums;')
+      expect(response.nCols).toBe(3)
+      expect(response.nRows).toBe(347)
+      // expect(response.version).toBe(1)
+
+      const dumped = response.dump()
     })
   })
 })
