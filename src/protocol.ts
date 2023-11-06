@@ -337,34 +337,38 @@ export class SQCloudRowset {
 export default class SQLiteCloud {
   /* PRIVATE PROPERTIES */
   /* tls client */
-  #client = null
+
+  _socket?: tls.TLSSocket
+
+  /** Client name used to log events */
   #clientId = ''
   /* tls options */
-  #host = null
-  #port = null
-  #disableTLS = {}
+
+  #host?: string
+
+  #port = 9960
+
   #tlsOptions = {}
-  /* auth credential */
-  #user = null
-  #password = null
-  /*
-  #initCommands contains all the commands sent during authentication
-  the first command is always the auth command
-  the following commands are custom configurations
-  */
-  #initCommands = null
+
+  #user?: string
+  #password?: string
+
+  /** Commands sent during authentication. The first command is always the auth command. The following commands are custom configurations. */
+  #initCommands?: string
+
   /*
   incoming data could arrive on multiple ondata event. 
   so is necessary to concatenate them
   */
-  /* 
-  #requestTimeout property stores the time available to receive a response before the request times out 
-  */
+
+  /* Time before a query call will timeout */
   #queryTimeout = 300000
+
   /* 
   #debug_sdk 
   */
   #debug_sdk = false
+
   /* CONSTRUCTOR */
   /*
   SQLiteCloud class constructor receives:
@@ -378,7 +382,6 @@ export default class SQLiteCloud {
         connectionString: string, //required unless user, password, host, port are provided
         tlsOptions: any, //optional passed directly to node.TLSSocket, supports all tls.connect options
         queryTimeout: number, //optional number of milliseconds before a query call will timeout, default is 300sec
-        disableTLS: boolean//optional, if true disable TLS authentication
         database: string, // TODOOO
         dbCreate: boolean, // TODOOO
         dbMemory: boolean, // TODOOO
@@ -407,7 +410,6 @@ export default class SQLiteCloud {
       compression: any
       queryTimeout: any
       tlsOptions: any
-      disableTLS?: any
       connectionString?: any
       passwordHashed?: any
       database?: any
@@ -508,14 +510,13 @@ export default class SQLiteCloud {
         if (timeoutError) reject(timeoutError)
       }
       //try to connect
-      let client: { authorized: any; authorizationError: any; destroy: () => void } | null
 
-      client = new tls.connect(this.#port, this.#host, this.#tlsOptions, async () => {
+      const client: tls.TLSSocket = tls.connect(this.#port, this.#host, this.#tlsOptions, async () => {
         if (client.authorized) {
           if (this.#debug_sdk) logThis(this.#clientId, 'connection authorized')
           if (this.#debug_sdk) logThis(this.#clientId, 'sending init commands: ' + this.#initCommands)
           try {
-            this.#client = client
+            this._socket = client
             const response = await this.sendCommands(this.#initCommands)
             resolve(response)
           } catch (error) {
@@ -527,28 +528,33 @@ export default class SQLiteCloud {
           reject(new Error('Connection NOT authorized', { cause: client.authorizationError }))
         }
       })
-        .on('close', () => {
-          if (this.#debug_sdk) logThis(this.#clientId, 'connection closed')
-        })
-        .on('end', () => {
+
+      client.on('close', () => {
+        if (this.#debug_sdk) logThis(this.#clientId, 'connection closed')
+      })
+
+      client.on('end', () => {
+        if (this._socket) {
           if (this.#debug_sdk) logThis(this.#clientId, 'end connection')
-        })
-        .once('error', (error: any) => {
-          if (this.#debug_sdk) logThis(this.#clientId, 'received error')
-          if (this.#debug_sdk) console.log(error)
-          client.destroy()
-          reject(new Error('Connection on error event', { cause: error }))
-        })
+        }
+      })
+
+      client.once('error', (error: any) => {
+        if (this.#debug_sdk) logThis(this.#clientId, 'received error')
+        if (this.#debug_sdk) console.log(error)
+        client.destroy()
+        reject(new Error('Connection on error event', { cause: error }))
+      })
     })
   }
 
-  disconnect() {
-    return new Promise((resolve, reject) => {
-      this.#client.end(() => {
-        if (this.#debug_sdk) logThis(this.#clientId, 'closing connection')
-        resolve(`Closed connection for clientId ${this.#clientId}`)
+  async disconnect(): Promise<void> {
+    if (this._socket) {
+      return new Promise(resolve => {
+        this._socket?.once('end', resolve)
+        this._socket?.end()
       })
-    })
+    }
   }
 
   /*
@@ -591,7 +597,7 @@ export default class SQLiteCloud {
           }
           if (this.#receivedAllBytes(buffer, lenToRead)) {
             if (dataType !== CMD_ROWSET_CHUNK && compressedDataType !== CMD_ROWSET_CHUNK) {
-              this.#client.off('data', readData)
+              this._socket.off('data', readData)
               clearTimeout(readDataTimeout)
               try {
                 const parsedData = parseData(buffer)
@@ -613,7 +619,7 @@ export default class SQLiteCloud {
                 //when not received the ending chunk ask server for another chunk
                 rowsetChunkArray.push(buffer)
                 buffer = Buffer.alloc(0)
-                this.#client.write(this.#composeScspStrings('OK'))
+                this._socket.write(this.#composeScspStrings('OK'))
               }
             }
           }
@@ -625,7 +631,7 @@ export default class SQLiteCloud {
           if (lastChr == ' ') {
             if (this.#debug_sdk) logThis(this.#clientId, 'Reading complete, endining with space')
             //quando faccio il parsing mi passo il tipo, la lunghezza, e il buffer
-            this.#client.off('data', readData)
+            this._socket.off('data', readData)
             clearTimeout(readDataTimeout)
             try {
               const parsedData = parseData(buffer)
@@ -636,15 +642,15 @@ export default class SQLiteCloud {
           }
         }
       }
-      this.#client.write(commands, 'utf8', () => {
+      this._socket.write(commands, 'utf8', () => {
         readDataTimeout = setTimeout(() => {
-          this.#client.off('data', readData)
+          this._socket.off('data', readData)
           clearTimeout(readDataTimeout)
           reject(new Error('Request timed out', { cause: commands }))
         }, this.#queryTimeout)
-        this.#client.on('data', readData)
+        this._socket.on('data', readData)
       })
-      this.#client.once('error', (error: any) => {
+      this._socket.once('error', (error: any) => {
         if (this.#debug_sdk) logThis(this.#clientId, 'received error')
         if (this.#debug_sdk) console.log(error)
         client.destroy()
