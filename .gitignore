@@ -120,3 +120,4 @@ lib/
 
 # Mac files
 .DS_Store
+.env

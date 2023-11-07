@@ -2,17 +2,9 @@
  * protocol.test.ts - test low level communication protocol
  */
 
-/* eslint-disable */
+import { SQLiteCloudConnection, SQLiteCloudConfig, SQLiteCloudError, parseConnectionString } from '../src/protocol'
 
-// https://github.com/jest-community/vscode-jest/blob/master/README.md#autorun
-
-// published library
-// var sqlitecloud = require('sqlitecloud-nodejs-sdk')
-
-// code being refactored:
-import sqlitecloud, { SQLiteCloudError, parseConnectionString } from '../src/protocol'
-
-const cert = `-----BEGIN CERTIFICATE-----
+const TEST_CERTIFICATE = `-----BEGIN CERTIFICATE-----
 MIID6zCCAtOgAwIBAgIUI0lTm5CfVf3mVP8606CkophcyB4wDQYJKoZIhvcNAQEL
 BQAwgYQxCzAJBgNVBAYTAklUMQswCQYDVQQIDAJNTjEQMA4GA1UEBwwHVmlhZGFu
 YTEbMBkGA1UECgwSU1FMaXRlIENsb3VkLCBJbmMuMRQwEgYDVQQDDAtTUUxpdGVD
@@ -36,26 +28,33 @@ Sjox3HYOoj2uG2669CLAnw6rkHESbi5imasC9FxWBVxWrnNd0icyiDb1wfBc5W9N
 otHL5/wB1MaAmCIcQjIxEshj8pSYTecthitmrneimikFf4KFK0YMvGgKrCLmJsg=
 -----END CERTIFICATE-----`
 
-const configDev1 = {
-  clientId: 'dev1.sqlitecloud.io',
-  username: 'admin', //required unless connectionString is provided
-  password: 'admin', //required unless connectionString is provided
-  host: 'dev1.sqlitecloud.io', //required unless connectionString is provided
-  port: 9960, //required unless connectionString is provided
+require('dotenv').config()
+
+const testConfig: SQLiteCloudConfig = {
+  clientId: 'test',
+  username: process.env.TEST_USERNAME,
+  password: process.env.TEST_PASSWORD,
+  host: process.env.TEST_HOST,
+  database: process.env.TEST_DATABASE || 'chinook.sqlite',
+  port: (process.env.TEST_PORT || 9960) as number,
   compression: true,
-  queryTimeout: 10000000,
+  timeout: 100 * 1000,
   tlsOptions: {
-    ca: cert
+    ca: TEST_CERTIFICATE
   }
 }
 
 describe('protocol', () => {
-  let client: sqlitecloud
+  let client: SQLiteCloudConnection
 
   beforeEach(async () => {
+    expect(process.env.TEST_USERNAME).toBeDefined()
+    expect(process.env.TEST_PASSWORD).toBeDefined()
+    expect(process.env.TEST_HOST).toBeDefined()
+
     if (!client) {
       try {
-        const connectingClient = new sqlitecloud(configDev1, true)
+        const connectingClient = new SQLiteCloudConnection(testConfig)
         expect(connectingClient).toBeDefined()
 
         await connectingClient.connect()
@@ -79,6 +78,48 @@ describe('protocol', () => {
   describe('connect', () => {
     it('should connect', async () => {
       // ...in beforeEach
+    })
+
+    it('should connect with connection string', async () => {
+      const connectionString = `sqlitecloud://${testConfig.username as string}:${testConfig.password as string}@${testConfig.host as string}`
+      const connection = new SQLiteCloudConnection({
+        connectionString,
+        tlsOptions: {
+          ca: TEST_CERTIFICATE
+        }
+      })
+
+      expect(connection).toBeDefined()
+      await connection.connect()
+      expect(connection.connected).toBe(true)
+      await connection.disconnect()
+      expect(connection.connected).toBe(false)
+    })
+
+    it('should throw when connection string lacks credentials', async () => {
+      try {
+        const connectionString = `sqlitecloud://${testConfig.host as string}`
+        const connection = new SQLiteCloudConnection({
+          connectionString,
+          tlsOptions: {
+            ca: TEST_CERTIFICATE
+          }
+        })
+
+        expect(connection).toBeDefined()
+        await connection.connect()
+        // fail the test if the error is not thrown
+        expect(true).toBe(false)
+      } catch (error: any) {
+        expect(error).toBeDefined()
+        expect(error).toBeInstanceOf(SQLiteCloudError)
+
+        const sqliteCloudError = error as SQLiteCloudError
+        expect(sqliteCloudError.message).toBe('The user, password and host arguments must be specified.')
+        expect(sqliteCloudError.errorCode).toBe('ERR_MISSING_ARGS')
+        expect(sqliteCloudError.externalErrorCode).toBeUndefined()
+        expect(sqliteCloudError.offsetCode).toBeUndefined()
+      }
     })
   })
 
@@ -162,10 +203,11 @@ describe('protocol', () => {
         expect(error).toBeDefined()
         expect(error).toBeInstanceOf(SQLiteCloudError)
 
-        expect(error.message).toBe('This is a test error message with an extcode and a devil error code.')
-        expect(error.errorCode).toBe(66666)
-        expect(error.externalErrorCode).toBe(333)
-        expect(error.offsetCode).toBe(-1)
+        const sqliteCloudError = error as SQLiteCloudError
+        expect(sqliteCloudError.message).toBe('This is a test error message with an extcode and a devil error code.')
+        expect(sqliteCloudError.errorCode).toBe('66666')
+        expect(sqliteCloudError.externalErrorCode).toBe('333')
+        expect(sqliteCloudError.offsetCode).toBe(-1)
       }
     })
 
@@ -200,7 +242,7 @@ describe('protocol', () => {
 
   describe('send select commands', () => {
     it('should select long formatted string', async () => {
-      let response = await client.sendCommands("USE DATABASE :memory:; select printf('%.*c', 1000, 'x') AS DDD")
+      const response = await client.sendCommands("USE DATABASE :memory:; select printf('%.*c', 1000, 'x') AS DDD")
       expect(response.numberOfColumns).toBe(1)
       expect(response.numberOfRows).toBe(1)
       expect(response.version).toBe(1)
@@ -211,7 +253,7 @@ describe('protocol', () => {
     })
 
     it('should select database', async () => {
-      let response = await client.sendCommands('USE DATABASE chinook.sqlite;')
+      const response = await client.sendCommands('USE DATABASE chinook.sqlite;')
       expect(response.numberOfColumns).toBeUndefined()
       expect(response.numberOfRows).toBeUndefined()
       expect(response.version).toBeUndefined()

@@ -25,7 +25,7 @@ const CMD_COMMAND = '^'
 const CMD_ARRAY = '='
 
 /** Default timeout value for queries */
-export const DEFAULT_TIMEOUT = 30 * 1000
+export const DEFAULT_TIMEOUT = 300 * 1000
 /** Default tls connection port */
 export const DEFAULT_PORT = 9960
 
@@ -96,7 +96,7 @@ export class SQLiteCloudRowset {
 }
 
 /** Configuration for SQLite cloud connection */
-export interface SQLiteCloudConfiguration {
+export interface SQLiteCloudConfig {
   /** Connection string in the form of sqlitecloud://user:password@host:port/database?options */
   connectionString?: string
 
@@ -145,18 +145,16 @@ export interface SQLiteCloudConfiguration {
 }
 
 /* SQLiteCloud class */
-export default class SQLiteCloudConnection {
+export class SQLiteCloudConnection {
   /** Connection string if passed */
   _connectionString?: string
-
   /** Configuration passed by client or extracted from connection string */
-  _config: SQLiteCloudConfiguration
-
+  _config: SQLiteCloudConfig
   /** Currently opened tls socket used to communicated with SQLiteCloud server */
   _socket?: tls.TLSSocket
 
   /** Parse and validate provided connectionString or configuration */
-  constructor(config: SQLiteCloudConfiguration | string, verbose = false) {
+  constructor(config: SQLiteCloudConfig | string, verbose = false) {
     if (typeof config === 'string') {
       this._config = this._validateConfiguration({ connectionString: config })
     } else {
@@ -172,7 +170,7 @@ export default class SQLiteCloudConnection {
   //
 
   /** Validate configuration, apply defaults, throw if something is missing or misconfigured */
-  private _validateConfiguration(config: SQLiteCloudConfiguration): SQLiteCloudConfiguration {
+  private _validateConfiguration(config: SQLiteCloudConfig): SQLiteCloudConfig {
     if (config.connectionString) {
       config = {
         ...config,
@@ -186,7 +184,7 @@ export default class SQLiteCloudConnection {
     config.clientId ||= 'SQLiteCloud'
 
     if (!config.username || !config.password || !config.host) {
-      throw new SQLiteCloudError('The user, password and host arguments must be specified', { errorCode: 'ERR_MISSING_ARGS' })
+      throw new SQLiteCloudError('The user, password and host arguments must be specified.', { errorCode: 'ERR_MISSING_ARGS' })
     }
 
     return config
@@ -200,8 +198,13 @@ export default class SQLiteCloudConnection {
   }
 
   //
-  // public methods
+  // public properties
   //
+
+  /** True if connection is open */
+  public get connected(): boolean {
+    return this._socket !== undefined
+  }
 
   /** Initialization commands sent to database when connection is established */
   public get initializationCommands(): string {
@@ -242,6 +245,10 @@ export default class SQLiteCloudConnection {
 
     return commands
   }
+
+  //
+  // public methods
+  //
 
   /* Opens a connection with the server and sends the initialization commands. Will throw in case of errors. */
   public async connect(): Promise<void> {
@@ -500,14 +507,12 @@ function parseError(buffer: Buffer, spaceIndex: number): never {
   const extErrCode = parseInt(extErrCodeStr)
   const offsetCode = parseInt(offsetCodeStr)
 
-  // Create an Error object and add the custom properties
-  const scspError = new SQLiteCloudError(errorMessage)
-  scspError.errorCode = errorCode
-  scspError.externalErrorCode = extErrCode
-  scspError.offsetCode = offsetCode
-
-  // Throw the custom error
-  throw scspError
+  // create an Error object and add the custom properties
+  throw new SQLiteCloudError(errorMessage, {
+    errorCode: errorCode.toString(),
+    externalErrorCode: extErrCode.toString(),
+    offsetCode
+  })
 }
 
 /** Parse an array of items (each of which will be parsed by type separately) */
@@ -705,7 +710,7 @@ function parseData(data: Buffer | Buffer[]): any {
 }
 
 /** Parse connectionString like sqlitecloud://usernam:password@host:port/database?option1=xxx&option2=xxx into its components */
-export function parseConnectionString(connectionString: string): SQLiteCloudConfiguration {
+export function parseConnectionString(connectionString: string): SQLiteCloudConfig {
   try {
     // The URL constructor throws a TypeError if the URL is not valid.
     const url = new URL(connectionString)
