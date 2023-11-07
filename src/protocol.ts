@@ -36,157 +36,66 @@ function logThis(id = 'SQLiteCloud', msg: string): void {
 /*
 this method received the complete buffer and parse it based on the current dataType
 */
-function parseData(buffer: Buffer) {
-  let parsedData
-  let dataType = Array.isArray(buffer) ? buffer[0].subarray(0, 1).toString('utf8') : buffer.subarray(0, 1).toString('utf8')
-  var spaceIndex = buffer.indexOf(' ')
+function parseData(buffer: Buffer): any {
+  //
+  let dataType: string = Array.isArray(buffer) ? buffer[0].subarray(0, 1).toString('utf8') : buffer.subarray(0, 1).toString('utf8')
+
+  let spaceIndex = buffer.indexOf(' ')
+
+  // buffer is really an array of buffers? eg. chunked response
+  const buffers = Array.isArray(buffer) ? (buffer as Buffer[]) : undefined
+
   if (dataType === CMD_COMPRESSED) {
-    if (Array.isArray(buffer)) {
-      //CMD_ROWSET_CHUNK case
-      for (var i = 0; i < buffer.length; i++) {
-        const uncompressionResult = decompressBuffer(buffer[i])
-        buffer[i] = uncompressionResult.buffer
-        dataType = uncompressionResult.dataType
+    if (buffers) {
+      // CMD_ROWSET_CHUNK
+      for (let i = 0; i < buffer.length; i++) {
+        const decompressionResult = decompressBuffer(buffers[i])
+        buffers[i] = decompressionResult.buffer
+        dataType = decompressionResult.dataType
       }
     } else {
-      //all other cases
-      const uncompressionResult = decompressBuffer(buffer)
-      buffer = uncompressionResult.buffer
-      dataType = uncompressionResult.dataType
+      const decompressionResult = decompressBuffer(buffer)
+      buffer = decompressionResult.buffer
+      dataType = decompressionResult.dataType
     }
-    spaceIndex = buffer.indexOf(' ') /// !!!!!!! QUI LA RIGA AGGIUNTA
+
+    spaceIndex = buffer.indexOf(' ')
   }
+
   switch (dataType) {
     case CMD_INT:
-      parsedData = parseInt(buffer.subarray(1, buffer.length - 1).toString('utf8'))
-      break
+      return parseInt(buffer.subarray(1, buffer.length - 1).toString('utf8'))
     case CMD_FLOAT:
-      parsedData = parseFloat(buffer.subarray(1, buffer.length - 1).toString('utf8'))
-      break
+      return parseFloat(buffer.subarray(1, buffer.length - 1).toString('utf8'))
     case CMD_NULL:
-      parsedData = null
-      break
+      return null
     case CMD_STRING:
-      parsedData = buffer.subarray(spaceIndex + 1, buffer.length).toString('utf8')
-      break
+      return buffer.subarray(spaceIndex + 1, buffer.length).toString('utf8')
     case CMD_ZEROSTRING:
-      parsedData = buffer.subarray(spaceIndex + 1, buffer.length - 1).toString('utf8')
-      break
+      return buffer.subarray(spaceIndex + 1, buffer.length - 1).toString('utf8')
     case CMD_COMMAND:
-      parsedData = buffer.subarray(spaceIndex + 1, buffer.length).toString('utf8')
-      break
+      return buffer.subarray(spaceIndex + 1, buffer.length).toString('utf8')
     case CMD_JSON:
-      parsedData = JSON.parse(buffer.subarray(spaceIndex + 1, buffer.length).toString('utf8'))
-      break
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+      return JSON.parse(buffer.subarray(spaceIndex + 1, buffer.length).toString('utf8'))
     case CMD_BLOB:
-      parsedData = buffer.subarray(spaceIndex + 1, buffer.length)
-      break
+      return buffer.subarray(spaceIndex + 1, buffer.length)
+    case CMD_ARRAY:
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+      return parseArray(buffer, spaceIndex)
+    case CMD_ROWSET:
+      return parseRowset(buffer, spaceIndex)
+    case CMD_ROWSET_CHUNK:
+      return parseRowsetChunk(buffers, spaceIndex)
+
     case CMD_ERROR:
+      // will throw custom error
       parseError(buffer, spaceIndex)
       break
-    case CMD_ARRAY:
-      parsedData = parseArray(buffer, spaceIndex)
-      break
-    case CMD_ROWSET:
-      var rowset = buffer.subarray(spaceIndex + 1, buffer.length)
-      //extract rowset version
-      var version = parseInt(rowset.subarray(rowset.indexOf(':') + 1, rowset.indexOf(' ') + 1).toString('utf8'))
-      //extract rowset rows number
-      rowset = rowset.subarray(rowset.indexOf(' ') + 1, rowset.length)
-      var nRows = parseInt(rowset.subarray(0, rowset.indexOf(' ') + 1).toString('utf8'))
-      //extract rowset cols number
-      rowset = rowset.subarray(rowset.indexOf(' ') + 1, rowset.length)
-      var nCols = parseInt(rowset.subarray(0, rowset.indexOf(' ') + 1).toString('utf8'))
-      //extract rowset data
-      rowset = rowset.subarray(rowset.indexOf(' ') + 1, rowset.length)
-      //extract cols name
-      var colsName = []
-      for (var i = 0; i < nCols; i++) {
-        const dataType = rowset.subarray(0, 1).toString('utf8')
-        const lenToRead = parseCommandLength(rowset)
-        colsName.push(parseData(rowset.subarray(0, rowset.indexOf(' ') + 1 + lenToRead)))
-        rowset = rowset.subarray(rowset.indexOf(' ') + 1 + lenToRead, rowset.length)
-      }
-      //extract single rowset item
-      var data = []
-      for (var j = 0; j < nRows * nCols; j++) {
-        const dataType = rowset.subarray(0, 1).toString('utf8')
-        const hasCommandLen = hasCommandLength(dataType)
-        if (hasCommandLen) {
-          const lenToRead = parseCommandLength(rowset)
-          data.push(rowset.subarray(0, rowset.indexOf(' ') + 1 + lenToRead))
-          rowset = rowset.subarray(rowset.indexOf(' ') + 1 + lenToRead, rowset.length)
-        } else {
-          data.push(rowset.subarray(0, rowset.indexOf(' ')))
-          rowset = rowset.subarray(rowset.indexOf(' ') + 1, rowset.length)
-        }
-      }
-      parsedData = new SQCloudRowset({
-        version: version,
-        nRows: nRows,
-        nCols: nCols,
-        colsName: colsName,
-        data: data
-      })
-      break
-    case CMD_ROWSET_CHUNK:
-      var version
-      var nRows = 0
-      var nCols = 0
-      var colsName = []
-      var data = []
-      for (var i = 0; i < buffer.length; i++) {
-        var rowset = buffer[i]
-        var spaceIndex = rowset.indexOf(' ')
-        rowset = rowset.subarray(spaceIndex + 1, rowset.length)
-        const chunkIndex = parseInt(rowset.subarray(0, rowset.indexOf(' ')).toString('utf8'))
-        version = parseInt(rowset.subarray(rowset.indexOf(':') + 1, rowset.indexOf(' ')).toString('utf8'))
-        //extract rowset rows number
-        rowset = rowset.subarray(rowset.indexOf(' ') + 1, rowset.length)
-        const nRowsSingleChunk = parseInt(rowset.subarray(0, rowset.indexOf(' ') + 1).toString('utf8'))
-        nRows = nRows + nRowsSingleChunk
-        //extract rowset cols number
-        rowset = rowset.subarray(rowset.indexOf(' ') + 1, rowset.length)
-        nCols = parseInt(rowset.subarray(0, rowset.indexOf(' ') + 1).toString('utf8'))
-        //extract rowset data
-        rowset = rowset.subarray(rowset.indexOf(' ') + 1, rowset.length)
-        if (chunkIndex === 1) {
-          //extract cols name
-          for (var j = 0; j < nCols; j++) {
-            const dataType = rowset.subarray(0, 1).toString('utf8')
-            const lenToRead = parseCommandLength(rowset)
-            colsName.push(parseData(rowset.subarray(0, rowset.indexOf(' ') + 1 + lenToRead)))
-            rowset = rowset.subarray(rowset.indexOf(' ') + 1 + lenToRead, rowset.length)
-          }
-        }
-        //extract single rowset item
-        for (let k = 0; k < nRowsSingleChunk * nCols; k++) {
-          const dataType = rowset.subarray(0, 1).toString('utf8')
-          const hasCommandLen = hasCommandLength(dataType)
-          if (hasCommandLen) {
-            const lenToRead = parseCommandLength(rowset)
-            data.push(rowset.subarray(0, rowset.indexOf(' ') + 1 + lenToRead))
-            rowset = rowset.subarray(rowset.indexOf(' ') + 1 + lenToRead, rowset.length)
-          } else {
-            data.push(rowset.subarray(0, rowset.indexOf(' ')))
-            rowset = rowset.subarray(rowset.indexOf(' ') + 1, rowset.length)
-          }
-        }
-      }
-      return (parsedData = new SQCloudRowset({
-        version: version,
-        nRows: nRows,
-        nCols: nCols,
-        colsName: colsName,
-        data: data
-      }))
-      break
+
     default:
-      parsedData = `Data type${dataType} is not defined in SCSP`
-      console.log(`Data type${dataType} is not defined in SCSP`)
-      throw new TypeError(`Data type${dataType} is not defined in SCSP`)
+      throw new TypeError(`Data type: ${dataType} is not defined in SCSP`)
   }
-  return parsedData
 }
 
 //
@@ -196,7 +105,7 @@ function parseData(buffer: Buffer) {
 /*
 custom class used to return rowset data
 */
-export class SQCloudRowset {
+export class SQLiteCloudRowset {
   #data = []
   _version
   _nRows = 0
@@ -205,12 +114,12 @@ export class SQCloudRowset {
   /*
   SQCloudRowset constructor
   */
-  constructor(parsedData: { version: any; nRows: any; nCols: any; colsName: any; data: any }) {
+  constructor(parsedData: { version: any; numberOfRows: any; numberOfColumns: any; columnsNames: any; data: any }) {
     this.#data = parsedData.data
     this._version = parsedData.version
-    this._nRows = parsedData.nRows
-    this._nCols = parsedData.nCols
-    this.colsName = parsedData.colsName
+    this._nRows = parsedData.numberOfRows
+    this._nCols = parsedData.numberOfColumns
+    this.colsName = parsedData.columnsNames
   }
   /*
   method returns rowset version
@@ -479,6 +388,15 @@ export default class SQLiteCloud {
   }
 
   async disconnect(): Promise<void> {
+    return new Promise(resolve => {
+      this._socket?.end(() => {
+        if (this.#debug_sdk) logThis(this.#clientId, 'closing connection')
+        resolve()
+      })
+    })
+  }
+
+  async disconnectNEW(): Promise<void> {
     if (this._socket) {
       return new Promise(resolve => {
         this._socket?.once('end', resolve)
@@ -492,7 +410,7 @@ export default class SQLiteCloud {
   - resolve when all data  have been received and parsed accordingly to SCSP protocol
   - reject when timeout is reached
   */
-  sendCommands(commands: string): Promise<SQCloudRowset> {
+  sendCommands(commands: string): Promise<SQLiteCloudRowset> {
     //compose commands following SCPC protocol
     commands = this.#composeScspStrings(commands)
     //commands is sent to the server
@@ -699,4 +617,108 @@ function parseArray(buffer: Buffer, spaceIndex: number): any[] {
 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   return parsedData
+}
+
+/** Parse a set of rows (no chunking) */
+function parseRowset(buffer: Buffer, spaceIndex: number): SQLiteCloudRowset {
+  let rowset = buffer.subarray(spaceIndex + 1, buffer.length)
+
+  // extract rowset version
+  const version = parseInt(rowset.subarray(rowset.indexOf(':') + 1, rowset.indexOf(' ') + 1).toString('utf8'))
+  // extract rowset rows number
+  rowset = rowset.subarray(rowset.indexOf(' ') + 1, rowset.length)
+  const numberOfRows = parseInt(rowset.subarray(0, rowset.indexOf(' ') + 1).toString('utf8'))
+  // extract rowset cols number
+  rowset = rowset.subarray(rowset.indexOf(' ') + 1, rowset.length)
+  const numberOfColumns = parseInt(rowset.subarray(0, rowset.indexOf(' ') + 1).toString('utf8'))
+
+  // extract rowset data
+  rowset = rowset.subarray(rowset.indexOf(' ') + 1, rowset.length)
+
+  // extract columns names
+  const columnsNames = []
+  for (let i = 0; i < numberOfColumns; i++) {
+    const lenToRead = parseCommandLength(rowset)
+    columnsNames.push(parseData(rowset.subarray(0, rowset.indexOf(' ') + 1 + lenToRead)))
+    rowset = rowset.subarray(rowset.indexOf(' ') + 1 + lenToRead, rowset.length)
+  }
+
+  // extract each rowset item
+  const data = []
+  for (let j = 0; j < numberOfRows * numberOfColumns; j++) {
+    const dataType = rowset.subarray(0, 1).toString('utf8')
+    if (hasCommandLength(dataType)) {
+      const commandLength = parseCommandLength(rowset)
+      data.push(rowset.subarray(0, rowset.indexOf(' ') + 1 + commandLength))
+      rowset = rowset.subarray(rowset.indexOf(' ') + 1 + commandLength, rowset.length)
+    } else {
+      data.push(rowset.subarray(0, rowset.indexOf(' ')))
+      rowset = rowset.subarray(rowset.indexOf(' ') + 1, rowset.length)
+    }
+  }
+
+  return new SQLiteCloudRowset({
+    version,
+    numberOfRows,
+    numberOfColumns,
+    columnsNames,
+    data
+  })
+}
+
+/** Parse a rowset that is split in multiple chunks */
+function parseRowsetChunk(buffer: Buffer[], spaceIndex: number) {
+  let version
+  let numberOfRows = 0
+  let numberOfColumns = 0
+  const columnsNames = []
+  const data = []
+
+  for (let i = 0; i < buffer.length; i++) {
+    let rowset = buffer[i]
+    spaceIndex = rowset.indexOf(' ')
+    rowset = rowset.subarray(spaceIndex + 1, rowset.length)
+
+    const chunkIndex = parseInt(rowset.subarray(0, rowset.indexOf(' ')).toString('utf8'))
+    version = parseInt(rowset.subarray(rowset.indexOf(':') + 1, rowset.indexOf(' ')).toString('utf8'))
+    rowset = rowset.subarray(rowset.indexOf(' ') + 1, rowset.length)
+
+    const nRowsSingleChunk = parseInt(rowset.subarray(0, rowset.indexOf(' ') + 1).toString('utf8'))
+    numberOfRows = numberOfRows + nRowsSingleChunk
+    rowset = rowset.subarray(rowset.indexOf(' ') + 1, rowset.length)
+
+    numberOfColumns = parseInt(rowset.subarray(0, rowset.indexOf(' ') + 1).toString('utf8'))
+    rowset = rowset.subarray(rowset.indexOf(' ') + 1, rowset.length)
+
+    if (chunkIndex === 1) {
+      // extract columns names
+      for (let j = 0; j < numberOfColumns; j++) {
+        const lenToRead = parseCommandLength(rowset)
+        columnsNames.push(parseData(rowset.subarray(0, rowset.indexOf(' ') + 1 + lenToRead)))
+        rowset = rowset.subarray(rowset.indexOf(' ') + 1 + lenToRead, rowset.length)
+      }
+    }
+
+    // extract single rowset row
+    for (let k = 0; k < nRowsSingleChunk * numberOfColumns; k++) {
+      const dataType = rowset.subarray(0, 1).toString('utf8')
+      const hasCommandLen = hasCommandLength(dataType)
+      if (hasCommandLen) {
+        const lenToRead = parseCommandLength(rowset)
+        data.push(rowset.subarray(0, rowset.indexOf(' ') + 1 + lenToRead))
+        rowset = rowset.subarray(rowset.indexOf(' ') + 1 + lenToRead, rowset.length)
+      } else {
+        data.push(rowset.subarray(0, rowset.indexOf(' ')))
+        rowset = rowset.subarray(rowset.indexOf(' ') + 1, rowset.length)
+      }
+    }
+  }
+
+  return new SQLiteCloudRowset({
+    version,
+    numberOfRows,
+    numberOfColumns,
+    columnsNames,
+    data
+  })
 }
