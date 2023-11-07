@@ -85,25 +85,7 @@ function parseData(buffer: Buffer) {
       parseError(buffer, spaceIndex)
       break
     case CMD_ARRAY:
-      const array = buffer.subarray(spaceIndex + 1, buffer.length)
-      //extract array items number
-      const itemsNumber = parseInt(array.subarray(0, spaceIndex - 2).toString('utf8'))
-      var arrayItems = array.subarray(array.indexOf(' ') + 1, array.length)
-      parsedData = []
-      if (itemsNumber > 0) {
-        for (var i = 0; i < itemsNumber; i++) {
-          const dataType = arrayItems.subarray(0, 1).toString('utf8')
-          const hasCommandLen = hasCommandLength(dataType)
-          if (hasCommandLen) {
-            const lenToRead = parseCommandLength(arrayItems)
-            parsedData.push(parseData(arrayItems.subarray(0, arrayItems.indexOf(' ') + 1 + lenToRead)))
-            arrayItems = arrayItems.subarray(arrayItems.indexOf(' ') + 1 + lenToRead, arrayItems.length)
-          } else {
-            parsedData.push(parseData(arrayItems.subarray(0, arrayItems.indexOf(' '))))
-            arrayItems = arrayItems.subarray(arrayItems.indexOf(' ') + 1, arrayItems.length)
-          }
-        }
-      }
+      parsedData = parseArray(buffer, spaceIndex)
       break
     case CMD_ROWSET:
       var rowset = buffer.subarray(spaceIndex + 1, buffer.length)
@@ -654,6 +636,7 @@ function decompressBuffer(buffer: Buffer): { buffer: Buffer; dataType: string } 
   return { buffer, dataType: dataType }
 }
 
+/** Parse error message or extended error message */
 function parseError(buffer: Buffer, spaceIndex: number): never {
   const errorBuffer = buffer.subarray(spaceIndex + 1)
   const errorString = errorBuffer.toString('utf8')
@@ -689,4 +672,31 @@ function parseError(buffer: Buffer, spaceIndex: number): never {
 
   // Throw the custom error
   throw scspError
+}
+
+/** Parse an array of items (each of which will be parsed by type separately) */
+function parseArray(buffer: Buffer, spaceIndex: number): any[] {
+  const parsedData = []
+
+  const array = buffer.subarray(spaceIndex + 1, buffer.length)
+  const numberOfItems = parseInt(array.subarray(0, spaceIndex - 2).toString('utf8'))
+  let arrayItems = array.subarray(array.indexOf(' ') + 1, array.length)
+
+  if (numberOfItems > 0) {
+    for (let i = 0; i < numberOfItems; i++) {
+      const dataType = arrayItems.subarray(0, 1).toString('utf8')
+      const hasCommandLen = hasCommandLength(dataType)
+      if (hasCommandLen) {
+        const lenToRead = parseCommandLength(arrayItems)
+        parsedData.push(parseData(arrayItems.subarray(0, arrayItems.indexOf(' ') + 1 + lenToRead)))
+        arrayItems = arrayItems.subarray(arrayItems.indexOf(' ') + 1 + lenToRead, arrayItems.length)
+      } else {
+        parsedData.push(parseData(arrayItems.subarray(0, arrayItems.indexOf(' '))))
+        arrayItems = arrayItems.subarray(arrayItems.indexOf(' ') + 1, arrayItems.length)
+      }
+    }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+  return parsedData
 }
