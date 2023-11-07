@@ -4,6 +4,9 @@
 
 import { SQLiteCloudConnection, SQLiteCloudConfig, SQLiteCloudError, parseConnectionString } from '../src/protocol'
 
+import * as dotenv from 'dotenv'
+dotenv.config()
+
 const TEST_CERTIFICATE = `-----BEGIN CERTIFICATE-----
 MIID6zCCAtOgAwIBAgIUI0lTm5CfVf3mVP8606CkophcyB4wDQYJKoZIhvcNAQEL
 BQAwgYQxCzAJBgNVBAYTAklUMQswCQYDVQQIDAJNTjEQMA4GA1UEBwwHVmlhZGFu
@@ -27,8 +30,6 @@ TkuTmJvkcWGcJ9fBOzHgzi+dV+7Y98LP48Pyj/mAzI2icw+I5+DMzn2IktzFf0G7
 Sjox3HYOoj2uG2669CLAnw6rkHESbi5imasC9FxWBVxWrnNd0icyiDb1wfBc5W9N
 otHL5/wB1MaAmCIcQjIxEshj8pSYTecthitmrneimikFf4KFK0YMvGgKrCLmJsg=
 -----END CERTIFICATE-----`
-
-require('dotenv').config()
 
 const testConfig: SQLiteCloudConfig = {
   clientId: 'test',
@@ -113,7 +114,6 @@ describe('protocol', () => {
       } catch (error: any) {
         expect(error).toBeDefined()
         expect(error).toBeInstanceOf(SQLiteCloudError)
-
         const sqliteCloudError = error as SQLiteCloudError
         expect(sqliteCloudError.message).toBe('The user, password and host arguments must be specified.')
         expect(sqliteCloudError.errorCode).toBe('ERR_MISSING_ARGS')
@@ -278,9 +278,7 @@ describe('protocol', () => {
       response = await client.sendCommands('SELECT * FROM albums;')
       expect(response.numberOfColumns).toBe(3)
       expect(response.numberOfRows).toBe(347)
-      // expect(response.version).toBe(1)
-
-      const dumped = response.dump()
+      expect(response.version).toBe(1)
     })
   })
 })
