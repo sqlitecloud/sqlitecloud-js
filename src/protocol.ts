@@ -44,11 +44,11 @@ export class SQLiteCloudRowset {
     this._data = parsedData.data
   }
 
-  _version = 0
-  _numberOfRows = 0
-  _numberOfColumns = 0
-  _columnsNames: string[] = []
-  _data: any[] = []
+  private _version = 0
+  private _numberOfRows = 0
+  private _numberOfColumns = 0
+  private _columnsNames: string[] = []
+  private _data: any[] = []
 
   /**
    * Rowset version is 1 for a rowset with simple column names, 2 for extended metadata
@@ -66,6 +66,11 @@ export class SQLiteCloudRowset {
   /** Number of columns in row set */
   get numberOfColumns(): number {
     return this._numberOfColumns
+  }
+
+  /** Array of columns names */
+  get columnsNames(): string[] {
+    return this._columnsNames
   }
 
   /** Return value of item at given row and column */
@@ -154,14 +159,11 @@ export class SQLiteCloudConnection {
   _socket?: tls.TLSSocket
 
   /** Parse and validate provided connectionString or configuration */
-  constructor(config: SQLiteCloudConfig | string, verbose = false) {
+  constructor(config: SQLiteCloudConfig | string) {
     if (typeof config === 'string') {
       this._config = this._validateConfiguration({ connectionString: config })
     } else {
       this._config = this._validateConfiguration(config)
-    }
-    if (verbose) {
-      this._config.verbose = true
     }
   }
 
@@ -250,6 +252,11 @@ export class SQLiteCloudConnection {
   // public methods
   //
 
+  /** Enable verbose logging for debug purposes */
+  public verbose(): void {
+    this._config.verbose = true
+  }
+
   /* Opens a connection with the server and sends the initialization commands. Will throw in case of errors. */
   public async connect(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
@@ -258,7 +265,7 @@ export class SQLiteCloudConnection {
         if (client.authorized) {
           const commands = this.initializationCommands
           this._log('Connection authorized')
-          this._log(`Sending initialization commands:\n${commands}`)
+          this._log('Connection initializing', commands)
 
           // eslint-disable-next-line @typescript-eslint/no-unsafe-call
           this._socket = client
@@ -286,11 +293,14 @@ export class SQLiteCloudConnection {
       client.on('end', () => {
         if (this._socket) {
           this._log('Connection ended')
+          this._socket = undefined
+          client.destroy()
         }
       })
 
       client.once('error', (error: any) => {
         this._log('Connection error', error)
+        this._socket = undefined
         client.destroy()
         reject(new SQLiteCloudError('Connection error event', { cause: error }))
       })
@@ -308,24 +318,22 @@ export class SQLiteCloudConnection {
 
     let buffer = Buffer.alloc(0)
     const rowsetChunkArray: Buffer[] = []
-    this._log(`Sending commands: ${commands}`)
+    this._log(`Sending: ${commands}`)
 
     //define the Promise that waits for the server response
     return new Promise((resolve, reject) => {
       //define what to do if an answer does not arrive within the set timeout
       let readDataTimeout: NodeJS.Timeout
       const readData = (data: Uint8Array) => {
-        this._log('onData received', data)
+        this._log(`Received: ${data.length > 100 ? data.toString().substring(0, 100) + '...' : data.toString()}`)
 
         // on first ondata event, dataType is read from data, on subsequent ondata event, is read from buffer that is the concatanations of data received on each ondata event
         const dataType = buffer.length === 0 ? data.subarray(0, 1).toString() : buffer.subarray(0, 1).toString('utf8')
         buffer = Buffer.concat([buffer, data])
         const commandLength = hasCommandLength(dataType)
-        this._log(`New data has command LEN? ${commandLength.toString()}`)
 
         if (commandLength) {
           const commandLength = parseCommandLength(buffer)
-          this._log(`Reading new data with LEN ${commandLength}`)
 
           // in case of compressed data, extract the dataType of compressed data
           let compressedDataType = null
@@ -372,11 +380,7 @@ export class SQLiteCloudConnection {
         } else {
           // command with no explicit len so make sure that the final character is a space
           const lastChar = buffer.subarray(buffer.length - 1, buffer.length).toString('utf8')
-          this._log('Reading new data without command LEN')
-
           if (lastChar == ' ') {
-            this._log('Reading complete, ending with space')
-            //quando faccio il parsing mi passo il tipo, la lunghezza, e il buffer
             this._socket?.off('data', readData)
             clearTimeout(readDataTimeout)
             try {
@@ -413,7 +417,7 @@ export class SQLiteCloudConnection {
     return new Promise(resolve => {
       this._socket?.end(() => {
         this._socket = undefined
-        this._log('Disconnecting')
+        this._log('Connection disconnecting')
         resolve()
       })
     })

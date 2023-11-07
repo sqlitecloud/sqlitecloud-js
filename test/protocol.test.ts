@@ -46,20 +46,21 @@ const testConfig: SQLiteCloudConfig = {
 }
 
 describe('protocol', () => {
-  let client: SQLiteCloudConnection
+  let connection: SQLiteCloudConnection
 
   beforeEach(async () => {
     expect(process.env.TEST_USERNAME).toBeDefined()
     expect(process.env.TEST_PASSWORD).toBeDefined()
     expect(process.env.TEST_HOST).toBeDefined()
 
-    if (!client) {
+    if (!connection) {
       try {
-        const connectingClient = new SQLiteCloudConnection(testConfig)
-        expect(connectingClient).toBeDefined()
+        const connecting = new SQLiteCloudConnection(testConfig)
+        expect(connecting).toBeDefined()
+        connecting.verbose()
 
-        await connectingClient.connect()
-        client = connectingClient
+        await connecting.connect()
+        connection = connecting
       } catch (error) {
         console.error(error)
         throw error
@@ -68,10 +69,10 @@ describe('protocol', () => {
   })
 
   afterEach(async () => {
-    if (client) {
-      await client.disconnect()
+    if (connection) {
+      await connection.disconnect()
       // @ts-ignore
-      client = undefined
+      connection = undefined
     }
   })
 
@@ -124,43 +125,43 @@ describe('protocol', () => {
 
   describe('send test commands', () => {
     it('should test integer', async () => {
-      const commandResponse = await client.sendCommands('TEST INTEGER')
-      expect(commandResponse).toBe(123456)
+      const rowset = await connection.sendCommands('TEST INTEGER')
+      expect(rowset).toBe(123456)
     })
 
     it('should test null', async () => {
-      const commandResponse = await client.sendCommands('TEST NULL')
-      expect(commandResponse).toBeNull()
+      const rowset = await connection.sendCommands('TEST NULL')
+      expect(rowset).toBeNull()
     })
 
     it('should test float', async () => {
-      const commandResponse = await client.sendCommands('TEST FLOAT')
-      expect(commandResponse).toBe(3.1415926)
+      const rowset = await connection.sendCommands('TEST FLOAT')
+      expect(rowset).toBe(3.1415926)
     })
 
     it('should test string', async () => {
-      const commandResponse = await client.sendCommands('TEST STRING')
-      expect(commandResponse).toBe('Hello World, this is a test string.')
+      const rowset = await connection.sendCommands('TEST STRING')
+      expect(rowset).toBe('Hello World, this is a test string.')
     })
 
     it('should test zero string', async () => {
-      const commandResponse = await client.sendCommands('TEST ZERO_STRING')
-      expect(commandResponse).toBe('Hello World, this is a zero-terminated test string.')
+      const rowset = await connection.sendCommands('TEST ZERO_STRING')
+      expect(rowset).toBe('Hello World, this is a zero-terminated test string.')
     })
 
     it('should test string0', async () => {
-      const commandResponse = await client.sendCommands('TEST STRING0')
-      expect(commandResponse).toBe('')
+      const rowset = await connection.sendCommands('TEST STRING0')
+      expect(rowset).toBe('')
     })
 
     it('should test command', async () => {
-      const commandResponse = await client.sendCommands('TEST COMMAND')
-      expect(commandResponse).toBe('PING')
+      const rowset = await connection.sendCommands('TEST COMMAND')
+      expect(rowset).toBe('PING')
     })
 
     it('should test json', async () => {
-      const commandResponse = await client.sendCommands('TEST JSON')
-      expect(commandResponse).toEqual({
+      const rowset = await connection.sendCommands('TEST JSON')
+      expect(rowset).toEqual({
         'msg-from': { class: 'soldier', name: 'Wixilav' },
         'msg-to': { class: 'supreme-commander', name: '[Redacted]' },
         'msg-type': ['0xdeadbeef', 'irc log'],
@@ -174,28 +175,28 @@ describe('protocol', () => {
     })
 
     it('should test blob', async () => {
-      const response = await client.sendCommands('TEST BLOB')
-      expect(typeof response).toBe('object')
-      expect(response).toBeInstanceOf(Buffer)
-      const bufferResponse = response as any as Buffer
-      expect(bufferResponse.length).toBe(1000)
+      const rowset = await connection.sendCommands('TEST BLOB')
+      expect(typeof rowset).toBe('object')
+      expect(rowset).toBeInstanceOf(Buffer)
+      const bufferrowset = rowset as any as Buffer
+      expect(bufferrowset.length).toBe(1000)
     })
 
     it('should test blob0', async () => {
-      const response = await client.sendCommands('TEST BLOB0')
-      expect(typeof response).toBe('object')
-      expect(response).toBeInstanceOf(Buffer)
-      const bufferResponse = response as any as Buffer
-      expect(bufferResponse.length).toBe(0)
+      const rowset = await connection.sendCommands('TEST BLOB0')
+      expect(typeof rowset).toBe('object')
+      expect(rowset).toBeInstanceOf(Buffer)
+      const bufferrowset = rowset as any as Buffer
+      expect(bufferrowset.length).toBe(0)
     })
 
     it('should test error', async () => {
-      await expect(client.sendCommands('TEST ERROR')).rejects.toThrow(/* expected error */)
+      await expect(connection.sendCommands('TEST ERROR')).rejects.toThrow(/* expected error */)
     })
 
     it('should test exterror', async () => {
       try {
-        await client.sendCommands('TEST EXTERROR')
+        await connection.sendCommands('TEST EXTERROR')
         // Fail the test if the error is not thrown
         expect(true).toBe(false)
       } catch (error: any) {
@@ -211,73 +212,85 @@ describe('protocol', () => {
     })
 
     it('should test array', async () => {
-      const response = await client.sendCommands('TEST ARRAY')
-      expect(Array.isArray(response)).toBe(true)
+      const rowset = await connection.sendCommands('TEST ARRAY')
+      expect(Array.isArray(rowset)).toBe(true)
 
-      const arrayResponse = response as any as Array<any>
-      expect(arrayResponse.length).toBe(5)
-      expect(arrayResponse[0]).toBe('Hello World')
-      expect(arrayResponse[1]).toBe(12345)
-      expect(arrayResponse[2]).toBe(3.141)
-      expect(arrayResponse[3]).toBeNull()
+      const arrayrowset = rowset as any as Array<any>
+      expect(arrayrowset.length).toBe(5)
+      expect(arrayrowset[0]).toBe('Hello World')
+      expect(arrayrowset[1]).toBe(12345)
+      expect(arrayrowset[2]).toBe(3.141)
+      expect(arrayrowset[3]).toBeNull()
     })
 
     it('should test rowset', async () => {
-      const response = await client.sendCommands('TEST ROWSET')
-      expect(response.numberOfRows).toBe(41)
-      expect(response.numberOfColumns).toBe(2)
-      expect(response.version).toBe(1)
-      expect(response._columnsNames).toEqual(['key', 'value'])
+      const rowset = await connection.sendCommands('TEST ROWSET')
+      expect(rowset.numberOfRows).toBe(41)
+      expect(rowset.numberOfColumns).toBe(2)
+      expect(rowset.version).toBe(1)
+      expect(rowset.columnsNames).toEqual(['key', 'value'])
     })
-    /*
-    it('should test rowset chunk', async () => {
-      const response = await client.sendCommands('TEST ROWSET_CHUNK')
-      expect(response.nCols).toBe(1)
-      expect(response.nRows).toBe(147)
-      expect(response.colsName).toEqual(['key'])
+
+    it(
+      'should test rowset chunks',
+      async () => {
+        const rowset = await connection.sendCommands('TEST ROWSET_CHUNK')
+        expect(rowset.numberOfRows).toBe(147)
+        expect(rowset.numberOfColumns).toBe(1)
+        expect(rowset.columnsNames).toEqual(['key'])
+      },
+      30 * 1000 // long timeout
+    )
+
+    it('should dump results', async () => {
+      let rowset = await connection.sendCommands('USE DATABASE chinook.sqlite;')
+      rowset = await connection.sendCommands('SELECT * FROM tracks LIMIT 3;')
+      const dumped = rowset.dump()
+      expect(dumped.toString()).toBe(
+        '         |NaN |For Those About To Rock (We Salute You) |NaN |NaN |NaN |Angus Young, Malcolm Young, Brian Johnson |34371 |1117033 |0.9 |,         |NaN |Balls to the Wall |NaN |NaN |NaN |null |34256 |551042 |0.9 |,         |NaN |Fast As a Shark |NaN |NaN |NaN |F. Baltes, S. Kaufman, U. Dirkscneider & W. Hoffman |23061 |399099 |0.9 |'
+      )
     })
-*/
   })
 
   describe('send select commands', () => {
     it('should select long formatted string', async () => {
-      const response = await client.sendCommands("USE DATABASE :memory:; select printf('%.*c', 1000, 'x') AS DDD")
-      expect(response.numberOfColumns).toBe(1)
-      expect(response.numberOfRows).toBe(1)
-      expect(response.version).toBe(1)
+      const rowset = await connection.sendCommands("USE DATABASE :memory:; select printf('%.*c', 1000, 'x') AS DDD")
+      expect(rowset.numberOfColumns).toBe(1)
+      expect(rowset.numberOfRows).toBe(1)
+      expect(rowset.version).toBe(1)
 
-      const stringResponse = response.getItem(0, 0) as string
-      expect(stringResponse.startsWith('xxxxxxxxxxxxx')).toBeTruthy()
-      expect(stringResponse).toHaveLength(1000)
+      const stringrowset = rowset.getItem(0, 0) as string
+      expect(stringrowset.startsWith('xxxxxxxxxxxxx')).toBeTruthy()
+      expect(stringrowset).toHaveLength(1000)
     })
 
     it('should select database', async () => {
-      const response = await client.sendCommands('USE DATABASE chinook.sqlite;')
-      expect(response.numberOfColumns).toBeUndefined()
-      expect(response.numberOfRows).toBeUndefined()
-      expect(response.version).toBeUndefined()
+      const rowset = await connection.sendCommands('USE DATABASE chinook.sqlite;')
+      expect(rowset.numberOfColumns).toBeUndefined()
+      expect(rowset.numberOfRows).toBeUndefined()
+      expect(rowset.version).toBeUndefined()
     })
 
     it('should select * from tracks limit 10 (no chunks)', async () => {
-      let response = await client.sendCommands('USE DATABASE chinook.sqlite;')
-      response = await client.sendCommands('SELECT * FROM tracks LIMIT 10;')
-      expect(response.numberOfColumns).toBe(9)
-      expect(response.numberOfRows).toBe(10)
+      let rowset = await connection.sendCommands('USE DATABASE chinook.sqlite;')
+      rowset = await connection.sendCommands('SELECT * FROM tracks LIMIT 10;')
+      expect(rowset.numberOfColumns).toBe(9)
+      expect(rowset.numberOfRows).toBe(10)
     })
 
     it('should select * from tracks (with chunks)', async () => {
-      let response = await client.sendCommands('USE DATABASE chinook.sqlite;')
-      response = await client.sendCommands('SELECT * FROM tracks;')
-      expect(response.numberOfColumns).toBe(9)
-      expect(response.numberOfRows).toBe(3503)
+      let rowset = await connection.sendCommands('USE DATABASE chinook.sqlite;')
+      rowset = await connection.sendCommands('SELECT * FROM tracks;')
+      expect(rowset.numberOfColumns).toBe(9)
+      expect(rowset.numberOfRows).toBe(3503)
     })
 
     it('should select * from albums', async () => {
-      let response = await client.sendCommands('USE DATABASE chinook.sqlite;')
-      response = await client.sendCommands('SELECT * FROM albums;')
-      expect(response.numberOfColumns).toBe(3)
-      expect(response.numberOfRows).toBe(347)
-      expect(response.version).toBe(1)
+      let rowset = await connection.sendCommands('USE DATABASE chinook.sqlite;')
+      rowset = await connection.sendCommands('SELECT * FROM albums;')
+      expect(rowset.numberOfColumns).toBe(3)
+      expect(rowset.numberOfRows).toBe(347)
+      expect(rowset.version).toBe(1)
     })
   })
 })
@@ -285,9 +298,9 @@ describe('protocol', () => {
 describe('parseConnectionString', () => {
   it('should correctly parse all components of the connection string', () => {
     const connectionString = 'sqlitecloud://user:password@host:1234/database?option1=xxx&option2=yyy'
-    const result = parseConnectionString(connectionString)
+    const config = parseConnectionString(connectionString)
 
-    expect(result).toEqual({
+    expect(config).toEqual({
       username: 'user',
       password: 'password',
       host: 'host',
@@ -323,9 +336,9 @@ describe('parseConnectionString', () => {
 
   it('should handle connection strings without options', () => {
     const connectionString = 'sqlitecloud://user:password@host:1234/database'
-    const result = parseConnectionString(connectionString)
+    const config = parseConnectionString(connectionString)
 
-    expect(result).toEqual({
+    expect(config).toEqual({
       username: 'user',
       password: 'password',
       host: 'host',

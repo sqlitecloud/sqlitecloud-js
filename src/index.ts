@@ -2,5 +2,4 @@
 // index.ts - re-export all the public APIs
 //
 
-// low level connection, rowset, errors, etc
-export * from './protocol'
+export { SQLiteCloudConfig, SQLiteCloudConnection, SQLiteCloudRowset, SQLiteCloudError } from './protocol'

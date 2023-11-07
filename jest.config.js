@@ -4,10 +4,10 @@ module.exports = {
   testMatch: ['**/test/**/*.test.ts'],
   maxWorkers: 1,
   collectCoverageFrom: ['<rootDir>/src/**/*.ts', '!<rootDir>/src/types/**/*.ts'],
-  globals: {
-    'ts-jest': {
+  transform: {
+    '^.+\\.(ts|tsx)$': ['ts-jest', {
       diagnostics: false,
       isolatedModules: true
-    }
-  }
+    }],
+  },
 }
