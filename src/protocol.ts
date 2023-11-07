@@ -24,74 +24,17 @@ const CMD_COMMAND = '^'
 // const CMD_RECONNECT = '@'
 const CMD_ARRAY = '='
 
+/** Default timeout value for queries */
+export const DEFAULT_TIMEOUT = 30 * 1000
+/** Default tls connection port */
+export const DEFAULT_PORT = 9960
+
 //
 // utility functions
 //
 
-function logThis(id = 'SQLiteCloud', msg: string): void {
+function OFFlogThis(id = 'SQLiteCloud', msg: string): void {
   console.log(`!!!!!!!!! ${id}: ${new Date().toISOString()} - ${msg}`)
-}
-
-/* Receives the complete buffer and parses it based on dataType at beginning of block */
-function parseData(buffer: Buffer): any {
-  // buffer is really an array of buffers? eg. chunked response
-  const chunksBuffers: Buffer[] | undefined = Array.isArray(buffer) ? (buffer as Buffer[]) : undefined
-
-  // first character is the data type
-  let dataType: string = chunksBuffers ? chunksBuffers[0].subarray(0, 1).toString('utf8') : buffer.subarray(0, 1).toString('utf8')
-  let spaceIndex = buffer.indexOf(' ')
-
-  // need to decompress data?
-  if (dataType === CMD_COMPRESSED) {
-    if (chunksBuffers) {
-      for (let i = 0; i < buffer.length; i++) {
-        const decompressionResult = decompressBuffer(chunksBuffers[i])
-        chunksBuffers[i] = decompressionResult.buffer
-        dataType = decompressionResult.dataType
-      }
-    } else {
-      const decompressionResult = decompressBuffer(buffer)
-      buffer = decompressionResult.buffer
-      dataType = decompressionResult.dataType
-      spaceIndex = buffer.indexOf(' ')
-    }
-  }
-
-  switch (dataType) {
-    case CMD_INT:
-      return parseInt(buffer.subarray(1, buffer.length - 1).toString('utf8'))
-    case CMD_FLOAT:
-      return parseFloat(buffer.subarray(1, buffer.length - 1).toString('utf8'))
-    case CMD_NULL:
-      return null
-    case CMD_STRING:
-      return buffer.subarray(spaceIndex + 1, buffer.length).toString('utf8')
-    case CMD_ZEROSTRING:
-      return buffer.subarray(spaceIndex + 1, buffer.length - 1).toString('utf8')
-    case CMD_COMMAND:
-      return buffer.subarray(spaceIndex + 1, buffer.length).toString('utf8')
-    case CMD_JSON:
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-      return JSON.parse(buffer.subarray(spaceIndex + 1, buffer.length).toString('utf8'))
-    case CMD_BLOB:
-      return buffer.subarray(spaceIndex + 1, buffer.length)
-    case CMD_ARRAY:
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-      return parseArray(buffer, spaceIndex)
-    case CMD_ROWSET:
-      return parseRowset(buffer, spaceIndex)
-    case CMD_ROWSET_CHUNK:
-      console.assert(chunksBuffers !== undefined)
-      return parseRowsetChunks(chunksBuffers as Buffer[], spaceIndex)
-
-    case CMD_ERROR:
-      // will throw custom error
-      parseError(buffer, spaceIndex)
-      break
-
-    default:
-      throw new TypeError(`Data type: ${dataType} is not defined in SCSP`)
-  }
 }
 
 //
@@ -137,7 +80,7 @@ export class SQLiteCloudRowset {
   getItem(row: number, column: number): any {
     if (row < 0 || row >= this._numberOfRows || column < 0 || column >= this._numberOfColumns) {
       throw new SQLiteCloudError(
-        `This rowset has ${this._numberOfColumns} columns by ${this._numberOfRows} rows. Requested column ${column} and row ${row} is invalid.`
+        `This rowset has ${this._numberOfColumns} columns by ${this._numberOfRows} rows, requested column ${column} and row ${row} is invalid.`
       )
     }
 
@@ -160,144 +103,139 @@ export class SQLiteCloudRowset {
   }
 }
 
-/* SQLiteCloud class */
-export default class SQLiteCloud {
-  /* PRIVATE PROPERTIES */
-  /* tls client */
+/** Configuration for SQLite cloud connection */
+export interface SQLiteCloudConfiguration {
+  /** Connection string in the form of sqlitecloud://user:password@host:port/database?options */
+  connectionString?: string
 
+  /** User name is required unless connectionString is provided */
+  username?: string
+  /** Password is required unless connection string is provided */
+  password?: string
+  /** True if password is hashed, default is false */
+  passwordHashed?: boolean
+
+  /** Host name is required unless connectionString is provided */
+  host?: string
+  /** Port number for tls socket */
+  port?: number
+  /** Optional query timeout passed directly to node.TLSSocket, supports all tls.connect options */
+  timeout?: number
+  /** Name of database to open */
+  database?: string
+
+  /** Create the database if it doesn't exist? */
+  createDatabase?: boolean
+  /** Database will be created in memory */
+  dbMemory?: boolean
+  /** Enable SQLite compatibility mode */
+  sqliteMode?: boolean
+  /* Enable compression */
+  compression?: boolean
+  /** Request for immediate responses from the server node without waiting for linerizability guarantees */
+  nonlinearizable?: boolean
+  /** Server should send BLOB columns */
+  noBlob?: boolean
+  /** Do not send columns with more than max_data bytes */
+  maxData?: number
+  /** Server should chunk responses with more than maxRows */
+  maxRows?: number
+  /** Server should limit total number of rows in a set to maxRowset */
+  maxRowset?: number
+
+  /** Custom options and configurations for tls socket */
+  tlsOptions?: tls.ConnectionOptions
+
+  /** Optional identifier used for verbose logging */
+  clientId?: string
+  /** True if connection should enable debug logs */
+  verbose?: boolean
+}
+
+/* SQLiteCloud class */
+export default class SQLiteCloudConnection {
+  /** Connection string if passed */
+  _connectionString?: string
+
+  /** Configuration passed by client or extracted from connection string */
+  _config: SQLiteCloudConfiguration
+
+  /** Currently opened tls socket used to communicated with SQLiteCloud server */
   _socket?: tls.TLSSocket
 
-  /** Client name used to log events */
-  #clientId = ''
-  /* tls options */
-
-  #host?: string
-
-  #port = 9960
-
-  #tlsOptions = {}
-
-  #user?: string
-  #password?: string
-
-  /** Commands sent during authentication. The first command is always the auth command. The following commands are custom configurations. */
-  #initCommands?: string
-
-  /*
-  incoming data could arrive on multiple ondata event. 
-  so is necessary to concatenate them
-  */
-
-  /* Time before a query call will timeout */
-  #queryTimeout = 300000
-
-  /* 
-  #debug_sdk 
-  */
-  #debug_sdk = false
-
-  /* CONSTRUCTOR */
-  /*
-  SQLiteCloud class constructor receives:
-    - config = {
-        clientId: string, // optional identifier
-        user: string, //required unless connectionString is provided
-        password: string, //required unless connectionString is provided
-        passwordHashed: boolean, //optional true if password is hashed, default is false
-        host: string, //required unless connectionString is provided
-        port: number, //required unless connectionString is provided
-        connectionString: string, //required unless user, password, host, port are provided
-        tlsOptions: any, //optional passed directly to node.TLSSocket, supports all tls.connect options
-        queryTimeout: number, //optional number of milliseconds before a query call will timeout, default is 300sec
-        database: string, // TODOOO
-        dbCreate: boolean, // TODOOO
-        dbMemory: boolean, // TODOOO
-        sqliteMode: boolean, // TODOOO
-        compression: boolean, // TODOOO
-        zeroText: boolean, // TODOOO
-        nonlinearizable: boolean, // TODOOO
-        noBlob: boolean, // TODOOO
-        maxData: integer, // TODOOO
-        maxRows: integer, // TODOOO
-        maxRowset: integer, // TODOOO
-        //statement_timeout?: number, // number of milliseconds before a statement in query will time out, default is no timeout
-        //application_name?: string, // The name of the application that created this Client instance
-        //connectionTimeoutMillis?: number, // number of milliseconds to wait for connection, default is no timeout
-        //idle_in_transaction_session_timeout?: number // number of milliseconds before terminating any session with an open idle transaction, default is no timeout
-      }
-    - debug_sdk
-  */
-  constructor(
-    config: {
-      clientId: any
-      user: any
-      password: any
-      host: any
-      port: any
-      compression: any
-      queryTimeout: any
-      tlsOptions: any
-      connectionString?: any
-      passwordHashed?: any
-      database?: any
-      dbCreate?: any
-      dbMemory?: any
-      sqliteMode?: any
-      zeroText?: any
-      nonlinearizable?: any
-      noBlob?: any
-      maxData?: any
-      maxRows?: any
-      maxRowset?: any
-    },
-    debug_sdk = false
-  ) {
-    this.#debug_sdk = debug_sdk
-    this.#clientId = config.clientId
-    if (config.connectionString) {
-      //TODOO exctract from connectionString tls options
+  /** Parse and validate provided connectionString or configuration */
+  constructor(config: SQLiteCloudConfiguration | string, verbose = false) {
+    if (typeof config === 'string') {
+      this._config = this._validateConfiguration({ connectionString: config })
     } else {
-      this.#host = config.host
-      this.#port = config.port
-      this.#tlsOptions = config.tlsOptions ? config.tlsOptions : {}
-      this.#user = config.user
-      this.#password = config.password
-      //start building the initial commands sent after the creation of the tls connection
-      this.#initCommands = `AUTH USER ${this.#user} ${config.passwordHashed ? 'HASH' : 'PASSWORD'} ${this.#password};`
-      if (config.database) {
-        if (config.dbCreate && !config.dbMemory) this.#initCommands += `CREATE DATABASE ${config.database} IF NOT EXISTS;`
-        this.#initCommands += `USE DATABASE ${config.database};`
-      }
-      if (config.sqliteMode) {
-        this.#initCommands += 'SET CLIENT KEY SQLITE TO 1;'
-      }
-      if (config.compression) {
-        this.#initCommands += 'SET CLIENT KEY COMPRESSION TO 1;'
-      }
-      if (config.zeroText) {
-        this.#initCommands += 'SET CLIENT KEY ZEROTEXT TO 1;'
-      }
-      if (config.nonlinearizable) {
-        this.#initCommands += 'SET CLIENT KEY NONLINEARIZABLE TO 1;'
-      }
-      if (config.noBlob) {
-        this.#initCommands += 'SET CLIENT KEY NOBLOB TO 1;'
-      }
-      if (config.maxData) {
-        this.#initCommands += `SET CLIENT KEY MAXDATA TO ${maxData};`
-      }
-      if (config.maxRows) {
-        this.#initCommands += `SET CLIENT KEY MAXROWS TO ${maxRows};`
-      }
-      if (config.maxRowset) {
-        this.#initCommands += `SET CLIENT KEY MAXROWSET TO ${maxRowset};`
-      }
+      this._config = this._validateConfiguration(config)
     }
-    //set custom queryTimeout if provided by the user
-    if (config.queryTimeout) {
-      this.#queryTimeout = config.queryTimeout
+    if (verbose) {
+      this._config.verbose = true
     }
   }
+
+  /** Validate configuration, apply defaults, throw if something is missing or misconfigured */
+  _validateConfiguration(config: SQLiteCloudConfiguration): SQLiteCloudConfiguration {
+    if (config.connectionString) {
+      config = {
+        ...config,
+        ...parseConnectionString(config.connectionString)
+      }
+    }
+
+    // apply defaults where needed
+    config.port ||= DEFAULT_PORT
+    config.timeout = config.timeout && config.timeout > 0 ? config.timeout : DEFAULT_TIMEOUT
+    config.clientId ||= 'SQLiteCloud'
+
+    if (!config.username || !config.password || !config.host) {
+      throw new SQLiteCloudError('The user, password and host arguments must be specified', 'ERR_MISSING_ARGS')
+    }
+
+    return config
+  }
+
+  /** Initialization commands sent to database when connection is established */
+  get initializationCommands(): string {
+    const config = this._config
+    if (!config) {
+      console.error('SQLiteCloudConnection.initializationCommands - no configuration was provided')
+      return ''
+    }
+
+    // first user authentication, then all other commands
+    let commands = `AUTH USER ${config.username || ''} ${config.passwordHashed ? 'HASH' : 'PASSWORD'} ${config.password || ''};`
+
+    if (config.database) {
+      if (config.createDatabase && !config.dbMemory) commands += `CREATE DATABASE ${config.database} IF NOT EXISTS;`
+      commands += `USE DATABASE ${config.database};`
+    }
+    if (config.sqliteMode) {
+      commands += 'SET CLIENT KEY SQLITE TO 1;'
+    }
+    if (config.compression) {
+      commands += 'SET CLIENT KEY COMPRESSION TO 1;'
+    }
+    if (config.nonlinearizable) {
+      commands += 'SET CLIENT KEY NONLINEARIZABLE TO 1;'
+    }
+    if (config.noBlob) {
+      commands += 'SET CLIENT KEY NOBLOB TO 1;'
+    }
+    if (config.maxData) {
+      commands += `SET CLIENT KEY MAXDATA TO ${config.maxData};`
+    }
+    if (config.maxRows) {
+      commands += `SET CLIENT KEY MAXROWS TO ${config.maxRows};`
+    }
+    if (config.maxRowset) {
+      commands += `SET CLIENT KEY MAXROWSET TO ${config.maxRowset};`
+    }
+
+    return commands
+  }
+
   /*
   COMPOSE SCSP PROTOCOL
   */
@@ -311,66 +249,61 @@ export default class SQLiteCloud {
   #receivedAllBytes(buffer: string | string[], lenToRead: number) {
     return buffer.length - buffer.indexOf(' ') - 1 == lenToRead ? true : false
   }
+
+  /** Will log to console if verbose mode is enabled */
+  _log(message: string, ...optionalParams: any[]): void {
+    if (this._config.verbose) {
+      console.log(`${new Date().toISOString()} ${this._config.clientId as string}: ${message}`, ...optionalParams)
+    }
+  }
+
   /*
   connect method is called to open a tls connection 
   right after being authorized sends the auth command 
   and the configurations commands setted by the user
   */
-  connect() {
-    return new Promise((resolve, reject) => {
-      //before connecting check if auth credential have been provided
-      if (!this.#user || !this.#password) {
-        const authError = new TypeError('The "config.user" or "config.password" argument must be specified')
-        authError.code = 'ERR_MISSING_ARGS'
-        reject(authError)
-      }
-      //before connecting check if queryTimeout value is valid
-      if (this.#queryTimeout) {
-        let timeoutError
-        if (typeof this.#queryTimeout !== 'number') {
-          timeoutError = new TypeError('The "config.queryTimeout" must be one of type number. Received ' + typeof this.#queryTimeout)
-          timeoutError.code = 'ERR_INVALID_ARG_TYPE'
-        } else if (this.#queryTimeout < 0) {
-          timeoutError = new RangeError('The "config.queryTimeout" must be greater then 0. Received ' + this.#queryTimeout)
-          timeoutError.code = 'ERR_INVALID_ARG_RANGE'
-        }
-        if (timeoutError) reject(timeoutError)
-      }
-      //try to connect
-
-      const client: tls.TLSSocket = tls.connect(this.#port, this.#host, this.#tlsOptions, async () => {
+  async connect(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      // connect to tls socket, initialize connection, setup event handlers
+      const client: tls.TLSSocket = tls.connect(this._config.port as number, this._config.host, this._config.tlsOptions, () => {
         if (client.authorized) {
-          if (this.#debug_sdk) logThis(this.#clientId, 'connection authorized')
-          if (this.#debug_sdk) logThis(this.#clientId, 'sending init commands: ' + this.#initCommands)
-          try {
-            this._socket = client
-            const response = await this.sendCommands(this.#initCommands)
-            resolve(response)
-          } catch (error) {
-            logThis(this.#clientId, 'initCommandsResponse error')
-            reject(error)
-          }
+          const commands = this.initializationCommands
+          this._log('Connection authorized')
+          this._log(`Sending initialization commands:\n${commands}`)
+
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+          this._socket = client
+
+          this.sendCommands(commands).then(
+            () => {
+              this._log('Connection initialized')
+              resolve()
+            },
+            error => {
+              this._log('Error with initialization commands', error)
+              reject(error)
+            }
+          )
         } else {
-          if (this.#debug_sdk) logThis(this.#clientId, 'connection NOT authorized')
-          reject(new Error('Connection NOT authorized', { cause: client.authorizationError }))
+          this._log('Connection was not authorized', client.authorizationError)
+          reject(new SQLiteCloudError('Connection was not authorized', { error: client.authorizationError }))
         }
       })
 
       client.on('close', () => {
-        if (this.#debug_sdk) logThis(this.#clientId, 'connection closed')
+        this._log('Connection closed')
       })
 
       client.on('end', () => {
         if (this._socket) {
-          if (this.#debug_sdk) logThis(this.#clientId, 'end connection')
+          this._log('Connection ended')
         }
       })
 
       client.once('error', (error: any) => {
-        if (this.#debug_sdk) logThis(this.#clientId, 'received error')
-        if (this.#debug_sdk) console.log(error)
+        this._log('Connection error', error)
         client.destroy()
-        reject(new Error('Connection on error event', { cause: error }))
+        reject(new SQLiteCloudError('Connection error event', { error }))
       })
     })
   }
@@ -378,7 +311,7 @@ export default class SQLiteCloud {
   async disconnect(): Promise<void> {
     return new Promise(resolve => {
       this._socket?.end(() => {
-        if (this.#debug_sdk) logThis(this.#clientId, 'closing connection')
+        this._log('disconnecting')
         resolve()
       })
     })
@@ -405,23 +338,27 @@ export default class SQLiteCloud {
     let buffer = Buffer.alloc(0) //variable where all received data are concatenated
     //dedicated variable to rowset_chunk data type
     const rowsetChunkArray: Buffer[] = [] //used only in case of rowset_chunk datatype to store all received chunk avoiding buffer copy
-    if (this.#debug_sdk) logThis(this.#clientId, 'recevied new command to be sent: ' + commands)
+    this._log('Recevied new command to be sent: ' + commands)
+
     //define the Promise that waits for the server response
     return new Promise((resolve, reject) => {
       //define what to do if an answer does not arrive within the set timeout
       let readDataTimeout: NodeJS.Timeout
       const readData = (data: string | Uint8Array) => {
-        if (this.#debug_sdk) logThis(this.#clientId, 'onData event: ' + data)
-        //on first ondata event, dataType is read from data, on subsequent ondata event, is read from buffer that is the concatanations of data received on each ondata event
+        this._log('onData received', data)
+
+        // on first ondata event, dataType is read from data, on subsequent ondata event, is read from buffer that is the concatanations of data received on each ondata event
         const dataType = buffer.length === 0 ? data.subarray(0, 1).toString('utf8') : buffer.subarray(0, 1).toString('utf8')
         buffer = Buffer.concat([buffer, data])
-        const hasCommandLen = hasCommandLength(dataType)
-        if (this.#debug_sdk) logThis(this.#clientId, 'New data has command LEN? ' + hasCommandLen)
-        if (hasCommandLen) {
-          let lenToRead
-          lenToRead = parseCommandLength(buffer)
-          if (this.#debug_sdk) logThis(this.#clientId, 'Reading new data with LEN: ' + lenToRead)
-          //in case of compressed data, extract the dataType of compressed data
+        const commandLength = hasCommandLength(dataType)
+        this._log(`New data has command LEN? ${commandLength.toString()}`)
+
+        if (commandLength) {
+          const commandLength = parseCommandLength(buffer)
+          this._log(`Reading new data with LEN ${commandLength}`)
+
+          // in case of compressed data, extract the dataType of compressed data
+          let compressedDataType = null
           if (dataType === CMD_COMPRESSED) {
             //remove LEN
             let compressedBuffer = buffer.subarray(buffer.indexOf(' ') + 1, buffer.length)
@@ -429,9 +366,10 @@ export default class SQLiteCloud {
             compressedBuffer = compressedBuffer.subarray(compressedBuffer.indexOf(' ') + 1, compressedBuffer.length)
             //remove uncompressed size
             compressedBuffer = compressedBuffer.subarray(compressedBuffer.indexOf(' ') + 1, compressedBuffer.length)
-            var compressedDataType = compressedBuffer.subarray(0, 1).toString('utf8')
+            compressedDataType = compressedBuffer.subarray(0, 1).toString('utf8')
           }
-          if (this.#receivedAllBytes(buffer, lenToRead)) {
+
+          if (this.#receivedAllBytes(buffer, commandLength)) {
             if (dataType !== CMD_ROWSET_CHUNK && compressedDataType !== CMD_ROWSET_CHUNK) {
               this._socket.off('data', readData)
               clearTimeout(readDataTimeout)
@@ -463,9 +401,10 @@ export default class SQLiteCloud {
           // it is a command with no explicit len
           // so make sure that the final character is a space
           const lastChr = buffer.subarray(buffer.length - 1, buffer.length).toString('utf8')
-          if (this.#debug_sdk) logThis(this.#clientId, 'Reading new data without command LEN')
+
+          this._log('Reading new data without command LEN')
           if (lastChr == ' ') {
-            if (this.#debug_sdk) logThis(this.#clientId, 'Reading complete, endining with space')
+            this._log('Reading complete, endining with space')
             //quando faccio il parsing mi passo il tipo, la lunghezza, e il buffer
             this._socket.off('data', readData)
             clearTimeout(readDataTimeout)
@@ -483,22 +422,26 @@ export default class SQLiteCloud {
           this._socket.off('data', readData)
           clearTimeout(readDataTimeout)
           reject(new Error('Request timed out', { cause: commands }))
-        }, this.#queryTimeout)
+        }, this._config.timeout)
         this._socket.on('data', readData)
       })
       this._socket.once('error', (error: any) => {
-        if (this.#debug_sdk) logThis(this.#clientId, 'received error')
-        if (this.#debug_sdk) console.log(error)
-        client.destroy()
+        this._log('Socket error', error)
+        //        client.destroy()
         reject(new Error('Connection on error event', { cause: error }))
       })
     })
   }
 }
 
-/** Custom error reported by SCSP protocol */
+/** Custom error reported by SQLiteCloud drivers */
 export class SQLiteCloudError extends Error {
-  errorCode?: number
+  constructor(message: string, errorCode?: string) {
+    super(message)
+    this.name = 'SQLiteCloudError'
+    this.errorCode = errorCode
+  }
+  errorCode?: string
   externalErrorCode?: number
   offsetCode?: number
 }
@@ -626,9 +569,9 @@ function parseRowset(buffer: Buffer, spaceIndex: number): SQLiteCloudRowset {
   // extract columns names
   const columnsNames = []
   for (let i = 0; i < numberOfColumns; i++) {
-    const lenToRead = parseCommandLength(rowset)
-    columnsNames.push(parseData(rowset.subarray(0, rowset.indexOf(' ') + 1 + lenToRead)))
-    rowset = rowset.subarray(rowset.indexOf(' ') + 1 + lenToRead, rowset.length)
+    const commandLength = parseCommandLength(rowset)
+    columnsNames.push(parseData(rowset.subarray(0, rowset.indexOf(' ') + 1 + commandLength)))
+    rowset = rowset.subarray(rowset.indexOf(' ') + 1 + commandLength, rowset.length)
   }
 
   // extract each rowset item
@@ -681,9 +624,9 @@ function parseRowsetChunks(buffer: Buffer[], spaceIndex: number) {
     if (chunkIndex === 1) {
       // extract columns names
       for (let j = 0; j < numberOfColumns; j++) {
-        const lenToRead = parseCommandLength(rowset)
-        columnsNames.push(parseData(rowset.subarray(0, rowset.indexOf(' ') + 1 + lenToRead)))
-        rowset = rowset.subarray(rowset.indexOf(' ') + 1 + lenToRead, rowset.length)
+        const commandLength = parseCommandLength(rowset)
+        columnsNames.push(parseData(rowset.subarray(0, rowset.indexOf(' ') + 1 + commandLength)))
+        rowset = rowset.subarray(rowset.indexOf(' ') + 1 + commandLength, rowset.length)
       }
     }
 
@@ -709,4 +652,92 @@ function parseRowsetChunks(buffer: Buffer[], spaceIndex: number) {
     columnsNames,
     data
   })
+}
+
+/* Receives a buffer or array of buffers and parses it based on dataType at beginning of block */
+function parseData(buffer: Buffer): any {
+  // buffer is really an array of buffers? eg. chunked response
+  const chunksBuffers: Buffer[] | undefined = Array.isArray(buffer) ? (buffer as Buffer[]) : undefined
+
+  // first character is the data type
+  let dataType: string = chunksBuffers ? chunksBuffers[0].subarray(0, 1).toString('utf8') : buffer.subarray(0, 1).toString('utf8')
+  let spaceIndex = buffer.indexOf(' ')
+
+  // need to decompress data?
+  if (dataType === CMD_COMPRESSED) {
+    if (chunksBuffers) {
+      for (let i = 0; i < buffer.length; i++) {
+        const decompressionResult = decompressBuffer(chunksBuffers[i])
+        chunksBuffers[i] = decompressionResult.buffer
+        dataType = decompressionResult.dataType
+      }
+    } else {
+      const decompressionResult = decompressBuffer(buffer)
+      buffer = decompressionResult.buffer
+      dataType = decompressionResult.dataType
+      spaceIndex = buffer.indexOf(' ')
+    }
+  }
+
+  switch (dataType) {
+    case CMD_INT:
+      return parseInt(buffer.subarray(1, buffer.length - 1).toString('utf8'))
+    case CMD_FLOAT:
+      return parseFloat(buffer.subarray(1, buffer.length - 1).toString('utf8'))
+    case CMD_NULL:
+      return null
+    case CMD_STRING:
+      return buffer.subarray(spaceIndex + 1, buffer.length).toString('utf8')
+    case CMD_ZEROSTRING:
+      return buffer.subarray(spaceIndex + 1, buffer.length - 1).toString('utf8')
+    case CMD_COMMAND:
+      return buffer.subarray(spaceIndex + 1, buffer.length).toString('utf8')
+    case CMD_JSON:
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+      return JSON.parse(buffer.subarray(spaceIndex + 1, buffer.length).toString('utf8'))
+    case CMD_BLOB:
+      return buffer.subarray(spaceIndex + 1, buffer.length)
+    case CMD_ARRAY:
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+      return parseArray(buffer, spaceIndex)
+    case CMD_ROWSET:
+      return parseRowset(buffer, spaceIndex)
+    case CMD_ROWSET_CHUNK:
+      console.assert(chunksBuffers !== undefined)
+      return parseRowsetChunks(chunksBuffers as Buffer[], spaceIndex)
+
+    case CMD_ERROR:
+      // will throw custom error
+      parseError(buffer, spaceIndex)
+      break
+
+    default:
+      throw new TypeError(`Data type: ${dataType} is not defined in SCSP`)
+  }
+}
+
+/** Parse connectionString like sqlitecloud://usernam:password@host:port/database?option1=xxx&option2=xxx into its components */
+function parseConnectionString(connectionString: string): SQLiteCloudConfiguration {
+  try {
+    // The URL constructor throws a TypeError if the URL is not valid.
+    const url = new URL(connectionString)
+    const database = url.pathname.replace('/', '') // pathname is database name, remove the leading slash
+    const options: { [key: string]: string } = {}
+
+    url.searchParams.forEach((value, key) => {
+      options[key] = value
+    })
+
+    return {
+      username: url.username,
+      password: url.password,
+      host: url.hostname,
+      port: url.port ? parseInt(url.port) : undefined,
+      database,
+      ...options
+    }
+  } catch (error) {
+    // Handle parsing error, perhaps throw a custom error or return null/undefined.
+    throw new SQLiteCloudError(`Invalid connection string: ${connectionString}`)
+  }
 }

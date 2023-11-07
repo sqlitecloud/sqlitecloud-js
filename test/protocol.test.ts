@@ -38,7 +38,7 @@ otHL5/wB1MaAmCIcQjIxEshj8pSYTecthitmrneimikFf4KFK0YMvGgKrCLmJsg=
 
 const configDev1 = {
   clientId: 'dev1.sqlitecloud.io',
-  user: 'admin', //required unless connectionString is provided
+  username: 'admin', //required unless connectionString is provided
   password: 'admin', //required unless connectionString is provided
   host: 'dev1.sqlitecloud.io', //required unless connectionString is provided
   port: 9960, //required unless connectionString is provided
@@ -58,8 +58,7 @@ describe('protocol', () => {
         const connectingClient = new sqlitecloud(configDev1, true)
         expect(connectingClient).toBeDefined()
 
-        let connection = await connectingClient.connect()
-        expect(connection).toBe('OK')
+        await connectingClient.connect()
         client = connectingClient
       } catch (error) {
         console.error(error)
