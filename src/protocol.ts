@@ -33,41 +33,6 @@ function logThis(id = 'SQLiteCloud', msg: string): void {
   console.log(`!!!!!!!!! ${id}: ${new Date().toISOString()} - ${msg}`)
 }
 
-/** Analyze first character to check if corresponding data type has LEN */
-function hasCommandLength(firstCharacter: string): boolean {
-  return firstCharacter == CMD_INT || firstCharacter == CMD_FLOAT || firstCharacter == CMD_NULL ? false : true
-}
-
-/** Analyze a command with explict LEN and extract it */
-function parseCommandLength(data: Buffer) {
-  return parseInt(data.subarray(1, data.indexOf(' ')).toString('utf8'))
-}
-
-/** Receive a compressed buffer, decompress with lz4, return buffer and datatype */
-function decompressBuffer(buffer: Buffer): { buffer: Buffer; dataType: string } {
-  const spaceIndex = buffer.indexOf(' ')
-  buffer = buffer.subarray(spaceIndex + 1, buffer.length)
-
-  // extract compressed size
-  const compressedSize = parseInt(buffer.subarray(0, buffer.indexOf(' ') + 1).toString('utf8'))
-  buffer = buffer.subarray(buffer.indexOf(' ') + 1, buffer.length)
-
-  // extract decompressed size
-  const decompressedSize = parseInt(buffer.subarray(0, buffer.indexOf(' ') + 1).toString('utf8'))
-  buffer = buffer.subarray(buffer.indexOf(' ') + 1, buffer.length)
-
-  // extract compressed dataType
-  const dataType = buffer.subarray(0, 1).toString('utf8')
-  const decompressedBuffer = Buffer.alloc(decompressedSize)
-  const decompressionResult = lz4.decodeBlock(buffer.subarray(buffer.length - compressedSize, buffer.length), decompressedBuffer)
-  buffer = Buffer.concat([buffer.subarray(0, buffer.length - compressedSize), decompressedBuffer])
-  if (decompressionResult <= 0 || decompressionResult !== decompressedSize) {
-    throw new Error(`lz4 decompression error at offset ${decompressionResult}`)
-  }
-
-  return { buffer, dataType: dataType }
-}
-
 /*
 this method received the complete buffer and parse it based on the current dataType
 */
@@ -117,25 +82,8 @@ function parseData(buffer: Buffer) {
       parsedData = buffer.subarray(spaceIndex + 1, buffer.length)
       break
     case CMD_ERROR:
-      const error = buffer.subarray(spaceIndex + 1, buffer.length)
-      var errorCode = error.subarray(0, error.indexOf(' '))
-      var extErrCode = '0'
-      var offsetCode = '-1'
-      if (errorCode.indexOf(':') !== -1) {
-        extErrCode = errorCode.subarray(errorCode.indexOf(':') + 1, errorCode.length)
-        if (extErrCode.indexOf(':') !== -1) {
-          offsetCode = extErrCode.subarray(extErrCode.indexOf(':') + 1, extErrCode.length).toString('utf8')
-          extErrCode = extErrCode.subarray(0, extErrCode.indexOf(':'))
-        }
-        extErrCode = extErrCode.toString('utf8')
-        errorCode = errorCode.subarray(0, errorCode.indexOf(':')).toString('utf8')
-      }
-      const errorMessage = error.subarray(error.indexOf(' ') + 1, error.length).toString('utf8')
-      var scspError = new Error(errorMessage)
-      scspError.code = parseInt(errorCode)
-      scspError.extErrCode = parseInt(extErrCode)
-      scspError.offsetCode = parseInt(offsetCode)
-      throw scspError
+      parseError(buffer, spaceIndex)
+      break
     case CMD_ARRAY:
       const array = buffer.subarray(spaceIndex + 1, buffer.length)
       //extract array items number
@@ -658,4 +606,87 @@ export default class SQLiteCloud {
       })
     })
   }
+}
+
+/** Custom error reported by SCSP protocol */
+export class ScspError extends Error {
+  errorCode?: number
+  externalErrorCode?: number
+  offsetCode?: number
+}
+
+//
+// utility functions
+//
+
+/** Analyze first character to check if corresponding data type has LEN */
+function hasCommandLength(firstCharacter: string): boolean {
+  return firstCharacter == CMD_INT || firstCharacter == CMD_FLOAT || firstCharacter == CMD_NULL ? false : true
+}
+
+/** Analyze a command with explict LEN and extract it */
+function parseCommandLength(data: Buffer) {
+  return parseInt(data.subarray(1, data.indexOf(' ')).toString('utf8'))
+}
+
+/** Receive a compressed buffer, decompress with lz4, return buffer and datatype */
+function decompressBuffer(buffer: Buffer): { buffer: Buffer; dataType: string } {
+  const spaceIndex = buffer.indexOf(' ')
+  buffer = buffer.subarray(spaceIndex + 1, buffer.length)
+
+  // extract compressed size
+  const compressedSize = parseInt(buffer.subarray(0, buffer.indexOf(' ') + 1).toString('utf8'))
+  buffer = buffer.subarray(buffer.indexOf(' ') + 1, buffer.length)
+
+  // extract decompressed size
+  const decompressedSize = parseInt(buffer.subarray(0, buffer.indexOf(' ') + 1).toString('utf8'))
+  buffer = buffer.subarray(buffer.indexOf(' ') + 1, buffer.length)
+
+  // extract compressed dataType
+  const dataType = buffer.subarray(0, 1).toString('utf8')
+  const decompressedBuffer = Buffer.alloc(decompressedSize)
+  const decompressionResult = lz4.decodeBlock(buffer.subarray(buffer.length - compressedSize, buffer.length), decompressedBuffer)
+  buffer = Buffer.concat([buffer.subarray(0, buffer.length - compressedSize), decompressedBuffer])
+  if (decompressionResult <= 0 || decompressionResult !== decompressedSize) {
+    throw new Error(`lz4 decompression error at offset ${decompressionResult}`)
+  }
+
+  return { buffer, dataType: dataType }
+}
+
+function parseError(buffer: Buffer, spaceIndex: number): never {
+  const errorBuffer = buffer.subarray(spaceIndex + 1)
+  const errorString = errorBuffer.toString('utf8')
+  const parts = errorString.split(' ')
+
+  let errorCodeStr = parts.shift() || '0' // Default errorCode is '0' if not present
+  let extErrCodeStr = '0' // Default extended error code
+  let offsetCodeStr = '-1' // Default offset code
+
+  // Split the errorCode by ':' to check for extended error codes
+  const errorCodeParts = errorCodeStr.split(':')
+  errorCodeStr = errorCodeParts[0]
+  if (errorCodeParts.length > 1) {
+    extErrCodeStr = errorCodeParts[1]
+    if (errorCodeParts.length > 2) {
+      offsetCodeStr = errorCodeParts[2]
+    }
+  }
+
+  // Rest of the error string is the error message
+  const errorMessage = parts.join(' ')
+
+  // Parse error codes to integers safely, defaulting to 0 if NaN
+  const errorCode = parseInt(errorCodeStr)
+  const extErrCode = parseInt(extErrCodeStr)
+  const offsetCode = parseInt(offsetCodeStr)
+
+  // Create an Error object and add the custom properties
+  const scspError = new ScspError(errorMessage)
+  scspError.errorCode = errorCode
+  scspError.externalErrorCode = extErrCode
+  scspError.offsetCode = offsetCode
+
+  // Throw the custom error
+  throw scspError
 }

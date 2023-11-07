@@ -10,7 +10,7 @@
 // var sqlitecloud = require('sqlitecloud-nodejs-sdk')
 
 // code being refactored:
-import sqlitecloud from '../src/protocol'
+import sqlitecloud, { ScspError } from '../src/protocol'
 
 const cert = `-----BEGIN CERTIFICATE-----
 MIID6zCCAtOgAwIBAgIUI0lTm5CfVf3mVP8606CkophcyB4wDQYJKoZIhvcNAQEL
@@ -155,7 +155,19 @@ describe('protocol', () => {
     })
 
     it('should test exterror', async () => {
-      await expect(client.sendCommands('TEST EXTERROR')).rejects.toThrow(/* expected extended error */)
+      try {
+        await client.sendCommands('TEST EXTERROR')
+        // Fail the test if the error is not thrown
+        expect(true).toBe(false)
+      } catch (error: any) {
+        expect(error).toBeDefined()
+        expect(error).toBeInstanceOf(ScspError)
+
+        expect(error.message).toBe('This is a test error message with an extcode and a devil error code.')
+        expect(error.errorCode).toBe(66666)
+        expect(error.externalErrorCode).toBe(333)
+        expect(error.offsetCode).toBe(-1)
+      }
     })
 
     it('should test array', async () => {
