@@ -10,7 +10,7 @@
 // var sqlitecloud = require('sqlitecloud-nodejs-sdk')
 
 // code being refactored:
-import sqlitecloud, { ScspError } from '../src/protocol'
+import sqlitecloud, { SQLiteCloudError } from '../src/protocol'
 
 const cert = `-----BEGIN CERTIFICATE-----
 MIID6zCCAtOgAwIBAgIUI0lTm5CfVf3mVP8606CkophcyB4wDQYJKoZIhvcNAQEL
@@ -161,7 +161,7 @@ describe('protocol', () => {
         expect(true).toBe(false)
       } catch (error: any) {
         expect(error).toBeDefined()
-        expect(error).toBeInstanceOf(ScspError)
+        expect(error).toBeInstanceOf(SQLiteCloudError)
 
         expect(error.message).toBe('This is a test error message with an extcode and a devil error code.')
         expect(error.errorCode).toBe(66666)
@@ -184,10 +184,10 @@ describe('protocol', () => {
 
     it('should test rowset', async () => {
       const response = await client.sendCommands('TEST ROWSET')
-      expect(response.nRows).toBe(41)
-      expect(response.nCols).toBe(2)
+      expect(response.numberOfRows).toBe(41)
+      expect(response.numberOfColumns).toBe(2)
       expect(response.version).toBe(1)
-      expect(response.colsName).toEqual(['key', 'value'])
+      expect(response._columnsNames).toEqual(['key', 'value'])
     })
     /*
     it('should test rowset chunk', async () => {
@@ -202,8 +202,8 @@ describe('protocol', () => {
   describe('send select commands', () => {
     it('should select long formatted string', async () => {
       let response = await client.sendCommands("USE DATABASE :memory:; select printf('%.*c', 1000, 'x') AS DDD")
-      expect(response.nCols).toBe(1)
-      expect(response.nRows).toBe(1)
+      expect(response.numberOfColumns).toBe(1)
+      expect(response.numberOfRows).toBe(1)
       expect(response.version).toBe(1)
 
       const stringResponse = response.getItem(0, 0) as string
@@ -213,30 +213,30 @@ describe('protocol', () => {
 
     it('should select database', async () => {
       let response = await client.sendCommands('USE DATABASE chinook.sqlite;')
-      expect(response.nCols).toBeUndefined()
-      expect(response.nRows).toBeUndefined()
+      expect(response.numberOfColumns).toBeUndefined()
+      expect(response.numberOfRows).toBeUndefined()
       expect(response.version).toBeUndefined()
     })
 
     it('should select * from tracks limit 10 (no chunks)', async () => {
       let response = await client.sendCommands('USE DATABASE chinook.sqlite;')
       response = await client.sendCommands('SELECT * FROM tracks LIMIT 10;')
-      expect(response.nCols).toBe(9)
-      expect(response.nRows).toBe(10)
+      expect(response.numberOfColumns).toBe(9)
+      expect(response.numberOfRows).toBe(10)
     })
 
     it('should select * from tracks (with chunks)', async () => {
       let response = await client.sendCommands('USE DATABASE chinook.sqlite;')
       response = await client.sendCommands('SELECT * FROM tracks;')
-      expect(response.nCols).toBe(9)
-      expect(response.nRows).toBe(3503)
+      expect(response.numberOfColumns).toBe(9)
+      expect(response.numberOfRows).toBe(3503)
     })
 
     it('should select * from albums', async () => {
       let response = await client.sendCommands('USE DATABASE chinook.sqlite;')
       response = await client.sendCommands('SELECT * FROM albums;')
-      expect(response.nCols).toBe(3)
-      expect(response.nRows).toBe(347)
+      expect(response.numberOfColumns).toBe(3)
+      expect(response.numberOfRows).toBe(347)
       // expect(response.version).toBe(1)
 
       const dumped = response.dump()

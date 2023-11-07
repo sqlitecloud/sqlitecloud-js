@@ -4,7 +4,6 @@
  */
 
 import tls from 'tls'
-import net from 'net'
 import lz4 from 'lz4'
 
 // defined in https://github.com/sqlitecloud/sdk/blob/master/PROTOCOL.md
@@ -33,33 +32,29 @@ function logThis(id = 'SQLiteCloud', msg: string): void {
   console.log(`!!!!!!!!! ${id}: ${new Date().toISOString()} - ${msg}`)
 }
 
-/*
-this method received the complete buffer and parse it based on the current dataType
-*/
+/* Receives the complete buffer and parses it based on dataType at beginning of block */
 function parseData(buffer: Buffer): any {
-  //
-  let dataType: string = Array.isArray(buffer) ? buffer[0].subarray(0, 1).toString('utf8') : buffer.subarray(0, 1).toString('utf8')
+  // buffer is really an array of buffers? eg. chunked response
+  const chunksBuffers: Buffer[] | undefined = Array.isArray(buffer) ? (buffer as Buffer[]) : undefined
 
+  // first character is the data type
+  let dataType: string = chunksBuffers ? chunksBuffers[0].subarray(0, 1).toString('utf8') : buffer.subarray(0, 1).toString('utf8')
   let spaceIndex = buffer.indexOf(' ')
 
-  // buffer is really an array of buffers? eg. chunked response
-  const buffers = Array.isArray(buffer) ? (buffer as Buffer[]) : undefined
-
+  // need to decompress data?
   if (dataType === CMD_COMPRESSED) {
-    if (buffers) {
-      // CMD_ROWSET_CHUNK
+    if (chunksBuffers) {
       for (let i = 0; i < buffer.length; i++) {
-        const decompressionResult = decompressBuffer(buffers[i])
-        buffers[i] = decompressionResult.buffer
+        const decompressionResult = decompressBuffer(chunksBuffers[i])
+        chunksBuffers[i] = decompressionResult.buffer
         dataType = decompressionResult.dataType
       }
     } else {
       const decompressionResult = decompressBuffer(buffer)
       buffer = decompressionResult.buffer
       dataType = decompressionResult.dataType
+      spaceIndex = buffer.indexOf(' ')
     }
-
-    spaceIndex = buffer.indexOf(' ')
   }
 
   switch (dataType) {
@@ -86,7 +81,8 @@ function parseData(buffer: Buffer): any {
     case CMD_ROWSET:
       return parseRowset(buffer, spaceIndex)
     case CMD_ROWSET_CHUNK:
-      return parseRowsetChunk(buffers, spaceIndex)
+      console.assert(chunksBuffers !== undefined)
+      return parseRowsetChunks(chunksBuffers as Buffer[], spaceIndex)
 
     case CMD_ERROR:
       // will throw custom error
@@ -102,73 +98,65 @@ function parseData(buffer: Buffer): any {
 // exported classes
 //
 
-/*
-custom class used to return rowset data
-*/
+/* A set of rows returned by a query */
 export class SQLiteCloudRowset {
-  #data = []
-  _version
-  _nRows = 0
-  _nCols = 0
-  colsName = []
-  /*
-  SQCloudRowset constructor
-  */
-  constructor(parsedData: { version: any; numberOfRows: any; numberOfColumns: any; columnsNames: any; data: any }) {
-    this.#data = parsedData.data
+  /* Create a new rowset object */
+  constructor(parsedData: { version: number; numberOfRows: number; numberOfColumns: number; columnsNames: string[]; data: any[] }) {
     this._version = parsedData.version
-    this._nRows = parsedData.numberOfRows
-    this._nCols = parsedData.numberOfColumns
-    this.colsName = parsedData.columnsNames
+    this._numberOfRows = parsedData.numberOfRows
+    this._numberOfColumns = parsedData.numberOfColumns
+    this._columnsNames = parsedData.columnsNames
+    this._data = parsedData.data
   }
-  /*
-  method returns rowset version
-  */
-  get version() {
+
+  _version = 0
+  _numberOfRows = 0
+  _numberOfColumns = 0
+  _columnsNames: string[] = []
+  _data: any[] = []
+
+  /**
+   * Rowset version is 1 for a rowset with simple column names, 2 for extended metadata
+   * @see https://github.com/sqlitecloud/sdk/blob/master/PROTOCOL.md
+   */
+  get version(): number {
     return this._version
   }
-  /*
-  method returns rowset row numbers
-  */
-  get nRows() {
-    return this._nRows
+
+  /** Number of rows in row set */
+  get numberOfRows(): number {
+    return this._numberOfRows
   }
-  /*
-  method returns rowset cols numbers
-  */
-  get nCols() {
-    return this._nCols
+
+  /** Number of columns in row set */
+  get numberOfColumns(): number {
+    return this._numberOfColumns
   }
-  /*
-  private method check if provided rows and cols not exceed rowset dimensions  
-  */
-  #sanityCheck(row: number, col: number) {
-    if (row >= this._nRows || col >= this._nCols) return false
-    return true
-  }
-  /*
-  method that parse and return item at specific position
-  */
-  getItem(row: number, col: number) {
-    if (!this.#sanityCheck(row, col)) throw new RangeError(`row value has to be less than ${this._nRows} and col value has to be less than ${this._nCols}`)
-    else {
-      const item = this.#data[row * this._nCols + col]
-      return parseData(item)
+
+  /** Return value of item at given row and column */
+  getItem(row: number, column: number): any {
+    if (row < 0 || row >= this._numberOfRows || column < 0 || column >= this._numberOfColumns) {
+      throw new SQLiteCloudError(
+        `This rowset has ${this._numberOfColumns} columns by ${this._numberOfRows} rows. Requested column ${column} and row ${row} is invalid.`
+      )
     }
+
+    const item = this._data[row * this._numberOfColumns + column]
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    return parseData(item)
   }
-  /*
-  method that returns all items in rowset
-  */
-  dump() {
-    const dumpedRowset = []
-    for (let i = 0; i < this._nRows; i++) {
-      let row = '| '
-      for (let j = 0; j < this._nCols; j++) {
-        row = row + this.getItem(i, j) + ' | '
+
+  /* Dump values for diagnostic purposes */
+  dump(): string[] {
+    const rows = []
+    for (let i = 0; i < this._numberOfRows; i++) {
+      let row = '|'
+      for (let j = 0; j < this._numberOfColumns; j++) {
+        row = ` ${row}${this.getItem(i, j) as string} |`
       }
-      dumpedRowset.push(row)
+      rows.push(row)
     }
-    return dumpedRowset
+    return rows
   }
 }
 
@@ -509,7 +497,7 @@ export default class SQLiteCloud {
 }
 
 /** Custom error reported by SCSP protocol */
-export class ScspError extends Error {
+export class SQLiteCloudError extends Error {
   errorCode?: number
   externalErrorCode?: number
   offsetCode?: number
@@ -583,7 +571,7 @@ function parseError(buffer: Buffer, spaceIndex: number): never {
   const offsetCode = parseInt(offsetCodeStr)
 
   // Create an Error object and add the custom properties
-  const scspError = new ScspError(errorMessage)
+  const scspError = new SQLiteCloudError(errorMessage)
   scspError.errorCode = errorCode
   scspError.externalErrorCode = extErrCode
   scspError.offsetCode = offsetCode
@@ -667,8 +655,8 @@ function parseRowset(buffer: Buffer, spaceIndex: number): SQLiteCloudRowset {
 }
 
 /** Parse a rowset that is split in multiple chunks */
-function parseRowsetChunk(buffer: Buffer[], spaceIndex: number) {
-  let version
+function parseRowsetChunks(buffer: Buffer[], spaceIndex: number) {
+  let version = 1
   let numberOfRows = 0
   let numberOfColumns = 0
   const columnsNames = []
