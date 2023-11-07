@@ -70,7 +70,6 @@ describe('protocol', () => {
   afterEach(async () => {
     if (client) {
       await client.disconnect()
-      console.log('afterEach: client.disconnect() OK')
       // @ts-ignore
       client = undefined
     }
