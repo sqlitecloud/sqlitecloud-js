@@ -167,8 +167,12 @@ export default class SQLiteCloudConnection {
     }
   }
 
+  //
+  // internal methods
+  //
+
   /** Validate configuration, apply defaults, throw if something is missing or misconfigured */
-  _validateConfiguration(config: SQLiteCloudConfiguration): SQLiteCloudConfiguration {
+  private _validateConfiguration(config: SQLiteCloudConfiguration): SQLiteCloudConfiguration {
     if (config.connectionString) {
       config = {
         ...config,
@@ -182,14 +186,25 @@ export default class SQLiteCloudConnection {
     config.clientId ||= 'SQLiteCloud'
 
     if (!config.username || !config.password || !config.host) {
-      throw new SQLiteCloudError('The user, password and host arguments must be specified', 'ERR_MISSING_ARGS')
+      throw new SQLiteCloudError('The user, password and host arguments must be specified', { errorCode: 'ERR_MISSING_ARGS' })
     }
 
     return config
   }
 
+  /** Will log to console if verbose mode is enabled */
+  private _log(message: string, ...optionalParams: any[]): void {
+    if (this._config.verbose) {
+      console.log(`${new Date().toISOString()} ${this._config.clientId as string}: ${message}`, ...optionalParams)
+    }
+  }
+
+  //
+  // public methods
+  //
+
   /** Initialization commands sent to database when connection is established */
-  get initializationCommands(): string {
+  public get initializationCommands(): string {
     const config = this._config
     if (!config) {
       console.error('SQLiteCloudConnection.initializationCommands - no configuration was provided')
@@ -228,19 +243,8 @@ export default class SQLiteCloudConnection {
     return commands
   }
 
-  /** Will log to console if verbose mode is enabled */
-  _log(message: string, ...optionalParams: any[]): void {
-    if (this._config.verbose) {
-      console.log(`${new Date().toISOString()} ${this._config.clientId as string}: ${message}`, ...optionalParams)
-    }
-  }
-
-  /*
-  connect method is called to open a tls connection 
-  right after being authorized sends the auth command 
-  and the configurations commands setted by the user
-  */
-  async connect(): Promise<void> {
+  /* Opens a connection with the server and sends the initialization commands. Will throw in case of errors. */
+  public async connect(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       // connect to tls socket, initialize connection, setup event handlers
       const client: tls.TLSSocket = tls.connect(this._config.port as number, this._config.host, this._config.tlsOptions, () => {
@@ -264,7 +268,7 @@ export default class SQLiteCloudConnection {
           )
         } else {
           this._log('Connection was not authorized', client.authorizationError)
-          reject(new SQLiteCloudError('Connection was not authorized', { error: client.authorizationError }))
+          reject(new SQLiteCloudError('Connection was not authorized', { cause: client.authorizationError }))
         }
       })
 
@@ -281,17 +285,13 @@ export default class SQLiteCloudConnection {
       client.once('error', (error: any) => {
         this._log('Connection error', error)
         client.destroy()
-        reject(new SQLiteCloudError('Connection error event', { error }))
+        reject(new SQLiteCloudError('Connection error event', { cause: error }))
       })
     })
   }
 
-  /*
-  method send commands to the server creating a Promise that 
-  - resolve when all data  have been received and parsed accordingly to SCSP protocol
-  - reject when timeout is reached
-  */
-  sendCommands(commands: string): Promise<SQLiteCloudRowset> {
+  /** Will send a command and return the resulting rowset or throw an error */
+  public async sendCommands(commands: string): Promise<SQLiteCloudRowset> {
     if (!this._socket) {
       throw new SQLiteCloudError('Connection is not open')
     }
@@ -299,11 +299,9 @@ export default class SQLiteCloudConnection {
     // compose commands following SCPC protocol
     commands = formatCommand(commands)
 
-    // commands is sent to the server
-    let buffer = Buffer.alloc(0) //variable where all received data are concatenated
-    //dedicated variable to rowset_chunk data type
-    const rowsetChunkArray: Buffer[] = [] //used only in case of rowset_chunk datatype to store all received chunk avoiding buffer copy
-    this._log('Recevied new command to be sent: ' + commands)
+    let buffer = Buffer.alloc(0)
+    const rowsetChunkArray: Buffer[] = []
+    this._log(`Sending commands: ${commands}`)
 
     //define the Promise that waits for the server response
     return new Promise((resolve, reject) => {
@@ -346,7 +344,8 @@ export default class SQLiteCloudConnection {
                 reject(error)
               }
             } else {
-              //check if in case of chunk rowset has been received the ending chunk
+              // @ts-expect-error
+              // check if rowset received the ending chunk
               if (data.subarray(data.indexOf(' ') + 1, data.length).toString() === '0 0 0 ') {
                 clearTimeout(readDataTimeout)
                 try {
@@ -356,7 +355,7 @@ export default class SQLiteCloudConnection {
                   reject(error)
                 }
               } else {
-                //when not received the ending chunk ask server for another chunk
+                // no ending string? ask server for another chunk
                 rowsetChunkArray.push(buffer)
                 buffer = Buffer.alloc(0)
                 this._socket?.write(formatCommand('OK'))
@@ -402,8 +401,8 @@ export default class SQLiteCloudConnection {
     })
   }
 
-  /** Disconnects and closes socket */
-  async disconnect(): Promise<void> {
+  /** Disconnect from server, release connection. */
+  public async disconnect(): Promise<void> {
     return new Promise(resolve => {
       this._socket?.end(() => {
         this._socket = undefined
@@ -416,13 +415,21 @@ export default class SQLiteCloudConnection {
 
 /** Custom error reported by SQLiteCloud drivers */
 export class SQLiteCloudError extends Error {
-  constructor(message: string, errorCode?: string) {
+  constructor(message: string, args?: Partial<SQLiteCloudError>) {
     super(message)
     this.name = 'SQLiteCloudError'
-    this.errorCode = errorCode
+    if (args) {
+      Object.assign(this, args)
+    }
   }
+
+  /** Upstream error that cause this error */
+  cause?: Error | string
+  /** Error code returned by drivers or server */
   errorCode?: string
-  externalErrorCode?: number
+  /** Additional error code */
+  externalErrorCode?: string
+  /** Additional offset code in commands */
   offsetCode?: number
 }
 
