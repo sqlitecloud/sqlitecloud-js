@@ -10,7 +10,7 @@
 // var sqlitecloud = require('sqlitecloud-nodejs-sdk')
 
 // code being refactored:
-import sqlitecloud, { SQLiteCloudError } from '../src/protocol'
+import sqlitecloud, { SQLiteCloudError, parseConnectionString } from '../src/protocol'
 
 const cert = `-----BEGIN CERTIFICATE-----
 MIID6zCCAtOgAwIBAgIUI0lTm5CfVf3mVP8606CkophcyB4wDQYJKoZIhvcNAQEL
@@ -239,6 +239,59 @@ describe('protocol', () => {
       // expect(response.version).toBe(1)
 
       const dumped = response.dump()
+    })
+  })
+})
+
+describe('parseConnectionString', () => {
+  it('should correctly parse all components of the connection string', () => {
+    const connectionString = 'sqlitecloud://user:password@host:1234/database?option1=xxx&option2=yyy'
+    const result = parseConnectionString(connectionString)
+
+    expect(result).toEqual({
+      username: 'user',
+      password: 'password',
+      host: 'host',
+      port: 1234,
+      database: 'database',
+      option1: 'xxx',
+      option2: 'yyy'
+    })
+  })
+
+  it('should throw SQLiteCloudError if the connection string is invalid', () => {
+    const connectionString = 'not a valid url'
+
+    expect(() => {
+      parseConnectionString(connectionString)
+    }).toThrow(SQLiteCloudError)
+  })
+
+  it('should handle connection strings without port', () => {
+    const connectionString = 'sqlitecloud://user:password@host/database?option1=xxx&option2=yyy'
+    const result = parseConnectionString(connectionString)
+
+    expect(result).toEqual({
+      username: 'user',
+      password: 'password',
+      host: 'host',
+      port: undefined,
+      database: 'database',
+      option1: 'xxx',
+      option2: 'yyy'
+    })
+  })
+
+  it('should handle connection strings without options', () => {
+    const connectionString = 'sqlitecloud://user:password@host:1234/database'
+    const result = parseConnectionString(connectionString)
+
+    expect(result).toEqual({
+      username: 'user',
+      password: 'password',
+      host: 'host',
+      port: 1234,
+      database: 'database'
     })
   })
 })

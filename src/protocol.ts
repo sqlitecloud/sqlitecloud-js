@@ -30,14 +30,6 @@ export const DEFAULT_TIMEOUT = 30 * 1000
 export const DEFAULT_PORT = 9960
 
 //
-// utility functions
-//
-
-function OFFlogThis(id = 'SQLiteCloud', msg: string): void {
-  console.log(`!!!!!!!!! ${id}: ${new Date().toISOString()} - ${msg}`)
-}
-
-//
 // exported classes
 //
 
@@ -236,20 +228,6 @@ export default class SQLiteCloudConnection {
     return commands
   }
 
-  /*
-  COMPOSE SCSP PROTOCOL
-  */
-  #composeScspStrings(str: string | NodeJS.ArrayBufferView | ArrayBuffer | SharedArrayBuffer) {
-    const strLen = Buffer.byteLength(str, 'utf-8')
-    return `+${strLen} ${str}`
-  }
-  /*
-  check if all bytes have been received
-  */
-  #receivedAllBytes(buffer: string | string[], lenToRead: number) {
-    return buffer.length - buffer.indexOf(' ') - 1 == lenToRead ? true : false
-  }
-
   /** Will log to console if verbose mode is enabled */
   _log(message: string, ...optionalParams: any[]): void {
     if (this._config.verbose) {
@@ -308,33 +286,20 @@ export default class SQLiteCloudConnection {
     })
   }
 
-  async disconnect(): Promise<void> {
-    return new Promise(resolve => {
-      this._socket?.end(() => {
-        this._log('disconnecting')
-        resolve()
-      })
-    })
-  }
-
-  async disconnectNEW(): Promise<void> {
-    if (this._socket) {
-      return new Promise(resolve => {
-        this._socket?.once('end', resolve)
-        this._socket?.end()
-      })
-    }
-  }
-
   /*
   method send commands to the server creating a Promise that 
   - resolve when all data  have been received and parsed accordingly to SCSP protocol
   - reject when timeout is reached
   */
   sendCommands(commands: string): Promise<SQLiteCloudRowset> {
-    //compose commands following SCPC protocol
-    commands = this.#composeScspStrings(commands)
-    //commands is sent to the server
+    if (!this._socket) {
+      throw new SQLiteCloudError('Connection is not open')
+    }
+
+    // compose commands following SCPC protocol
+    commands = formatCommand(commands)
+
+    // commands is sent to the server
     let buffer = Buffer.alloc(0) //variable where all received data are concatenated
     //dedicated variable to rowset_chunk data type
     const rowsetChunkArray: Buffer[] = [] //used only in case of rowset_chunk datatype to store all received chunk avoiding buffer copy
@@ -344,11 +309,11 @@ export default class SQLiteCloudConnection {
     return new Promise((resolve, reject) => {
       //define what to do if an answer does not arrive within the set timeout
       let readDataTimeout: NodeJS.Timeout
-      const readData = (data: string | Uint8Array) => {
+      const readData = (data: Uint8Array) => {
         this._log('onData received', data)
 
         // on first ondata event, dataType is read from data, on subsequent ondata event, is read from buffer that is the concatanations of data received on each ondata event
-        const dataType = buffer.length === 0 ? data.subarray(0, 1).toString('utf8') : buffer.subarray(0, 1).toString('utf8')
+        const dataType = buffer.length === 0 ? data.subarray(0, 1).toString() : buffer.subarray(0, 1).toString('utf8')
         buffer = Buffer.concat([buffer, data])
         const commandLength = hasCommandLength(dataType)
         this._log(`New data has command LEN? ${commandLength.toString()}`)
@@ -360,18 +325,19 @@ export default class SQLiteCloudConnection {
           // in case of compressed data, extract the dataType of compressed data
           let compressedDataType = null
           if (dataType === CMD_COMPRESSED) {
-            //remove LEN
+            // remove LEN
             let compressedBuffer = buffer.subarray(buffer.indexOf(' ') + 1, buffer.length)
             //remove compressed size
             compressedBuffer = compressedBuffer.subarray(compressedBuffer.indexOf(' ') + 1, compressedBuffer.length)
-            //remove uncompressed size
+            // remove decompressed size
             compressedBuffer = compressedBuffer.subarray(compressedBuffer.indexOf(' ') + 1, compressedBuffer.length)
             compressedDataType = compressedBuffer.subarray(0, 1).toString('utf8')
           }
 
-          if (this.#receivedAllBytes(buffer, commandLength)) {
+          const hasReceivedEntireCommand = buffer.length - buffer.indexOf(' ') - 1 >= commandLength ? true : false
+          if (hasReceivedEntireCommand) {
             if (dataType !== CMD_ROWSET_CHUNK && compressedDataType !== CMD_ROWSET_CHUNK) {
-              this._socket.off('data', readData)
+              this._socket?.off('data', readData)
               clearTimeout(readDataTimeout)
               try {
                 const parsedData = parseData(buffer)
@@ -381,7 +347,7 @@ export default class SQLiteCloudConnection {
               }
             } else {
               //check if in case of chunk rowset has been received the ending chunk
-              if (data.subarray(data.indexOf(' ') + 1, data.length).toString('utf8') === '0 0 0 ') {
+              if (data.subarray(data.indexOf(' ') + 1, data.length).toString() === '0 0 0 ') {
                 clearTimeout(readDataTimeout)
                 try {
                   const parsedData = parseData(rowsetChunkArray)
@@ -393,20 +359,19 @@ export default class SQLiteCloudConnection {
                 //when not received the ending chunk ask server for another chunk
                 rowsetChunkArray.push(buffer)
                 buffer = Buffer.alloc(0)
-                this._socket.write(this.#composeScspStrings('OK'))
+                this._socket?.write(formatCommand('OK'))
               }
             }
           }
         } else {
-          // it is a command with no explicit len
-          // so make sure that the final character is a space
-          const lastChr = buffer.subarray(buffer.length - 1, buffer.length).toString('utf8')
-
+          // command with no explicit len so make sure that the final character is a space
+          const lastChar = buffer.subarray(buffer.length - 1, buffer.length).toString('utf8')
           this._log('Reading new data without command LEN')
-          if (lastChr == ' ') {
-            this._log('Reading complete, endining with space')
+
+          if (lastChar == ' ') {
+            this._log('Reading complete, ending with space')
             //quando faccio il parsing mi passo il tipo, la lunghezza, e il buffer
-            this._socket.off('data', readData)
+            this._socket?.off('data', readData)
             clearTimeout(readDataTimeout)
             try {
               const parsedData = parseData(buffer)
@@ -417,18 +382,33 @@ export default class SQLiteCloudConnection {
           }
         }
       }
-      this._socket.write(commands, 'utf8', () => {
-        readDataTimeout = setTimeout(() => {
-          this._socket.off('data', readData)
-          clearTimeout(readDataTimeout)
-          reject(new Error('Request timed out', { cause: commands }))
+
+      this._socket?.write(commands, 'utf8', () => {
+        const timeout = setTimeout(() => {
+          this._socket?.off('data', readData)
+          clearTimeout(timeout)
+          reject(new SQLiteCloudError('Request timed out', { cause: commands }))
         }, this._config.timeout)
-        this._socket.on('data', readData)
+        this._socket?.on('data', readData)
       })
-      this._socket.once('error', (error: any) => {
+      this._socket?.once('error', (error: any) => {
         this._log('Socket error', error)
-        //        client.destroy()
-        reject(new Error('Connection on error event', { cause: error }))
+        if (this._socket) {
+          this._socket.destroy()
+          this._socket = undefined
+        }
+        reject(new SQLiteCloudError('Connection on error event', { cause: error }))
+      })
+    })
+  }
+
+  /** Disconnects and closes socket */
+  async disconnect(): Promise<void> {
+    return new Promise(resolve => {
+      this._socket?.end(() => {
+        this._socket = undefined
+        this._log('Disconnecting')
+        resolve()
       })
     })
   }
@@ -655,9 +635,10 @@ function parseRowsetChunks(buffer: Buffer[], spaceIndex: number) {
 }
 
 /* Receives a buffer or array of buffers and parses it based on dataType at beginning of block */
-function parseData(buffer: Buffer): any {
+function parseData(data: Buffer | Buffer[]): any {
   // buffer is really an array of buffers? eg. chunked response
-  const chunksBuffers: Buffer[] | undefined = Array.isArray(buffer) ? (buffer as Buffer[]) : undefined
+  const chunksBuffers: Buffer[] | undefined = Array.isArray(data) ? data : undefined
+  let buffer: Buffer | undefined = data as Buffer
 
   // first character is the data type
   let dataType: string = chunksBuffers ? chunksBuffers[0].subarray(0, 1).toString('utf8') : buffer.subarray(0, 1).toString('utf8')
@@ -717,7 +698,7 @@ function parseData(buffer: Buffer): any {
 }
 
 /** Parse connectionString like sqlitecloud://usernam:password@host:port/database?option1=xxx&option2=xxx into its components */
-function parseConnectionString(connectionString: string): SQLiteCloudConfiguration {
+export function parseConnectionString(connectionString: string): SQLiteCloudConfiguration {
   try {
     // The URL constructor throws a TypeError if the URL is not valid.
     const url = new URL(connectionString)
@@ -737,7 +718,12 @@ function parseConnectionString(connectionString: string): SQLiteCloudConfigurati
       ...options
     }
   } catch (error) {
-    // Handle parsing error, perhaps throw a custom error or return null/undefined.
     throw new SQLiteCloudError(`Invalid connection string: ${connectionString}`)
   }
+}
+
+/** Format a command to be sent via SCSP protocol */
+function formatCommand(command: string): string {
+  const commandLength = Buffer.byteLength(command, 'utf-8')
+  return `+${commandLength} ${command}`
 }
