@@ -1,21 +1,17 @@
----
-
-# my-package-name
+# sqlitecloud-js
 
 [![npm package][npm-img]][npm-url]
 [![Build Status][build-img]][build-url]
 [![Downloads][downloads-img]][downloads-url]
 [![Issues][issues-img]][issues-url]
 [![Code Coverage][codecov-img]][codecov-url]
-[![Commitizen Friendly][commitizen-img]][commitizen-url]
-[![Semantic Release][semantic-release-img]][semantic-release-url]
 
 > My awesome module
 
 ## Install
 
 ```bash
-npm install my-package-name
+npm install sqlitecloud-js
 ```
 
 ## Usage
@@ -54,7 +50,7 @@ Lorem ipsum.
 [downloads-url]: https://www.npmtrends.com/typescript-npm-package-template
 [npm-img]: https://img.shields.io/npm/v/typescript-npm-package-template
 [npm-url]: https://www.npmjs.com/package/typescript-npm-package-template
-[issues-img]: https://img.shields.io/github/issues/ryansonshine/typescript-npm-package-template
-[issues-url]: https://github.com/ryansonshine/typescript-npm-package-template/issues
+[issues-img]: https://img.shields.io/github/issues/sqlitecloud/sqlitecloud-js
+[issues-url]: https://github.com/sqlitecloud/sqlitecloud-js/issues
 [codecov-img]: https://codecov.io/gh/ryansonshine/typescript-npm-package-template/branch/main/graph/badge.svg
 [codecov-url]: https://codecov.io/gh/ryansonshine/typescript-npm-package-template
