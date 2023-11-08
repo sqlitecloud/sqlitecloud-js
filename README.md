@@ -4,7 +4,7 @@
 [![Build Status][build-img]][build-url]
 [![Downloads][downloads-img]][downloads-url]
 [![Issues][issues-img]][issues-url]
-[![Code Coverage][codecov-img]][codecov-url]
+[![codecov](https://codecov.io/gh/sqlitecloud/sqlitecloud-js/graph/badge.svg?token=ZOKE9WFH62)](https://codecov.io/gh/sqlitecloud/sqlitecloud-js)
 
 > This is the future home of SQLiteCloud drivers for Javascript and Typescript v2  
 > Currently under development, please keep using https://github.com/sqlitecloud/sdk
@@ -53,5 +53,3 @@ Lorem ipsum.
 [npm-url]: https://www.npmjs.com/package/typescript-npm-package-template
 [issues-img]: https://img.shields.io/github/issues/sqlitecloud/sqlitecloud-js
 [issues-url]: https://github.com/sqlitecloud/sqlitecloud-js/issues
-[codecov-img]: https://codecov.io/gh/ryansonshine/typescript-npm-package-template/branch/main/graph/badge.svg
-[codecov-url]: https://codecov.io/gh/ryansonshine/typescript-npm-package-template
