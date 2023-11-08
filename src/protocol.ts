@@ -120,15 +120,20 @@ export class SQLiteCloudRowset {
     return rows
   }
 
-  toArray(): any[] {
+  toArray(fromRow?: number, toRow?: number): any[] {
     const rowsetValues = []
-    for (let row = 0; row < this._numberOfRows; row++) {
+
+    fromRow = Math.max(fromRow !== undefined ? fromRow : 0, 0)
+    toRow = Math.min(toRow !== undefined ? toRow : this._numberOfRows, this._numberOfRows)
+
+    for (let row = fromRow || 0; row < toRow; row++) {
       const rowValues: { [key: string]: any } = {}
       for (let column = 0; column < this._numberOfColumns; column++) {
         rowValues[this._columnsNames[column]] = this.getItem(row, column)
       }
       rowsetValues.push(rowValues)
     }
+
     return rowsetValues
   }
 }

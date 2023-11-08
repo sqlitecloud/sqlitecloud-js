@@ -64,4 +64,30 @@ describe('Database', () => {
       })
     })
   })
+
+  describe('each', () => {
+    it('select * from tracks', done => {
+      let rowCount = 0
+
+      const rowCallback = (err: Error, row: any) => {
+        rowCount += 1
+        expect(err).toBeNull()
+        expect(row).toBeDefined()
+        expect(row).toMatchObject({})
+      }
+
+      const completeCallback = (error: Error, numberOfRows: number) => {
+        expect(error).toBeNull()
+        expect(rowCount).toBe(numberOfRows)
+        db.close(error => {
+          expect(error).toBeNull()
+          done()
+        })
+      }
+
+      const db = new Database(testConfig, null, () => {
+        db.each('select * from tracks', rowCallback, completeCallback)
+      })
+    })
+  })
 })

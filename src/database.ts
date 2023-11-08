@@ -58,20 +58,23 @@ export class Database {
   //
 
   public get(sql: string, ...params: any[]): this {
-    const { args, callback } = popCallback<(error: Error | null, rows?: any[]) => void>(params)
-    this.all(sql, ...args, (error: Error | null, rows: any[]) => {
-      if (rows) {
+    const { args, callback } = popCallback<(error: Error | null, row?: any) => void>(params)
+    void this.getConnection()
+      .sendCommands(this.prepareSql(sql, ...args))
+      .then(rowset => {
+        const rows = rowset.toArray(0, 1)
         callback?.call(this, null, rows[0])
-      } else {
+      })
+      .catch(error => {
         callback?.call(this, error)
-      }
-    })
+        console.error(error)
+      })
+
     return this
   }
 
   public all(sql: string, ...params: any[]): this {
     const { args, callback } = popCallback<(error: Error | null, rows?: any[]) => void>(params)
-
     void this.getConnection()
       .sendCommands(this.prepareSql(sql, ...args))
       .then(rowset => {
@@ -81,6 +84,54 @@ export class Database {
       .catch(error => {
         callback?.call(this, error)
         console.error(error)
+      })
+
+    return this
+  }
+
+  /**
+   * Runs the SQL query with the specified parameters and calls the callback once for each result row.
+   * The function returns the Database object to allow for function chaining. The parameters are the
+   * same as the Database#run function, with the following differences: The signature of the callback
+   * is function(err, row) {}. If the result set succeeds but is empty, the callback is never called.
+   * In all other cases, the callback is called once for every retrieved row. The order of calls correspond
+   * exactly to the order of rows in the result set. After all row callbacks were called, the completion
+   * callback will be called if present. The first argument is an error object, and the second argument
+   * is the number of retrieved rows. If you specify only one function, it will be treated as row callback,
+   * if you specify two, the first (== second to last) function will be the row callback, the last function
+   * will be the completion callback. If you know that a query only returns a very limited number of rows,
+   * it might be more convenient to use Database#all to retrieve all rows at once. There is currently no
+   * way to abort execution.
+   */
+  public each(sql: string, ...params: any[]): this {
+    // extract optional parameters and one or two callbacks
+    let args = params
+    let rowCallback: (error: Error | null, row?: any) => void
+    let completeCallback: (error: Error | null, count?: number) => void
+    if (params?.length > 0 && typeof params[params.length - 1] === 'function') {
+      if (params?.length > 1 && typeof params[params.length - 2] === 'function') {
+        rowCallback = params[params.length - 2]
+        completeCallback = params[params.length - 1]
+        args = params.slice(0, -2)
+      } else {
+        rowCallback = params[params.length - 1]
+        args = params.slice(0, -1)
+      }
+    }
+
+    void this.getConnection()
+      .sendCommands(this.prepareSql(sql, ...args))
+      .then(rowset => {
+        if (rowCallback) {
+          const rows = rowset.toArray()
+          for (const row of rows) {
+            rowCallback.call(this, null, row)
+          }
+        }
+        completeCallback?.call(this, null, rowset.numberOfRows)
+      })
+      .catch(error => {
+        rowCallback?.call(this, error)
       })
 
     return this
@@ -102,6 +153,16 @@ export class Database {
         // emit error event
         callback?.call(this, error)
       })
+  }
+
+  /**
+   * Allows the user to interrupt long-running queries. Wrapper around
+   * sqlite3_interrupt and causes other data-fetching functions to be
+   * passed an err with code = sqlite3.INTERRUPT. The database must be
+   * open to use this function.
+   */
+  public interrupt(): void {
+    // TODO sqlitecloud-js / implement database interrupt #13
   }
 }
 
