@@ -29,7 +29,7 @@ jobs:
           DATABASE_DATABASE: ${{ secrets.DATABASE_DATABASE }}
         run: npm test
 
-      - name: Upload coverage reports to Codecov
+      - name: Upload Code Coverage
         uses: codecov/codecov-action@v3
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

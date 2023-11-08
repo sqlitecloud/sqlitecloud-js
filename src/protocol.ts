@@ -218,7 +218,7 @@ export class SQLiteCloudConnection {
       const client: tls.TLSSocket = tls.connect(this._config.port as number, this._config.host, this._config.tlsOptions, () => {
         if (client.authorized) {
           const commands = this.initializationCommands
-          this._log('Connection initializing', commands)
+          this._log('Connection initializing')
 
           // eslint-disable-next-line @typescript-eslint/no-unsafe-call
           this._socket = client
