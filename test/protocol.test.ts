@@ -2,7 +2,8 @@
  * protocol.test.ts - test low level communication protocol
  */
 
-import { SQLiteCloudConnection, SQLiteCloudConfig, SQLiteCloudError, parseConnectionString } from '../src/protocol'
+import { SQLiteCloudConfig } from '../src/types/sqlitecloudconfig'
+import { SQLiteCloudConnection, SQLiteCloudError, parseConnectionString } from '../src/protocol'
 
 import * as dotenv from 'dotenv'
 dotenv.config()

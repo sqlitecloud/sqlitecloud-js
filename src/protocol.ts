@@ -8,7 +8,11 @@ import lz4 from 'lz4'
 
 import { SQLiteCloudConfig } from './types/sqlitecloudconfig'
 
-// defined in https://github.com/sqlitecloud/sdk/blob/master/PROTOCOL.md
+/**
+ * The server communicates with the client commands defined by the
+ * SQLite Cloud Server Protocol (SCSP), see more at:
+ * https://github.com/sqlitecloud/sdk/blob/master/PROTOCOL.md
+ */
 const CMD_STRING = '+'
 const CMD_ZEROSTRING = '!'
 const CMD_ERROR = '-'
@@ -17,14 +21,14 @@ const CMD_FLOAT = ','
 const CMD_ROWSET = '*'
 const CMD_ROWSET_CHUNK = '/'
 const CMD_JSON = '#'
-// const CMD_RAWJSON = '{'
 const CMD_NULL = '_'
 const CMD_BLOB = '$'
 const CMD_COMPRESSED = '%'
-// const CMD_PUBSUB = '|'
 const CMD_COMMAND = '^'
-// const CMD_RECONNECT = '@'
 const CMD_ARRAY = '='
+// const CMD_RAWJSON = '{'
+// const CMD_PUBSUB = '|'
+// const CMD_RECONNECT = '@'
 
 /** Default timeout value for queries */
 export const DEFAULT_TIMEOUT = 300 * 1000
@@ -102,7 +106,9 @@ export class SQLiteCloudRowset {
   }
 }
 
-/* SQLiteCloud class */
+/**
+ * SQLiteCloud low-level connection, will do messaging, handle socket, authentication, etc.
+ */
 export class SQLiteCloudConnection {
   /** Connection string if passed */
   _connectionString?: string
