@@ -10,6 +10,11 @@
 import { SQLiteCloudConnection } from './protocol'
 import { SQLiteCloudConfig } from './types/sqlitecloudconfig'
 
+export type ErrorCallback = (error: Error | null) => void
+export type RowsCallback = (error: Error | null, rows?: { [column: string]: any }[]) => void
+export type RowCallback = (error: Error | null, row?: { [column: string]: any }) => void
+export type RowCountCallback = (error: Error | null, rowCount?: number) => void
+
 export class RunResult {
   //
 }
@@ -58,7 +63,7 @@ export class Database {
   //
 
   public get(sql: string, ...params: any[]): this {
-    const { args, callback } = popCallback<(error: Error | null, row?: any) => void>(params)
+    const { args, callback } = popCallback<RowCallback>(params)
     void this.getConnection()
       .sendCommands(this.prepareSql(sql, ...args))
       .then(rowset => {
@@ -74,7 +79,7 @@ export class Database {
   }
 
   public all(sql: string, ...params: any[]): this {
-    const { args, callback } = popCallback<(error: Error | null, rows?: any[]) => void>(params)
+    const { args, callback } = popCallback<RowsCallback>(params)
     void this.getConnection()
       .sendCommands(this.prepareSql(sql, ...args))
       .then(rowset => {
@@ -106,8 +111,8 @@ export class Database {
   public each(sql: string, ...params: any[]): this {
     // extract optional parameters and one or two callbacks
     let args = params
-    let rowCallback: (error: Error | null, row?: any) => void
-    let completeCallback: (error: Error | null, count?: number) => void
+    let rowCallback: RowCallback
+    let completeCallback: RowCountCallback
     if (params?.length > 0 && typeof params[params.length - 1] === 'function') {
       if (params?.length > 1 && typeof params[params.length - 2] === 'function') {
         rowCallback = params[params.length - 2]
@@ -138,7 +143,7 @@ export class Database {
   }
 
   /** Close database connections then callback */
-  public close(callback?: (err: Error | null) => void): void {
+  public close(callback?: ErrorCallback): void {
     const closingPromises = this._connections.map(connection =>
       connection.close().then(() => {
         this._connections = this._connections.filter(c => c !== connection)
