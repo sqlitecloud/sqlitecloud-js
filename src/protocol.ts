@@ -6,6 +6,8 @@
 import tls from 'tls'
 import lz4 from 'lz4'
 
+import { SQLiteCloudConfig } from './types/sqlitecloudconfig'
+
 // defined in https://github.com/sqlitecloud/sdk/blob/master/PROTOCOL.md
 const CMD_STRING = '+'
 const CMD_ZEROSTRING = '!'
@@ -98,55 +100,6 @@ export class SQLiteCloudRowset {
     }
     return rows
   }
-}
-
-/** Configuration for SQLite cloud connection */
-export interface SQLiteCloudConfig {
-  /** Connection string in the form of sqlitecloud://user:password@host:port/database?options */
-  connectionString?: string
-
-  /** User name is required unless connectionString is provided */
-  username?: string
-  /** Password is required unless connection string is provided */
-  password?: string
-  /** True if password is hashed, default is false */
-  passwordHashed?: boolean
-
-  /** Host name is required unless connectionString is provided */
-  host?: string
-  /** Port number for tls socket */
-  port?: number
-  /** Optional query timeout passed directly to node.TLSSocket, supports all tls.connect options */
-  timeout?: number
-  /** Name of database to open */
-  database?: string
-
-  /** Create the database if it doesn't exist? */
-  createDatabase?: boolean
-  /** Database will be created in memory */
-  dbMemory?: boolean
-  /** Enable SQLite compatibility mode */
-  sqliteMode?: boolean
-  /* Enable compression */
-  compression?: boolean
-  /** Request for immediate responses from the server node without waiting for linerizability guarantees */
-  nonlinearizable?: boolean
-  /** Server should send BLOB columns */
-  noBlob?: boolean
-  /** Do not send columns with more than max_data bytes */
-  maxData?: number
-  /** Server should chunk responses with more than maxRows */
-  maxRows?: number
-  /** Server should limit total number of rows in a set to maxRowset */
-  maxRowset?: number
-
-  /** Custom options and configurations for tls socket */
-  tlsOptions?: tls.ConnectionOptions
-
-  /** Optional identifier used for verbose logging */
-  clientId?: string
-  /** True if connection should enable debug logs */
-  verbose?: boolean
 }
 
 /* SQLiteCloud class */
@@ -264,7 +217,6 @@ export class SQLiteCloudConnection {
       const client: tls.TLSSocket = tls.connect(this._config.port as number, this._config.host, this._config.tlsOptions, () => {
         if (client.authorized) {
           const commands = this.initializationCommands
-          this._log('Connection authorized')
           this._log('Connection initializing', commands)
 
           // eslint-disable-next-line @typescript-eslint/no-unsafe-call
@@ -288,21 +240,27 @@ export class SQLiteCloudConnection {
 
       client.on('close', () => {
         this._log('Connection closed')
-      })
-
-      client.on('end', () => {
         if (this._socket) {
-          this._log('Connection ended')
+          this._socket.destroy()
           this._socket = undefined
-          client.destroy()
         }
       })
-
+      /*
+      client.on('end', () => {
+        if (this._socket) {
+          this._socket.destroy()
+          this._socket = undefined
+          this._log('Connection ended')
+        }
+      })
+*/
       client.once('error', (error: any) => {
         this._log('Connection error', error)
-        this._socket = undefined
-        client.destroy()
-        reject(new SQLiteCloudError('Connection error event', { cause: error }))
+        if (this._socket) {
+          this._socket.destroy()
+          this._socket = undefined
+        }
+        reject(new SQLiteCloudError('Connection error', { cause: error }))
       })
     })
   }
@@ -401,6 +359,7 @@ export class SQLiteCloudConnection {
         }, this._config.timeout)
         this._socket?.on('data', readData)
       })
+
       this._socket?.once('error', (error: any) => {
         this._log('Socket error', error)
         if (this._socket) {
@@ -416,8 +375,9 @@ export class SQLiteCloudConnection {
   public async disconnect(): Promise<void> {
     return new Promise(resolve => {
       this._socket?.end(() => {
+        //    this._socket?.destroy()
         this._socket = undefined
-        this._log('Connection disconnecting')
+        this._log('Connection disconnected')
         resolve()
       })
     })

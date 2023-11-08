@@ -296,7 +296,7 @@ describe('protocol', () => {
 })
 
 describe('parseConnectionString', () => {
-  it('should correctly parse all components of the connection string', () => {
+  it('should parse connection string', () => {
     const connectionString = 'sqlitecloud://user:password@host:1234/database?option1=xxx&option2=yyy'
     const config = parseConnectionString(connectionString)
 
