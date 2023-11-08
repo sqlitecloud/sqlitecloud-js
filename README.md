@@ -6,7 +6,8 @@
 [![Issues][issues-img]][issues-url]
 [![Code Coverage][codecov-img]][codecov-url]
 
-> My awesome module
+> This is the future home of SQLiteCloud drivers for Javascript and Typescript v2  
+> Currently under development, please keep using https://github.com/sqlitecloud/sdk
 
 ## Install
 
