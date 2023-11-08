@@ -39,6 +39,21 @@ export const DEFAULT_PORT = 9960
 // exported classes
 //
 
+export class SQLCloudRow {
+  constructor(rowset: SQLiteCloudRowset, row: number) {
+    this._rowset = rowset
+    this._row = row
+  }
+
+  private _rowset: SQLiteCloudRowset
+  private _row: number
+
+  /** Return value of item at given column */
+  getItem(column: number): any {
+    return this._rowset.getItem(this._row, column)
+  }
+}
+
 /* A set of rows returned by a query */
 export class SQLiteCloudRowset {
   /* Create a new rowset object */
@@ -103,6 +118,18 @@ export class SQLiteCloudRowset {
       rows.push(row)
     }
     return rows
+  }
+
+  toArray(): any[] {
+    const rowsetValues = []
+    for (let row = 0; row < this._numberOfRows; row++) {
+      const rowValues: { [key: string]: any } = {}
+      for (let column = 0; column < this._numberOfColumns; column++) {
+        rowValues[this._columnsNames[column]] = this.getItem(row, column)
+      }
+      rowsetValues.push(rowValues)
+    }
+    return rowsetValues
   }
 }
 
@@ -367,12 +394,12 @@ export class SQLiteCloudConnection {
   }
 
   /** Disconnect from server, release connection. */
-  public async disconnect(): Promise<void> {
+  public async close(): Promise<void> {
     return new Promise(resolve => {
       this._socket?.end(() => {
         this._socket?.destroy()
         this._socket = undefined
-        this._log('Connection disconnected')
+        this._log('Connection closed')
         resolve()
       })
     })

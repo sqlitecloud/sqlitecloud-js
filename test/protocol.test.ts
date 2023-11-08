@@ -8,7 +8,7 @@ import { SQLiteCloudConnection, SQLiteCloudError, parseConnectionString } from '
 import * as dotenv from 'dotenv'
 dotenv.config()
 
-const DATABASE_CERTIFICATE = `-----BEGIN CERTIFICATE-----
+export const DATABASE_CERTIFICATE = `-----BEGIN CERTIFICATE-----
 MIID6zCCAtOgAwIBAgIUI0lTm5CfVf3mVP8606CkophcyB4wDQYJKoZIhvcNAQEL
 BQAwgYQxCzAJBgNVBAYTAklUMQswCQYDVQQIDAJNTjEQMA4GA1UEBwwHVmlhZGFu
 YTEbMBkGA1UECgwSU1FMaXRlIENsb3VkLCBJbmMuMRQwEgYDVQQDDAtTUUxpdGVD
@@ -32,7 +32,7 @@ Sjox3HYOoj2uG2669CLAnw6rkHESbi5imasC9FxWBVxWrnNd0icyiDb1wfBc5W9N
 otHL5/wB1MaAmCIcQjIxEshj8pSYTecthitmrneimikFf4KFK0YMvGgKrCLmJsg=
 -----END CERTIFICATE-----`
 
-const testConfig: SQLiteCloudConfig = {
+export const testConfig: SQLiteCloudConfig = {
   clientId: 'test',
   username: process.env.DATABASE_USERNAME,
   password: process.env.DATABASE_PASSWORD,
@@ -71,7 +71,7 @@ describe('protocol', () => {
 
   afterEach(async () => {
     if (connection) {
-      await connection.disconnect()
+      await connection.close()
       // @ts-ignore
       connection = undefined
     }
@@ -94,7 +94,7 @@ describe('protocol', () => {
       expect(connection).toBeDefined()
       await connection.connect()
       expect(connection.connected).toBe(true)
-      await connection.disconnect()
+      await connection.close()
       expect(connection.connected).toBe(false)
     })
 
