@@ -163,13 +163,8 @@ export class SQLiteCloudConnection {
 
   /** Initialization commands sent to database when connection is established */
   public get initializationCommands(): string {
-    const config = this._config
-    if (!config) {
-      console.error('SQLiteCloudConnection.initializationCommands - no configuration was provided')
-      return ''
-    }
-
     // first user authentication, then all other commands
+    const config = this._config
     let commands = `AUTH USER ${config.username || ''} ${config.passwordHashed ? 'HASH' : 'PASSWORD'} ${config.password || ''};`
 
     if (config.database) {
@@ -239,21 +234,14 @@ export class SQLiteCloudConnection {
       })
 
       client.on('close', () => {
-        this._log('Connection closed')
         if (this._socket) {
+          // no loggin if already disposed
+          this._log('Connection closed')
           this._socket.destroy()
           this._socket = undefined
         }
       })
-      /*
-      client.on('end', () => {
-        if (this._socket) {
-          this._socket.destroy()
-          this._socket = undefined
-          this._log('Connection ended')
-        }
-      })
-*/
+
       client.once('error', (error: any) => {
         this._log('Connection error', error)
         if (this._socket) {
@@ -278,10 +266,11 @@ export class SQLiteCloudConnection {
     const rowsetChunkArray: Buffer[] = []
     this._log(`Sending: ${commands}`)
 
-    //define the Promise that waits for the server response
+    // define the Promise that waits for the server response
     return new Promise((resolve, reject) => {
-      //define what to do if an answer does not arrive within the set timeout
-      let readDataTimeout: NodeJS.Timeout
+      // define what to do if an answer does not arrive within the set timeout
+      let socketTimeout: number
+
       const readData = (data: Uint8Array) => {
         this._log(`Received: ${data.length > 100 ? data.toString().substring(0, 100) + '...' : data.toString()}`)
 
@@ -309,7 +298,7 @@ export class SQLiteCloudConnection {
           if (hasReceivedEntireCommand) {
             if (dataType !== CMD_ROWSET_CHUNK && compressedDataType !== CMD_ROWSET_CHUNK) {
               this._socket?.off('data', readData)
-              clearTimeout(readDataTimeout)
+              clearTimeout(socketTimeout)
               try {
                 const parsedData = parseData(buffer)
                 resolve(parsedData)
@@ -320,7 +309,7 @@ export class SQLiteCloudConnection {
               // @ts-expect-error
               // check if rowset received the ending chunk
               if (data.subarray(data.indexOf(' ') + 1, data.length).toString() === '0 0 0 ') {
-                clearTimeout(readDataTimeout)
+                clearTimeout(socketTimeout)
                 try {
                   const parsedData = parseData(rowsetChunkArray)
                   resolve(parsedData)
@@ -340,7 +329,7 @@ export class SQLiteCloudConnection {
           const lastChar = buffer.subarray(buffer.length - 1, buffer.length).toString('utf8')
           if (lastChar == ' ') {
             this._socket?.off('data', readData)
-            clearTimeout(readDataTimeout)
+            clearTimeout(socketTimeout)
             try {
               const parsedData = parseData(buffer)
               resolve(parsedData)
@@ -352,9 +341,9 @@ export class SQLiteCloudConnection {
       }
 
       this._socket?.write(commands, 'utf8', () => {
-        const timeout = setTimeout(() => {
+        socketTimeout = setTimeout(() => {
           this._socket?.off('data', readData)
-          clearTimeout(timeout)
+          clearTimeout(socketTimeout)
           reject(new SQLiteCloudError('Request timed out', { cause: commands }))
         }, this._config.timeout)
         this._socket?.on('data', readData)
@@ -375,7 +364,7 @@ export class SQLiteCloudConnection {
   public async disconnect(): Promise<void> {
     return new Promise(resolve => {
       this._socket?.end(() => {
-        //    this._socket?.destroy()
+        this._socket?.destroy()
         this._socket = undefined
         this._log('Connection disconnected')
         resolve()

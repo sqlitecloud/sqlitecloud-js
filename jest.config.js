@@ -3,11 +3,14 @@ module.exports = {
   testEnvironment: 'node',
   testMatch: ['**/test/**/*.test.ts'],
   maxWorkers: 1,
-  collectCoverageFrom: ['<rootDir>/src/**/*.ts', '!<rootDir>/src/types/**/*.ts'],
+  collectCoverageFrom: ['<rootDir>/src/**/*.ts', '!<rootDir>/src/index.ts', '!<rootDir>/src/types/**/*.ts'],
   transform: {
-    '^.+\\.(ts|tsx)$': ['ts-jest', {
-      diagnostics: false,
-      isolatedModules: true
-    }],
-  },
+    '^.+\\.(ts|tsx)$': [
+      'ts-jest',
+      {
+        diagnostics: false,
+        isolatedModules: true
+      }
+    ]
+  }
 }
