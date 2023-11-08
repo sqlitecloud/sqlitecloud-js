@@ -8,7 +8,7 @@ import { SQLiteCloudConnection, SQLiteCloudError, parseConnectionString } from '
 import * as dotenv from 'dotenv'
 dotenv.config()
 
-const TEST_CERTIFICATE = `-----BEGIN CERTIFICATE-----
+const DATABASE_CERTIFICATE = `-----BEGIN CERTIFICATE-----
 MIID6zCCAtOgAwIBAgIUI0lTm5CfVf3mVP8606CkophcyB4wDQYJKoZIhvcNAQEL
 BQAwgYQxCzAJBgNVBAYTAklUMQswCQYDVQQIDAJNTjEQMA4GA1UEBwwHVmlhZGFu
 YTEbMBkGA1UECgwSU1FMaXRlIENsb3VkLCBJbmMuMRQwEgYDVQQDDAtTUUxpdGVD
@@ -34,15 +34,15 @@ otHL5/wB1MaAmCIcQjIxEshj8pSYTecthitmrneimikFf4KFK0YMvGgKrCLmJsg=
 
 const testConfig: SQLiteCloudConfig = {
   clientId: 'test',
-  username: process.env.TEST_USERNAME,
-  password: process.env.TEST_PASSWORD,
-  host: process.env.TEST_HOST,
-  database: process.env.TEST_DATABASE || 'chinook.sqlite',
-  port: (process.env.TEST_PORT || 9960) as number,
+  username: process.env.DATABASE_USERNAME,
+  password: process.env.DATABASE_PASSWORD,
+  host: process.env.DATABASE_HOSTNAME,
+  database: process.env.DATABASE_DATABASE || 'chinook.sqlite',
+  port: (process.env.DATABASE_PORT || 9960) as number,
   compression: true,
   timeout: 100 * 1000,
   tlsOptions: {
-    ca: TEST_CERTIFICATE
+    ca: DATABASE_CERTIFICATE
   }
 }
 
@@ -50,9 +50,9 @@ describe('protocol', () => {
   let connection: SQLiteCloudConnection
 
   beforeEach(async () => {
-    expect(process.env.TEST_USERNAME).toBeDefined()
-    expect(process.env.TEST_PASSWORD).toBeDefined()
-    expect(process.env.TEST_HOST).toBeDefined()
+    expect(process.env.DATABASE_USERNAME).toBeDefined()
+    expect(process.env.DATABASE_PASSWORD).toBeDefined()
+    expect(process.env.DATABASE_HOSTNAME).toBeDefined()
 
     if (!connection) {
       try {
@@ -87,7 +87,7 @@ describe('protocol', () => {
       const connection = new SQLiteCloudConnection({
         connectionString,
         tlsOptions: {
-          ca: TEST_CERTIFICATE
+          ca: DATABASE_CERTIFICATE
         }
       })
 
@@ -104,7 +104,7 @@ describe('protocol', () => {
         const connection = new SQLiteCloudConnection({
           connectionString,
           tlsOptions: {
-            ca: TEST_CERTIFICATE
+            ca: DATABASE_CERTIFICATE
           }
         })
 

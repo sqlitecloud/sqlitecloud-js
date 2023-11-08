@@ -1,6 +1,5 @@
 /**
- * protocol.ts - handles low level communication with the server
- * @see https://github.com/sqlitecloud/sdk/blob/master/PROTOCOL.md
+ * protocol.ts - handles low level communication with sqlitecloud server
  */
 
 import tls from 'tls'
@@ -9,8 +8,8 @@ import lz4 from 'lz4'
 import { SQLiteCloudConfig } from './types/sqlitecloudconfig'
 
 /**
- * The server communicates with the client commands defined by the
- * SQLite Cloud Server Protocol (SCSP), see more at:
+ * The server communicates with clients via commands defined
+ * in the SQLiteCloud Server Protocol (SCSP), see more at:
  * https://github.com/sqlitecloud/sdk/blob/master/PROTOCOL.md
  */
 const CMD_STRING = '+'
@@ -32,6 +31,7 @@ const CMD_ARRAY = '='
 
 /** Default timeout value for queries */
 export const DEFAULT_TIMEOUT = 300 * 1000
+
 /** Default tls connection port */
 export const DEFAULT_PORT = 9960
 

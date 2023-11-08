@@ -1,0 +1,35 @@
+name: "CI/CD Tests"
+on: push
+
+jobs:
+  app-tests:
+    name: "Package Tests"
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "18.x"
+
+      - name: Setup Dependencies
+        run: |
+          corepack enable
+          npm install
+
+      - name: Build App
+        run: npm run build
+        continue-on-error: true
+
+      - name: Jest Tests
+        env:
+          DATABASE_USERNAME: ${{ secrets.DATABASE_USERNAME }}
+          DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          DATABASE_HOSTNAME: ${{ secrets.DATABASE_HOSTNAME }}
+          DATABASE_DATABASE: ${{ secrets.DATABASE_DATABASE }}
+        run: npm test
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
