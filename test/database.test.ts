@@ -8,25 +8,57 @@ import { testConfig } from './protocol.test'
 import * as dotenv from 'dotenv'
 dotenv.config()
 
+const LONG_TIMEOUT = 30 * 1000
+
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 describe('Database', () => {
   describe('all', () => {
-    it('select * from tracks', done => {
+    it(
+      'SELECT * FROM tracks',
+      done => {
+        const db = new Database(testConfig, null, () => {
+          db.all('SELECT * FROM tracks', (err: Error, rows: any[]) => {
+            expect(err).toBeNull()
+            expect(rows).toBeDefined()
+            expect(rows).toHaveLength(3503)
+            expect(rows[0]).toMatchObject({
+              AlbumId: NaN,
+              Bytes: 1117033,
+              Composer: 'Angus Young, Malcolm Young, Brian Johnson',
+              GenreId: NaN,
+              MediaTypeId: NaN,
+              Milliseconds: 34371,
+              Name: 'For Those About To Rock (We Salute You)',
+              TrackId: NaN,
+              UnitPrice: 0.9
+            })
+
+            db.close(error => {
+              expect(error).toBeNull()
+              done()
+            })
+          })
+        })
+      },
+      LONG_TIMEOUT
+    )
+
+    it('SELECT * FROM tracks WHERE composer = ?', done => {
       const db = new Database(testConfig, null, () => {
-        db.all('select * from tracks', (err: Error, rows: any[]) => {
+        db.all('SELECT * FROM tracks WHERE composer = ?', 'AC/DC', (err: Error, rows: any[]) => {
           expect(err).toBeNull()
           expect(rows).toBeDefined()
-          expect(rows).toHaveLength(3503)
+          expect(rows).toHaveLength(8)
           expect(rows[0]).toMatchObject({
             AlbumId: NaN,
-            Bytes: 1117033,
-            Composer: 'Angus Young, Malcolm Young, Brian Johnson',
+            Bytes: 1084761,
+            Composer: 'AC/DC',
             GenreId: NaN,
             MediaTypeId: NaN,
-            Milliseconds: 34371,
-            Name: 'For Those About To Rock (We Salute You)',
-            TrackId: NaN,
+            Milliseconds: 33118,
+            Name: 'Go Down',
+            TrackId: 1,
             UnitPrice: 0.9
           })
 
@@ -40,9 +72,9 @@ describe('Database', () => {
   })
 
   describe('get', () => {
-    it('select * from tracks', done => {
+    it('SELECT * FROM tracks', done => {
       const db = new Database(testConfig, null, () => {
-        db.get('select * from tracks', (err: Error, row: any) => {
+        db.get('SELECT * FROM tracks', (err: Error, row: any) => {
           expect(err).toBeNull()
           expect(row).toBeDefined()
           expect(row).toMatchObject({
@@ -67,7 +99,7 @@ describe('Database', () => {
   })
 
   describe('each', () => {
-    it('select * from tracks', done => {
+    it('SELECT * FROM tracks', done => {
       let rowCount = 0
 
       const rowCallback = (err: Error, row: any) => {
@@ -87,7 +119,7 @@ describe('Database', () => {
       }
 
       const db = new Database(testConfig, null, () => {
-        db.each('select * from tracks', rowCallback, completeCallback)
+        db.each('SELECT * FROM tracks', rowCallback, completeCallback)
       })
     })
   })
