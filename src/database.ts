@@ -9,6 +9,7 @@
 
 import { SQLiteCloudConnection } from './protocol'
 import { SQLiteCloudConfig } from './types/sqlitecloudconfig'
+import { prepareSql } from './utilities'
 
 export type ErrorCallback = (error: Error | null) => void
 export type RowsCallback = (error: Error | null, rows?: { [column: string]: any }[]) => void
@@ -52,12 +53,6 @@ export class Database {
     return this._connections?.[0]
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  private prepareSql(sql: string, ...params: any[]): string {
-    // TODO sqlitecloud-js / implement prepared statements #11
-    return sql
-  }
-
   //
   // public methods
   //
@@ -65,7 +60,7 @@ export class Database {
   public get(sql: string, ...params: any[]): this {
     const { args, callback } = popCallback<RowCallback>(params)
     void this.getConnection()
-      .sendCommands(this.prepareSql(sql, ...args))
+      .sendCommands(prepareSql(sql, ...args))
       .then(rowset => {
         const rows = rowset.toArray(0, 1)
         callback?.call(this, null, rows[0])
@@ -81,7 +76,7 @@ export class Database {
   public all(sql: string, ...params: any[]): this {
     const { args, callback } = popCallback<RowsCallback>(params)
     void this.getConnection()
-      .sendCommands(this.prepareSql(sql, ...args))
+      .sendCommands(prepareSql(sql, ...args))
       .then(rowset => {
         const rows = rowset.toArray()
         callback?.call(this, null, rows)
@@ -125,7 +120,7 @@ export class Database {
     }
 
     void this.getConnection()
-      .sendCommands(this.prepareSql(sql, ...args))
+      .sendCommands(prepareSql(sql, ...args))
       .then(rowset => {
         if (rowCallback) {
           const rows = rowset.toArray()

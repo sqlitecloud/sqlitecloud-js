@@ -2,6 +2,7 @@
  * database.test.ts - test driver api
  */
 
+import { SQLiteCloudError } from '../src/index'
 import { Database } from '../src/database'
 import { testConfig } from './protocol.test'
 import * as dotenv from 'dotenv'
@@ -92,7 +93,7 @@ describe('Database', () => {
   })
 
   describe('exec', () => {
-    it('execute set client key statement', done => {
+    it('execute simple statement', done => {
       const db = new Database(testConfig, null, () => {
         db.exec('SET CLIENT KEY COMPRESSION TO 1;', error => {
           expect(error).toBeNull()
@@ -108,6 +109,7 @@ describe('Database', () => {
     it('execute statement with errors', done => {
       const db = new Database(testConfig, null, () => {
         db.exec('SET BOGUS STATEMENT TO 1;', error => {
+          expect(error).toBeInstanceOf(SQLiteCloudError)
           expect(error).toMatchObject({
             errorCode: '10002',
             externalErrorCode: '0',
