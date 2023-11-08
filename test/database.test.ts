@@ -90,4 +90,38 @@ describe('Database', () => {
       })
     })
   })
+
+  describe('exec', () => {
+    it('execute set client key statement', done => {
+      const db = new Database(testConfig, null, () => {
+        db.exec('SET CLIENT KEY COMPRESSION TO 1;', error => {
+          expect(error).toBeNull()
+
+          db.close(error => {
+            expect(error).toBeNull()
+            done()
+          })
+        })
+      })
+    })
+
+    it('execute statement with errors', done => {
+      const db = new Database(testConfig, null, () => {
+        db.exec('SET BOGUS STATEMENT TO 1;', error => {
+          expect(error).toMatchObject({
+            errorCode: '10002',
+            externalErrorCode: '0',
+            name: 'SQLiteCloudError',
+            offsetCode: -1,
+            message: 'Unable to find command SET BOGUS STATEMENT TO 1;'
+          })
+
+          db.close(error => {
+            expect(error).toBeNull()
+            done()
+          })
+        })
+      })
+    })
+  })
 })
