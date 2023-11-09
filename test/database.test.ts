@@ -3,16 +3,36 @@
  */
 
 import { SQLiteCloudError } from '../src/index'
-import { Database } from '../src/database'
+import { Database, ErrorCallback } from '../src/database'
 import { testConfig } from './protocol.test'
 import * as dotenv from 'dotenv'
 dotenv.config()
 
 const LONG_TIMEOUT = 30 * 1000
 
+const testingDatabaseUrl = 'sqlitecloud://admin:uN3ARhdcKQ@rymbzy6am.sqlite.cloud:8860/testing.db?sqliteMode=1'
+
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 describe('Database', () => {
+  describe('run', () => {
+    it("UPDATE people SET name = 'Charlie Brown' WHERE id = 3", done => {
+      const updateSql = "UPDATE people SET name = 'Charlie Brown' WHERE id = 3; UPDATE people SET name = 'David Bowie' WHERE id = 4; "
+
+      const db = new Database(testingDatabaseUrl, null, () => {
+        db.run(updateSql, (err: Error) => {
+          expect(err).toBeNull()
+          // TODO sqlitecloud-js // Database.run should return number of rows modified and lastId #15
+
+          db.close(error => {
+            expect(error).toBeNull()
+            done()
+          })
+        })
+      })
+    })
+  })
+
   describe('all', () => {
     it(
       'SELECT * FROM tracks',

@@ -57,6 +57,28 @@ export class Database {
   // public methods
   //
 
+  /** Set a configuration option for the database */
+  // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+  public configure(option, value): this {
+    // https://github.com/TryGhost/node-sqlite3/wiki/API#configureoption-value
+    return this
+  }
+
+  public run(sql: string, ...params: any[]): this {
+    const { args, callback } = popCallback<RowCallback>(params)
+    void this.getConnection()
+      .sendCommands(prepareSql(sql, ...args))
+      .then(rowset => {
+        callback?.call(this, null)
+      })
+      .catch(error => {
+        callback?.call(this, error)
+        console.error(error)
+      })
+
+    return this
+  }
+
   public get(sql: string, ...params: any[]): this {
     const { args, callback } = popCallback<RowCallback>(params)
     void this.getConnection()
@@ -159,7 +181,14 @@ export class Database {
     return this
   }
 
-  /** Close database connections then callback */
+  /**
+   * If the optional callback is provided, this function will be called when the
+   * database was closed successfully or when an error occurred. The first argument
+   * is an error object. When it is null, closing succeeded. If no callback is provided
+   * and an error occurred, an error event with the error object as the only parameter
+   * will be emitted on the database object. If closing succeeded, a close event with no
+   * parameters is emitted, regardless of whether a callback was provided or not.
+   */
   public close(callback?: ErrorCallback): void {
     const closingPromises = this._connections.map(connection =>
       connection.close().then(() => {
@@ -170,10 +199,14 @@ export class Database {
       .then(() => {
         // all connections closed
         callback?.call(this, null)
+
+        // TODO emit close event
       })
       .catch(error => {
         // emit error event
         callback?.call(this, error)
+
+        // TODO emit error event
       })
   }
 
