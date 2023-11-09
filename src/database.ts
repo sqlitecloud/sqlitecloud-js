@@ -26,7 +26,7 @@ export class Statement {
 
 export class Database {
   /** Create and initialize a database from a full configuration object, or connection string */
-  constructor(config: SQLiteCloudConfig | string, mode?: string | null, callback?: (this: Database) => void) {
+  constructor(config: SQLiteCloudConfig | string, _mode?: string | null, callback?: (this: Database) => void) {
     this._config = typeof config === 'string' ? { connectionString: config } : config
 
     // opens first connection to the database automatically
@@ -67,8 +67,7 @@ export class Database {
   }
 
   /** Set a configuration option for the database */
-  // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-  public configure(option, value): this {
+  public configure(_option: any, _value: any): this {
     // https://github.com/TryGhost/node-sqlite3/wiki/API#configureoption-value
     return this
   }

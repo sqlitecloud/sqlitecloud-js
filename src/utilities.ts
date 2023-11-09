@@ -56,7 +56,7 @@ export function prepareSql(sql: string, ...params: (SQLiteTypes | SQLiteTypes[])
 
     let sqlParameter: SQLiteTypes
     if (params[0] && typeof params[0] === 'object' && !(params[0] instanceof Buffer)) {
-      sqlParameter = params[0][index]
+      sqlParameter = params[0][index] as SQLiteTypes
     }
     if (!sqlParameter) {
       if (index > params.length) {
