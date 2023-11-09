@@ -71,15 +71,15 @@ describe('Database', () => {
             expect(rows).toBeDefined()
             expect(rows).toHaveLength(3503)
             expect(rows[0]).toMatchObject({
-              AlbumId: NaN,
-              Bytes: 1117033,
+              AlbumId: 1,
+              Bytes: 11170334,
               Composer: 'Angus Young, Malcolm Young, Brian Johnson',
-              GenreId: NaN,
-              MediaTypeId: NaN,
-              Milliseconds: 34371,
+              GenreId: 1,
+              MediaTypeId: 1,
+              Milliseconds: 343719,
               Name: 'For Those About To Rock (We Salute You)',
-              TrackId: NaN,
-              UnitPrice: 0.9
+              TrackId: 1,
+              UnitPrice: 0.99
             })
 
             db.close(error => {
@@ -99,15 +99,15 @@ describe('Database', () => {
           expect(rows).toBeDefined()
           expect(rows).toHaveLength(8)
           expect(rows[0]).toMatchObject({
-            AlbumId: NaN,
-            Bytes: 1084761,
+            AlbumId: 4,
+            Bytes: 10847611,
             Composer: 'AC/DC',
-            GenreId: NaN,
-            MediaTypeId: NaN,
-            Milliseconds: 33118,
+            GenreId: 1,
+            MediaTypeId: 1,
+            Milliseconds: 331180,
             Name: 'Go Down',
-            TrackId: 1,
-            UnitPrice: 0.9
+            TrackId: 15,
+            UnitPrice: 0.99
           })
 
           db.close(error => {
