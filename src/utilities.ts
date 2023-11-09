@@ -4,7 +4,7 @@
 
 import { SQLiteCloudError } from './protocol'
 
-export type SQLiteTypes = string | number | boolean | Record<string, unknown> | Buffer | undefined | null
+export type SQLiteTypes = string | number | boolean | Record<string | number, unknown> | Buffer | undefined | null
 
 /** Takes a generic value and escapes it so it can replace ? as a binding in a prepared SQL statement */
 export function escapeSqlParameter(param: SQLiteTypes): string {
@@ -48,32 +48,37 @@ export function prepareSql(sql: string, ...params: (SQLiteTypes | SQLiteTypes[])
     params = params[0]
   }
 
-  // replace $named parameters passed as an object?
+  // replace ? or ?idx parameters passed as args or as an array
+  let parameterIndex = 1
+  let preparedSql = sql.replace(/\?(\d+)?/g, (match: string, matchIndex: string) => {
+    const index = matchIndex ? parseInt(matchIndex) : parameterIndex
+    parameterIndex++
+
+    let sqlParameter: SQLiteTypes
+    if (params[0] && typeof params[0] === 'object' && !(params[0] instanceof Buffer)) {
+      sqlParameter = params[0][index]
+    }
+    if (!sqlParameter) {
+      if (index > params.length) {
+        throw new SQLiteCloudError('Not enough parameters')
+      }
+      sqlParameter = params[index - 1] as SQLiteTypes
+    }
+
+    return sqlParameter ? escapeSqlParameter(sqlParameter) : 'NULL'
+  })
+
+  // replace $named or :named parameters passed as an object
   if (params?.length === 1 && params[0] && typeof params[0] === 'object') {
     const namedParams = params[0] as Record<string, SQLiteTypes>
     for (const [paramKey, param] of Object.entries(namedParams)) {
-      if (!paramKey.startsWith('$')) {
-        throw new SQLiteCloudError(`Invalid named parameter: ${paramKey}`)
+      const firstChar = paramKey.charAt(0)
+      if (firstChar == '$' || firstChar == ':' || firstChar == '@') {
+        const escapedParam = escapeSqlParameter(param)
+        preparedSql = preparedSql.replace(new RegExp(`\\${paramKey}`, 'g'), escapedParam)
       }
-      const escapedParam = escapeSqlParameter(param)
-      sql = sql.replace(new RegExp(`\\${paramKey}`, 'g'), escapedParam)
     }
-    return sql
   }
-
-  // replace ? parameters passed as args or as an array
-  let parameterIndex = 0
-  const preparedSql = sql.replace(/\?/g, () => {
-    if (parameterIndex >= params.length) {
-      throw new SQLiteCloudError('Not enough parameters')
-    }
-    // replace ? placeholder with a safely escaped parameter
-    const sqlParameter = params[parameterIndex++]
-    if (sqlParameter) {
-      return escapeSqlParameter(sqlParameter as SQLiteTypes)
-    }
-    return 'NULL'
-  })
 
   return preparedSql
 }

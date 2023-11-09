@@ -17,6 +17,17 @@ describe('prepareSql', () => {
     expect(sql).toBe("SELECT * FROM users WHERE name = 'John' AND last_name = 'Doe'")
   })
 
+  it('should replace ?2 parameter with index key', () => {
+    const sql = prepareSql('UPDATE tbl SET name = ?2 WHERE id = ?', [2, 'bar'])
+    expect(sql).toBe("UPDATE tbl SET name = 'bar' WHERE id = 'bar'")
+  })
+
+  it('should replace ?5 parameter with index key in object', () => {
+    // ?5 will resolve to key '5' in the object, ? will resolve to key '2'
+    const sql = prepareSql('UPDATE tbl SET name = ?5 WHERE id = ?', { 2: 42, 5: 'bar' })
+    expect(sql).toBe("UPDATE tbl SET name = 'bar' WHERE id = 42")
+  })
+
   it('should replace multiple ? parameter passed as array', () => {
     const sql = prepareSql('SELECT * FROM users WHERE name = ? AND last_name = ?', ['John', 'Doe'])
     expect(sql).toBe("SELECT * FROM users WHERE name = 'John' AND last_name = 'Doe'")
@@ -27,7 +38,7 @@ describe('prepareSql', () => {
     expect(sql).toBe("SELECT * FROM phone WHERE name = 'Jack''s phone'")
   })
 
-  it('should hANDle ? parameter with sql injection threat', () => {
+  it('should handle ? parameter with sql injection threat', () => {
     const sql = prepareSql('SELECT * FROM phone WHERE name = ?', "Jack's phone; DROP TABLE phone;")
     expect(sql).toBe("SELECT * FROM phone WHERE name = 'Jack''s phone; DROP TABLE phone;'")
   })
@@ -67,11 +78,5 @@ describe('prepareSql', () => {
   it('should replace multiple $named parameters', () => {
     const sql = prepareSql('SELECT * FROM users WHERE first = $first AND last = $last', { $first: 'John', $last: 'Doe' })
     expect(sql).toBe("SELECT * FROM users WHERE first = 'John' AND last = 'Doe'")
-  })
-
-  it("should throw if $named parameter doesn't start with $ sign", () => {
-    expect(() => {
-      prepareSql('SELECT * FROM users WHERE first = $first AND last = €last', { $first: 'John', '€last': 'Doe' })
-    }).toThrow(SQLiteCloudError)
   })
 })
