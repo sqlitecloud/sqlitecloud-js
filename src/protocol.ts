@@ -665,9 +665,9 @@ function parseData(data: Buffer | Buffer[]): any {
 
   switch (dataType) {
     case CMD_INT:
-      return parseInt(buffer.subarray(1, buffer.length - 1).toString('utf8'))
+      return parseInt(buffer.subarray(1, buffer.length).toString())
     case CMD_FLOAT:
-      return parseFloat(buffer.subarray(1, buffer.length - 1).toString('utf8'))
+      return parseFloat(buffer.subarray(1, buffer.length).toString())
     case CMD_NULL:
       return null
     case CMD_STRING:

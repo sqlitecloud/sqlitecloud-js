@@ -219,8 +219,8 @@ describe('protocol', () => {
       const arrayrowset = rowset as any as Array<any>
       expect(arrayrowset.length).toBe(5)
       expect(arrayrowset[0]).toBe('Hello World')
-      expect(arrayrowset[1]).toBe(12345)
-      expect(arrayrowset[2]).toBe(3.141)
+      expect(arrayrowset[1]).toBe(123456)
+      expect(arrayrowset[2]).toBe(3.1415)
       expect(arrayrowset[3]).toBeNull()
     })
 
@@ -248,7 +248,7 @@ describe('protocol', () => {
       rowset = await connection.sendCommands('SELECT * FROM tracks LIMIT 3;')
       const dumped = rowset.dump()
       expect(dumped.toString()).toBe(
-        '         |NaN |For Those About To Rock (We Salute You) |NaN |NaN |NaN |Angus Young, Malcolm Young, Brian Johnson |34371 |1117033 |0.9 |,         |NaN |Balls to the Wall |NaN |NaN |NaN |null |34256 |551042 |0.9 |,         |NaN |Fast As a Shark |NaN |NaN |NaN |F. Baltes, S. Kaufman, U. Dirkscneider & W. Hoffman |23061 |399099 |0.9 |'
+        '         |1 |For Those About To Rock (We Salute You) |1 |1 |1 |Angus Young, Malcolm Young, Brian Johnson |343719 |11170334 |0.99 |,         |2 |Balls to the Wall |2 |2 |1 |null |342562 |5510424 |0.99 |,         |3 |Fast As a Shark |3 |2 |1 |F. Baltes, S. Kaufman, U. Dirkscneider & W. Hoffman |230619 |3990994 |0.99 |'
       )
     })
   })

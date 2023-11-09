@@ -12,15 +12,22 @@ const LONG_TIMEOUT = 30 * 1000
 
 const testingDatabaseUrl = 'sqlitecloud://admin:uN3ARhdcKQ@rymbzy6am.sqlite.cloud:8860/testing.db?sqliteMode=1'
 
+// Function to generate a random name
+const generateRandomName = (): string => {
+  const firstName = ['John', 'Jane', 'Alex', 'Laura', 'Tom', 'Linda']
+  const lastName = ['Doe', 'Smith', 'Johnson', 'Williams', 'Brown', 'Davis']
+  return `${firstName[Math.floor(Math.random() * firstName.length)]} ${lastName[Math.floor(Math.random() * lastName.length)]}`
+}
+
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 describe('Database', () => {
   describe('run', () => {
-    it("UPDATE people SET name = 'Charlie Brown' WHERE id = 3", done => {
+    it('simple update', done => {
       const updateSql = "UPDATE people SET name = 'Charlie Brown' WHERE id = 3; UPDATE people SET name = 'David Bowie' WHERE id = 4; "
 
       const db = new Database(testingDatabaseUrl, null, () => {
-        db.run(updateSql, (err: Error) => {
+        db.run(updateSql, (err: Error, results: any) => {
           expect(err).toBeNull()
           // TODO sqlitecloud-js // Database.run should return number of rows modified and lastId #15
 
@@ -31,6 +38,27 @@ describe('Database', () => {
         })
       })
     })
+
+    it(
+      'insert with parameter value',
+      done => {
+        const insertSql = `INSERT INTO people (name) VALUES ('${generateRandomName()}');`
+
+        const db = new Database(testingDatabaseUrl, null, () => {
+          db.verbose()
+          db.run(insertSql, (err: Error, results: any) => {
+            expect(err).toBeNull()
+            // TODO sqlitecloud-js // Database.run should return number of rows modified and lastId #15
+
+            db.close(error => {
+              expect(error).toBeNull()
+              done()
+            })
+          })
+        })
+      },
+      LONG_TIMEOUT
+    )
   })
 
   describe('all', () => {
@@ -98,15 +126,15 @@ describe('Database', () => {
           expect(err).toBeNull()
           expect(row).toBeDefined()
           expect(row).toMatchObject({
-            AlbumId: NaN,
-            Bytes: 1117033,
+            AlbumId: 1,
+            Bytes: 11170334,
             Composer: 'Angus Young, Malcolm Young, Brian Johnson',
-            GenreId: NaN,
-            MediaTypeId: NaN,
-            Milliseconds: 34371,
+            GenreId: 1,
+            MediaTypeId: 1,
+            Milliseconds: 343719,
             Name: 'For Those About To Rock (We Salute You)',
-            TrackId: NaN,
-            UnitPrice: 0.9
+            TrackId: 1,
+            UnitPrice: 0.99
           })
 
           db.close(error => {

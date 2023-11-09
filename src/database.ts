@@ -57,6 +57,15 @@ export class Database {
   // public methods
   //
 
+  /** Enable verbose mode */
+  public verbose(): this {
+    for (const connection of this._connections) {
+      connection._config.verbose = true
+    }
+    this._config.verbose = true
+    return this
+  }
+
   /** Set a configuration option for the database */
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   public configure(option, value): this {
@@ -68,8 +77,8 @@ export class Database {
     const { args, callback } = popCallback<RowCallback>(params)
     void this.getConnection()
       .sendCommands(prepareSql(sql, ...args))
-      .then(rowset => {
-        callback?.call(this, null)
+      .then(results => {
+        callback?.call(this, null, results)
       })
       .catch(error => {
         callback?.call(this, error)
