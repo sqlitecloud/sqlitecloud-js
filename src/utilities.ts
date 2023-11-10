@@ -82,3 +82,22 @@ export function prepareSql(sql: string, ...params: (SQLiteTypes | SQLiteTypes[])
 
   return preparedSql
 }
+
+/**
+ * Many of the methods in our API may contain a callback as their last argument.
+ * This method will take the arguments array passed to the method and return an object
+ * containing the arguments array with the callbacks removed (if any), and the callback itself.
+ * If there are multiple callbacks, the first one is returned as 'callback' and the last one
+ * as 'completeCallback'.
+ */
+export function popCallback<T extends ErrorCallback = ErrorCallback>(args: any[]): { args: any[]; callback?: T | undefined; complete?: ErrorCallback } {
+  // at least 1 callback?
+  if (args && args.length > 0 && typeof args[args.length - 1] === 'function') {
+    // at least 2 callbacks?
+    if (args.length > 1 && typeof args[args.length - 2] === 'function') {
+      return { args: args.slice(0, -2), callback: args[args.length - 2] as T, complete: args[args.length - 1] as T }
+    }
+    return { args: args.slice(0, -1), callback: args[args.length - 1] as T }
+  }
+  return { args }
+}

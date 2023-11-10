@@ -9,7 +9,8 @@
 
 import { SQLiteCloudConnection } from './protocol'
 import { SQLiteCloudConfig } from './types/sqlitecloudconfig'
-import { prepareSql } from './utilities'
+import { prepareSql, popCallback } from './utilities'
+import { Statement } from './statement'
 
 export type ErrorCallback = (error: Error | null) => void
 export type RowsCallback = (error: Error | null, rows?: { [column: string]: any }[]) => void
@@ -20,21 +21,35 @@ export class RunResult {
   //
 }
 
-export class Statement {
-  //
-}
-
+/**
+ * Creating a Database object automatically opens a connection to the SQLite database.
+ * When the connection is established the Database object emits an open event and calls
+ * the optional provided callback. If the connection cannot be established an error event
+ * will be emitted and the optional callback is called with the error information.
+ */
 export class Database {
   /** Create and initialize a database from a full configuration object, or connection string */
-  constructor(config: SQLiteCloudConfig | string, _mode?: string | null, callback?: (this: Database) => void) {
+  constructor(config: SQLiteCloudConfig | string, _mode?: string | null, callback?: ErrorCallback) {
     this._config = typeof config === 'string' ? { connectionString: config } : config
 
     // opens first connection to the database automatically
     const connection = new SQLiteCloudConnection(this._config)
     this._connections = [connection]
-    void connection.connect().then(() => {
-      callback?.call(this)
-    })
+    void connection
+      .connect()
+      .then(() => {
+        if (callback) {
+          callback.call(this, null)
+        }
+        this.emitEvent('open')
+      })
+      .catch(error => {
+        if (callback) {
+          callback.call(this, error)
+        } else {
+          this.emitEvent('error', error)
+        }
+      })
   }
 
   /** Configuration used to open database connections */
@@ -51,6 +66,14 @@ export class Database {
   private getConnection(): SQLiteCloudConnection {
     // TODO sqlitecloud-js / implement database connection pool #10
     return this._connections?.[0]
+  }
+
+  /** Emits given event with optional arguments */
+  private emitEvent(event: string, ...args: any[]): void {
+    // TODO sqlitecloud-js / database emit event #16
+    if (this._config.verbose) {
+      console.log(`Database.emitEvent - '${event}'`, ...args)
+    }
   }
 
   //
@@ -72,6 +95,13 @@ export class Database {
     return this
   }
 
+  /**
+   * Runs the SQL query with the specified parameters and calls the callback afterwards.
+   * The callback will contain the results passed back from the server, for example in the
+   * case of an update or insert, these would contain the number of rows modified, etc.
+   * It does not retrieve any result data. The function returns the Database object for
+   * which it was called to allow for function chaining.
+   */
   public run(sql: string, ...params: any[]): this {
     const { args, callback } = popCallback<RowCallback>(params)
     void this.getConnection()
@@ -80,40 +110,76 @@ export class Database {
         callback?.call(this, null, results)
       })
       .catch(error => {
-        callback?.call(this, error)
-        console.error(error)
+        if (callback) {
+          callback?.call(this, error)
+        } else {
+          this.emitEvent('error', error)
+        }
       })
 
     return this
   }
 
+  /**
+   * Runs the SQL query with the specified parameters and calls the callback with
+   * a subsequent result row. The function returns the Database object to allow for
+   * function chaining. The parameters are the same as the Database#run function,
+   * with the following differences: The signature of the callback is `function(err, row) {}`.
+   * If the result set is empty, the second parameter is undefined, otherwise it is an
+   * object containing the values for the first row. The property names correspond to t
+   * he column names of the result set. It is impossible to access them by column index;
+   * the only supported way is by column name.
+   */
   public get(sql: string, ...params: any[]): this {
     const { args, callback } = popCallback<RowCallback>(params)
     void this.getConnection()
       .sendCommands(prepareSql(sql, ...args))
       .then(rowset => {
-        const rows = rowset.toArray(0, 1)
-        callback?.call(this, null, rows[0])
+        if (callback) {
+          const rows = rowset?.toArray(0, 1)
+          callback.call(this, null, rows[0])
+        }
       })
       .catch(error => {
-        callback?.call(this, error)
-        console.error(error)
+        if (callback) {
+          callback.call(this, error)
+        } else {
+          this.emitEvent('error', error)
+        }
       })
 
     return this
   }
 
+  /**
+   * Runs the SQL query with the specified parameters and calls the callback
+   * with all result rows afterwards. The function returns the Database object to
+   * allow for function chaining. The parameters are the same as the Database#run
+   * function, with the following differences: The signature of the callback is
+   * function(err, rows) {}. rows is an array. If the result set is empty, it will
+   * be an empty array, otherwise it will have an object for each result row which
+   * in turn contains the values of that row, like the Database#get function.
+   * Note that it first retrieves all result rows and stores them in memory.
+   * For queries that have potentially large result sets, use the Database#each
+   * function to retrieve all rows or Database#prepare followed by multiple Statement#get
+   * calls to retrieve a previously unknown amount of rows.
+   */
   public all(sql: string, ...params: any[]): this {
     const { args, callback } = popCallback<RowsCallback>(params)
     void this.getConnection()
       .sendCommands(prepareSql(sql, ...args))
       .then(rowset => {
-        const rows = rowset.toArray()
-        callback?.call(this, null, rows)
+        if (callback) {
+          const rows = rowset ? rowset.toArray() : []
+          callback.call(this, null, rows)
+        }
       })
       .catch(error => {
-        callback?.call(this, error)
-        console.error(error)
+        if (callback) {
+          callback.call(this, error)
+        } else {
+          this.emitEvent('error', error)
+        }
       })
 
     return this
@@ -158,13 +224,23 @@ export class Database {
             rowCallback.call(this, null, row)
           }
         }
-        completeCallback?.call(this, null, rowset.numberOfRows)
+        if (completeCallback) {
+          completeCallback.call(this, null, rowset.numberOfRows)
+        }
       })
       .catch(error => {
-        rowCallback?.call(this, error)
+        if (rowCallback) {
+          rowCallback.call(this, error)
+        } else {
+          this.emitEvent('error', error)
+        }
       })
 
     return this
+  }
+
+  public prepare(sql: string, ...params: any[]): Statement {
+    return new Statement(this, sql, ...params)
   }
 
   /**
@@ -184,8 +260,13 @@ export class Database {
         callback?.call(this, null)
       })
       .catch(error => {
-        callback?.call(this, error)
+        if (callback) {
+          callback.call(this, error)
+        } else {
+          this.emitEvent('error', error)
+        }
       })
+
     return this
   }
 
@@ -206,16 +287,36 @@ export class Database {
     Promise.all(closingPromises)
       .then(() => {
         // all connections closed
-        callback?.call(this, null)
-
-        // TODO emit close event
+        if (callback) {
+          callback.call(this, null)
+        }
+        this.emitEvent('close')
       })
       .catch(error => {
-        // emit error event
-        callback?.call(this, error)
-
-        // TODO emit error event
+        if (callback) {
+          callback.call(this, error)
+        } else {
+          this.emitEvent('error', error)
+        }
       })
+  }
+
+  /**
+   * Loads a compiled SQLite extension into the database connection object.
+   * @param path Filename of the extension to load.
+   * @param callback  If provided, this function will be called when the extension
+   * was loaded successfully or when an error occurred. The first argument is an
+   * error object. When it is null, loading succeeded. If no callback is provided
+   * and an error occurred, an error event with the error object as the only parameter
+   * will be emitted on the database object.
+   */
+  public loadExtension(_path: string, callback?: ErrorCallback) {
+    // TODO sqlitecloud-js / implement database loadExtension #17
+    if (callback) {
+      callback.call(this, new Error('Database.loadExtension - Not implemented'))
+    } else {
+      this.emitEvent('error', new Error('Database.loadExtension - Not implemented'))
+    }
   }
 
   /**
@@ -227,20 +328,4 @@ export class Database {
   public interrupt(): void {
     // TODO sqlitecloud-js / implement database interrupt #13
   }
-}
-
-//
-// utility methods
-//
-
-/**
- * Many of the methods in our API may contain a callback as their last argument.
- * This method will take the arguments array passed to the method and return an object
- * containing the arguments array with the callback removed (if any), and the callback itself.
- */
-function popCallback<T extends (err: Error | null) => void = (err: Error | null) => void>(args: any[]): { args: any[]; callback?: T | undefined } {
-  if (args && args.length > 0 && typeof args[args.length - 1] === 'function') {
-    return { args: args.slice(0, -1), callback: args[args.length - 1] as T }
-  }
-  return { args }
 }
