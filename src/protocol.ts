@@ -523,7 +523,7 @@ function parseArray(buffer: Buffer, spaceIndex: number): any[] {
         parsedData.push(parseData(arrayItems.subarray(0, arrayItems.indexOf(' ') + 1 + lenToRead)))
         arrayItems = arrayItems.subarray(arrayItems.indexOf(' ') + 1 + lenToRead, arrayItems.length)
       } else {
-        parsedData.push(parseData(arrayItems.subarray(0, arrayItems.indexOf(' '))))
+        parsedData.push(parseData(arrayItems.subarray(0, arrayItems.indexOf(' ') + 1)))
         arrayItems = arrayItems.subarray(arrayItems.indexOf(' ') + 1, arrayItems.length)
       }
     }
@@ -566,7 +566,7 @@ function parseRowset(buffer: Buffer, spaceIndex: number): SQLiteCloudRowset {
       data.push(rowset.subarray(0, rowset.indexOf(' ') + 1 + commandLength))
       rowset = rowset.subarray(rowset.indexOf(' ') + 1 + commandLength, rowset.length)
     } else {
-      data.push(rowset.subarray(0, rowset.indexOf(' ')))
+      data.push(rowset.subarray(0, rowset.indexOf(' ') + 1))
       rowset = rowset.subarray(rowset.indexOf(' ') + 1, rowset.length)
     }
   }
@@ -665,9 +665,9 @@ function parseData(data: Buffer | Buffer[]): any {
 
   switch (dataType) {
     case CMD_INT:
-      return parseInt(buffer.subarray(1, buffer.length).toString())
+      return parseInt(buffer.subarray(1, buffer.length - 1).toString())
     case CMD_FLOAT:
-      return parseFloat(buffer.subarray(1, buffer.length).toString())
+      return parseFloat(buffer.subarray(1, buffer.length - 1).toString())
     case CMD_NULL:
       return null
     case CMD_STRING:
