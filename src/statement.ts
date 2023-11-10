@@ -11,7 +11,11 @@ export class Statement {
     const { args, callback } = popCallback<ErrorCallback>(params)
     this._database = database
     this._sql = sql
-    this.bind(...args, callback)
+    if (args?.length > 0) {
+      this.bind(...args, callback)
+    } else {
+      callback?.call(this, null)
+    }
   }
 
   /** Statement belongs to this database */
@@ -58,7 +62,7 @@ export class Statement {
    */
   public run(...params: any[]): this {
     const { args, callback } = popCallback<RowCallback>(params || [])
-    if (args) {
+    if (args?.length > 0) {
       // apply new bindings then execute
       this.bind(...args, (error: Error) => {
         if (error) {
@@ -85,7 +89,7 @@ export class Statement {
    */
   public get(...params: any[]): this {
     const { args, callback } = popCallback<RowCallback>(params || [])
-    if (args) {
+    if (args?.length > 0) {
       // apply new bindings then execute
       this.bind(...args, (error: Error) => {
         if (error) {
@@ -109,7 +113,7 @@ export class Statement {
    */
   public all(...params: any[]): this {
     const { args, callback } = popCallback<RowsCallback>(params || [])
-    if (args) {
+    if (args?.length > 0) {
       // apply new bindings then execute
       this.bind(...args, (error: Error) => {
         if (error) {
@@ -133,7 +137,7 @@ export class Statement {
    */
   public each(sql: string, ...params: any[]): this {
     const { args, callback, complete } = popCallback<RowCallback>(params)
-    if (args) {
+    if (args?.length > 0) {
       // apply new bindings then execute
       this.bind(...args, (error: Error) => {
         if (error) {
