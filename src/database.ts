@@ -7,7 +7,7 @@
 // https://github.com/TryGhost/node-sqlite3
 // https://github.com/TryGhost/node-sqlite3/blob/master/lib/sqlite3.d.ts
 
-import { SQLiteCloudConnection } from './protocol'
+import { SQLiteCloudConnection, SQLiteCloudRowset } from './protocol'
 import { SQLiteCloudConfig } from './types/sqlitecloudconfig'
 import { prepareSql, popCallback } from './utilities'
 import { Statement } from './statement'
@@ -167,10 +167,10 @@ export class Database {
   public all(sql: string, ...params: any[]): this {
     const { args, callback } = popCallback<RowsCallback>(params)
     void this.getConnection()
-      .sendCommands(prepareSql(sql, ...args))
+      .sendCommands(args?.length > 0 ? prepareSql(sql, ...args) : sql)
       .then(rowset => {
         if (callback) {
-          const rows = rowset ? rowset.toArray() : []
+          const rows = rowset && rowset instanceof SQLiteCloudRowset ? rowset.toArray() : rowset
           callback.call(this, null, rows)
         }
       })
@@ -201,36 +201,24 @@ export class Database {
    */
   public each(sql: string, ...params: any[]): this {
     // extract optional parameters and one or two callbacks
-    let args = params
-    let rowCallback: RowCallback
-    let completeCallback: RowCountCallback
-    if (params?.length > 0 && typeof params[params.length - 1] === 'function') {
-      if (params?.length > 1 && typeof params[params.length - 2] === 'function') {
-        rowCallback = params[params.length - 2]
-        completeCallback = params[params.length - 1]
-        args = params.slice(0, -2)
-      } else {
-        rowCallback = params[params.length - 1]
-        args = params.slice(0, -1)
-      }
-    }
+    const { args, callback, complete } = popCallback<RowCallback>(params)
 
     void this.getConnection()
-      .sendCommands(prepareSql(sql, ...args))
+      .sendCommands(args?.length > 0 ? prepareSql(sql, ...args) : sql)
       .then(rowset => {
-        if (rowCallback) {
+        if (callback) {
           const rows = rowset.toArray()
           for (const row of rows) {
-            rowCallback.call(this, null, row)
+            callback.call(this, null, row)
           }
         }
-        if (completeCallback) {
-          completeCallback.call(this, null, rowset.numberOfRows)
+        if (complete) {
+          ;(complete as RowCountCallback).call(this, null, rowset.numberOfRows)
         }
       })
       .catch(error => {
-        if (rowCallback) {
-          rowCallback.call(this, error)
+        if (callback) {
+          callback.call(this, error)
         } else {
           this.emitEvent('error', error)
         }
@@ -239,8 +227,16 @@ export class Database {
     return this
   }
 
+  /**
+   * Prepares the SQL statement and optionally binds the specified parameters and
+   * calls the callback when done. The function returns a Statement object.
+   * When preparing was successful, the first and only argument to the callback
+   * is null, otherwise it is the error object. When bind parameters are supplied,
+   * they are bound to the prepared statement before calling the callback.
+   */
   public prepare(sql: string, ...params: any[]): Statement {
-    return new Statement(this, sql, ...params)
+    const { args, callback } = popCallback(params)
+    return new Statement(this, sql, ...args, callback)
   }
 
   /**
