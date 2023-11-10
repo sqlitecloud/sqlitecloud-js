@@ -543,100 +543,99 @@ function parseArray(buffer: Buffer, spaceIndex: number): any[] {
   return parsedData
 }
 
-/** Parse a set of rows (no chunking) */
-function parseRowset(buffer: Buffer, spaceIndex: number): SQLiteCloudRowset {
-  let rowset = buffer.subarray(spaceIndex + 1, buffer.length)
-
-  // pop a value and move the buffer forward...
+/** Extract column names and, optionally, more metadata out of a rowset's header */
+function parseRowsetColumnsMetadata(buffer: Buffer, metadata: SQLCloudRowsetMetadata): Buffer {
   function popForward() {
-    const { data, buffer } = popData(rowset) // in parseRowset scope
-    rowset = buffer
+    const { data, buffer: fwdBuffer } = popData(buffer) // buffer in parent scope
+    buffer = fwdBuffer
     return data
   }
 
-  // extract rowset metadata
-  const version = parseInt(rowset.subarray(rowset.indexOf(':') + 1, rowset.indexOf(' ') + 1).toString('utf8'))
-  rowset = rowset.subarray(rowset.indexOf(' ') + 1, rowset.length)
-  const numberOfRows = parseInt(rowset.subarray(0, rowset.indexOf(' ') + 1).toString('utf8'))
-  rowset = rowset.subarray(rowset.indexOf(' ') + 1, rowset.length)
-  const numberOfColumns = parseInt(rowset.subarray(0, rowset.indexOf(' ') + 1).toString('utf8'))
-  rowset = rowset.subarray(rowset.indexOf(' ') + 1, rowset.length)
-
-  // extract columns names (version 1 has only column names, version 2 has extended metadata)
-  const metadata: SQLCloudRowsetMetadata = { version, numberOfColumns, numberOfRows, columns: [] }
-  const columns = metadata.columns
-  for (let i = 0; i < numberOfColumns; i++) {
-    columns.push({ name: popForward() })
+  for (let i = 0; i < metadata.numberOfColumns; i++) {
+    metadata.columns.push({ name: popForward() })
   }
 
   // extract additional metadata if rowset has version 2
-  if (version == 2) {
-    for (let i = 0; i < numberOfColumns; i++) columns[i].type = popForward()
-    for (let i = 0; i < numberOfColumns; i++) columns[i].database = popForward()
-    for (let i = 0; i < numberOfColumns; i++) columns[i].table = popForward()
-    for (let i = 0; i < numberOfColumns; i++) columns[i].column = popForward() // original column name
+  if (metadata.version == 2) {
+    for (let i = 0; i < metadata.numberOfColumns; i++) metadata.columns[i].type = popForward()
+    for (let i = 0; i < metadata.numberOfColumns; i++) metadata.columns[i].database = popForward()
+    for (let i = 0; i < metadata.numberOfColumns; i++) metadata.columns[i].table = popForward()
+    for (let i = 0; i < metadata.numberOfColumns; i++) metadata.columns[i].column = popForward() // original column name
   }
+
+  return buffer
+}
+
+/** Parse a set of rows (no chunking) */
+function parseRowset(buffer: Buffer, spaceIndex: number): SQLiteCloudRowset {
+  buffer = buffer.subarray(spaceIndex + 1, buffer.length)
+
+  // extract rowset header
+  const version = parseInt(buffer.subarray(buffer.indexOf(':') + 1, buffer.indexOf(' ') + 1).toString('utf8'))
+  buffer = buffer.subarray(buffer.indexOf(' ') + 1, buffer.length)
+  const numberOfRows = parseInt(buffer.subarray(0, buffer.indexOf(' ') + 1).toString('utf8'))
+  buffer = buffer.subarray(buffer.indexOf(' ') + 1, buffer.length)
+  const numberOfColumns = parseInt(buffer.subarray(0, buffer.indexOf(' ') + 1).toString('utf8'))
+  buffer = buffer.subarray(buffer.indexOf(' ') + 1, buffer.length)
+
+  // extract columns names (version 1 has only column names, version 2 has extended metadata)
+  const metadata: SQLCloudRowsetMetadata = { version, numberOfColumns, numberOfRows, columns: [] }
+  buffer = parseRowsetColumnsMetadata(buffer, metadata)
 
   // decode each rowset item
   const data = []
   for (let j = 0; j < numberOfRows * numberOfColumns; j++) {
-    data.push(popForward())
+    const { data: rowData, buffer: fwdBuffer } = popData(buffer)
+    data.push(rowData)
+    buffer = fwdBuffer
   }
 
   return new SQLiteCloudRowset(metadata, data)
 }
 
-/** Parse first integer followed by space from a buffer */
-function popInt(buffer: Buffer, fromIndex: number = 0): number {
-  const spaceIndex = buffer.indexOf(' ', fromIndex)
-  console.assert(spaceIndex !== -1)
-  return parseInt(buffer.subarray(0, spaceIndex).toString())
-}
+function parseRowsetChunks(buffers: Buffer[]) {
+  const metadata: SQLCloudRowsetMetadata = { version: 1, numberOfColumns: 0, numberOfRows: 0, columns: [] }
+  const data = []
 
-function parseRowsetChunks(buffer: Buffer[]) {
-  // @ts-ignore
-  let metadata: SQLCloudRowsetMetadata = { version: 1, numberOfColumns: 0, numberOfRows: 0, columns: [] }
-  const rowData = []
+  for (let i = 0; i < buffers.length; i++) {
+    let buffer = buffers[i]
+    buffer = buffer.subarray(buffer.indexOf(' ') + 1, buffer.length)
 
-  for (let i = 0; i < buffer.length; i++) {
-    let rowset = buffer[i]
-    rowset = rowset.subarray(rowset.indexOf(' ') + 1, rowset.length)
+    const chunkIndex = parseInt(buffer.subarray(0, buffer.indexOf(' ')).toString('utf8'))
+    metadata.version = parseInt(buffer.subarray(buffer.indexOf(':') + 1, buffer.indexOf(' ')).toString('utf8'))
+    buffer = buffer.subarray(buffer.indexOf(' ') + 1, buffer.length)
 
-    const chunkIndex = parseInt(rowset.subarray(0, rowset.indexOf(' ')).toString('utf8'))
-    metadata.version = parseInt(rowset.subarray(rowset.indexOf(':') + 1, rowset.indexOf(' ')).toString('utf8'))
-    rowset = rowset.subarray(rowset.indexOf(' ') + 1, rowset.length)
-
-    const nRowsSingleChunk = parseInt(rowset.subarray(0, rowset.indexOf(' ') + 1).toString('utf8'))
+    const nRowsSingleChunk = parseInt(buffer.subarray(0, buffer.indexOf(' ') + 1).toString('utf8'))
     metadata.numberOfRows += nRowsSingleChunk
-    rowset = rowset.subarray(rowset.indexOf(' ') + 1, rowset.length)
+    buffer = buffer.subarray(buffer.indexOf(' ') + 1, buffer.length)
 
-    metadata.numberOfColumns = parseInt(rowset.subarray(0, rowset.indexOf(' ') + 1).toString('utf8'))
-    rowset = rowset.subarray(rowset.indexOf(' ') + 1, rowset.length)
+    metadata.numberOfColumns = parseInt(buffer.subarray(0, buffer.indexOf(' ') + 1).toString('utf8'))
+    buffer = buffer.subarray(buffer.indexOf(' ') + 1, buffer.length)
 
-    // first chunk? extract metadata
+    // first chunk? extract columns metadata
     if (chunkIndex === 1) {
-      // extract columns names
-      for (let j = 0; j < metadata.numberOfColumns; j++) {
-        const { data, buffer } = popData(rowset)
-        metadata.columns.push({ name: data })
-        rowset = buffer
-      }
+      buffer = parseRowsetColumnsMetadata(buffer, metadata)
     }
 
     // extract single rowset row
     for (let k = 0; k < nRowsSingleChunk * metadata.numberOfColumns; k++) {
-      const { data, buffer } = popData(rowset)
-      rowData.push(data)
-      rowset = buffer
+      const { data: itemData, buffer: fwdBuffer } = popData(buffer)
+      data.push(itemData)
+      buffer = fwdBuffer
     }
   }
 
-  return new SQLiteCloudRowset(metadata, rowData)
+  return new SQLiteCloudRowset(metadata, data)
 }
 
 /** Parse command, extract its data, return the data and the buffer moved to the first byte after the command */
 function popData(buffer: Buffer): { data: any; buffer: Buffer } {
   console.assert(buffer && buffer instanceof Buffer)
+
+  function popResults(data: any): { data: any; buffer: Buffer } {
+    const newBuffer = buffer.subarray(commandEnd, buffer.length)
+    return { data, buffer: newBuffer }
+  }
 
   // first character is the data type
   let dataType: string = buffer.subarray(0, 1).toString('utf8')
@@ -659,11 +658,6 @@ function popData(buffer: Buffer): { data: any; buffer: Buffer } {
     commandEnd = spaceIndex + 1 + commandLength
   }
 
-  function popResults(data: any): { data: any; buffer: Buffer } {
-    const newBuffer = buffer.subarray(commandEnd, buffer.length)
-    return { data, buffer: newBuffer }
-  }
-
   switch (dataType) {
     case CMD_INT:
       return popResults(parseInt(buffer.subarray(1, spaceIndex).toString()))
@@ -678,23 +672,18 @@ function popData(buffer: Buffer): { data: any; buffer: Buffer } {
     case CMD_COMMAND:
       return popResults(buffer.subarray(spaceIndex + 1, commandEnd).toString('utf8'))
     case CMD_JSON:
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-      const json = JSON.parse(buffer.subarray(spaceIndex + 1, commandEnd).toString('utf8'))
-      return popResults(json)
+      return popResults(JSON.parse(buffer.subarray(spaceIndex + 1, commandEnd).toString('utf8')))
     case CMD_BLOB:
       return popResults(buffer.subarray(spaceIndex + 1, commandEnd))
     case CMD_ARRAY:
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return popResults(parseArray(buffer, spaceIndex))
     case CMD_ROWSET:
       return popResults(parseRowset(buffer, spaceIndex))
     case CMD_ROWSET_CHUNK:
       console.assert(false)
       break
-
     case CMD_ERROR:
-      // will throw custom error
-      parseError(buffer, spaceIndex)
+      parseError(buffer, spaceIndex) // throws custom error
       break
   }
 
