@@ -10,13 +10,6 @@ dotenv.config()
 
 const LONG_TIMEOUT = 30 * 1000
 
-// Function to generate a random name
-const generateRandomName = (): string => {
-  const firstName = ['John', 'Jane', 'Alex', 'Laura', 'Tom', 'Linda']
-  const lastName = ['Doe', 'Smith', 'Johnson', 'Williams', 'Brown', 'Davis']
-  return `${firstName[Math.floor(Math.random() * firstName.length)]} ${lastName[Math.floor(Math.random() * lastName.length)]}`
-}
-
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 import { join } from 'path'
@@ -226,6 +219,52 @@ describe('Database', () => {
           })
         })
       })
+    })
+  })
+
+  describe('sql (async)', () => {
+    it('simple select', async () => {
+      const results = await database.sql('SELECT * FROM people ORDER BY id')
+      expect(results).toBeDefined()
+
+      const row = results[0]
+      expect(row).toBeDefined()
+      expect(row).toMatchObject({
+        id: 1,
+        name: 'Emma Johnson',
+        age: 28,
+        hobby: 'Collecting clouds'
+      })
+    })
+
+    it('select with template string', async () => {
+      // trivial example here but let's suppose we have this in a variable...
+      let name = 'Ava Jones'
+
+      // create a connection to the database
+      const db = new Database(TESTING_DATABASE_URL)
+
+      // prepared statement using familiar print syntax
+      let results = await db.sql`SELECT * FROM people WHERE name = ${name}`
+      // => returns { id: 5, name: 'Ava Jones', age: 22, hobby: 'Time traveling' }
+
+      expect(results[0]).toMatchObject({
+        id: 5,
+        name: 'Ava Jones',
+        age: 22,
+        hobby: 'Time traveling'
+      })
+
+      results = await db.sql`SELECT * FROM people WHERE age < 30`
+      expect(results).toHaveLength(11)
+    })
+
+    it('template string with single quote', async () => {
+      // a name with a single quote messes with sql statements if just concatenate or replace ? with a string
+      // statement shoud be escaped to SELECT * FROM people WHERE name = 'Eva' OR name = 'Tony''s Pizza' OR age < 30
+      const name = "Tony's Pizza"
+      const results = await database.sql`SELECT * FROM people WHERE name = 'Eva' OR name = ${name} OR age < 30`
+      expect(results).toHaveLength(11)
     })
   })
 })

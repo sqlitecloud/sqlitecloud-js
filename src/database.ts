@@ -35,21 +35,29 @@ export class Database {
     // opens first connection to the database automatically
     const connection = new SQLiteCloudConnection(this._config)
     this._connections = [connection]
-    void connection
-      .connect()
-      .then(() => {
-        if (callback) {
-          callback.call(this, null)
-        }
-        this.emitEvent('open')
-      })
-      .catch(error => {
-        if (callback) {
-          callback.call(this, error)
-        } else {
-          this.emitEvent('error', error)
-        }
-      })
+
+    const job = new Promise<void>((resolve, reject) => {
+      void connection
+        .connect()
+        .then(() => {
+          if (callback) {
+            callback.call(this, null)
+          }
+          this.emitEvent('open')
+          resolve()
+        })
+        .catch(error => {
+          reject(error)
+          if (callback) {
+            callback.call(this, error)
+          } else {
+            this.emitEvent('error', error)
+          }
+        })
+    }).finally(() => {
+      this._pending = this._pending.filter(p => p !== job)
+    })
+    this._pending.push(job)
   }
 
   /** Configuration used to open database connections */
@@ -57,6 +65,9 @@ export class Database {
 
   /** Database connections */
   private _connections: SQLiteCloudConnection[]
+
+  /** Pending operations */
+  private _pending: Promise<any>[] = []
 
   //
   // private methods
@@ -325,16 +336,44 @@ export class Database {
     // TODO sqlitecloud-js / implement database interrupt #13
   }
 
-  public async sql(sql: string, ...params: any[]): Promise<any[]> {
-    if (params?.length > 0) {
-      sql = prepareSql(sql, ...params)
+  get allPending(): Promise<void> {
+    return Promise.all(this._pending)
+  }
+
+  private async waitForPending(): Promise<void> {
+    if (this._pending.length > 0) {
+      await Promise.all(this._pending)
+    }
+  }
+
+  public async sql(sql: TemplateStringsArray | string, ...values: any[]): Promise<any> {
+    let preparedSql = ''
+
+    // sql is a TemplateStringsArray, the 'raw' property is specific to TemplateStringsArray
+    if (Array.isArray(sql) && 'raw' in sql) {
+      sql.forEach((string, i) => {
+        preparedSql += string + (i < values.length ? '?' : '')
+      })
+      preparedSql = prepareSql(preparedSql, ...values)
+    } else {
+      if (typeof sql === 'string') {
+        if (values?.length > 0) {
+          preparedSql = prepareSql(preparedSql, ...values)
+        } else {
+          preparedSql = sql
+        }
+      } else {
+        throw new Error('Invalid sql')
+      }
     }
 
-    const results = await this.getConnection().sendCommands(sql)
-    if (results && results instanceof SQLiteCloudRowset) {
-      return results.toArray()
+    // wait for pending operations to complete
+    if (this._pending.length > 0) {
+      await Promise.all(this._pending)
     }
 
-    return results
+    // execute prepared statement or regular statement
+    const results = await this.getConnection().sendCommands(preparedSql)
+    return results instanceof SQLiteCloudRowset ? results.toArray() : results
   }
 }
