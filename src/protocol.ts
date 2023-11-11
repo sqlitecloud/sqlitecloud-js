@@ -358,7 +358,7 @@ export class SQLiteCloudConnection {
               this._socket?.off('data', readData)
               clearTimeout(socketTimeout)
               try {
-                const { data, buffer: newBuffer } = popData(buffer)
+                const { data, fwdBuffer: newBuffer } = popData(buffer)
                 resolve(data)
               } catch (error) {
                 reject(error)
@@ -389,7 +389,7 @@ export class SQLiteCloudConnection {
             this._socket?.off('data', readData)
             clearTimeout(socketTimeout)
             try {
-              const { data, buffer: newBuffer } = popData(buffer)
+              const { data, fwdBuffer: newBuffer } = popData(buffer)
               resolve(data)
             } catch (error) {
               reject(error)
@@ -535,7 +535,7 @@ function parseArray(buffer: Buffer, spaceIndex: number): any[] {
   let arrayItems = array.subarray(array.indexOf(' ') + 1, array.length)
 
   for (let i = 0; i < numberOfItems; i++) {
-    const { data, buffer } = popData(arrayItems)
+    const { data, fwdBuffer: buffer } = popData(arrayItems)
     parsedData.push(data)
     arrayItems = buffer
   }
@@ -543,10 +543,30 @@ function parseArray(buffer: Buffer, spaceIndex: number): any[] {
   return parsedData
 }
 
+/** Parse header in a rowset or chunk of a chunked rowset */
+function parseRowsetHeader(buffer: Buffer): { index: number; metadata: SQLCloudRowsetMetadata; fwdBuffer: Buffer } {
+  const index = parseInt(buffer.subarray(0, buffer.indexOf(':') + 1).toString())
+  buffer = buffer.subarray(buffer.indexOf(':') + 1)
+
+  // extract rowset header
+  const { data, fwdBuffer } = popIntegers(buffer, 3)
+
+  return {
+    index,
+    metadata: {
+      version: data[0],
+      numberOfRows: data[1],
+      numberOfColumns: data[2],
+      columns: []
+    },
+    fwdBuffer
+  }
+}
+
 /** Extract column names and, optionally, more metadata out of a rowset's header */
 function parseRowsetColumnsMetadata(buffer: Buffer, metadata: SQLCloudRowsetMetadata): Buffer {
   function popForward() {
-    const { data, buffer: fwdBuffer } = popData(buffer) // buffer in parent scope
+    const { data, fwdBuffer: fwdBuffer } = popData(buffer) // buffer in parent scope
     buffer = fwdBuffer
     return data
   }
@@ -566,26 +586,17 @@ function parseRowsetColumnsMetadata(buffer: Buffer, metadata: SQLCloudRowsetMeta
   return buffer
 }
 
-/** Parse a set of rows (no chunking) */
+/** Parse a regular rowset (no chunks) */
 function parseRowset(buffer: Buffer, spaceIndex: number): SQLiteCloudRowset {
   buffer = buffer.subarray(spaceIndex + 1, buffer.length)
 
-  // extract rowset header
-  const version = parseInt(buffer.subarray(buffer.indexOf(':') + 1, buffer.indexOf(' ') + 1).toString('utf8'))
-  buffer = buffer.subarray(buffer.indexOf(' ') + 1, buffer.length)
-  const numberOfRows = parseInt(buffer.subarray(0, buffer.indexOf(' ') + 1).toString('utf8'))
-  buffer = buffer.subarray(buffer.indexOf(' ') + 1, buffer.length)
-  const numberOfColumns = parseInt(buffer.subarray(0, buffer.indexOf(' ') + 1).toString('utf8'))
-  buffer = buffer.subarray(buffer.indexOf(' ') + 1, buffer.length)
-
-  // extract columns names (version 1 has only column names, version 2 has extended metadata)
-  const metadata: SQLCloudRowsetMetadata = { version, numberOfColumns, numberOfRows, columns: [] }
-  buffer = parseRowsetColumnsMetadata(buffer, metadata)
+  const { metadata, fwdBuffer } = parseRowsetHeader(buffer)
+  buffer = parseRowsetColumnsMetadata(fwdBuffer, metadata)
 
   // decode each rowset item
   const data = []
-  for (let j = 0; j < numberOfRows * numberOfColumns; j++) {
-    const { data: rowData, buffer: fwdBuffer } = popData(buffer)
+  for (let j = 0; j < metadata.numberOfRows * metadata.numberOfColumns; j++) {
+    const { data: rowData, fwdBuffer } = popData(buffer)
     data.push(rowData)
     buffer = fwdBuffer
   }
@@ -593,33 +604,33 @@ function parseRowset(buffer: Buffer, spaceIndex: number): SQLiteCloudRowset {
   return new SQLiteCloudRowset(metadata, data)
 }
 
+/**
+ * Parse a chunk of a chunked rowset command, eg:
+ * *LEN 0:VERS NROWS NCOLS DATA
+ */
 function parseRowsetChunks(buffers: Buffer[]) {
-  const metadata: SQLCloudRowsetMetadata = { version: 1, numberOfColumns: 0, numberOfRows: 0, columns: [] }
+  let metadata: SQLCloudRowsetMetadata = { version: 1, numberOfColumns: 0, numberOfRows: 0, columns: [] }
   const data = []
 
   for (let i = 0; i < buffers.length; i++) {
     let buffer = buffers[i]
-    buffer = buffer.subarray(buffer.indexOf(' ') + 1, buffer.length)
+    buffer = buffer.subarray(buffer.indexOf(' ') + 1)
 
-    const chunkIndex = parseInt(buffer.subarray(0, buffer.indexOf(' ')).toString('utf8'))
-    metadata.version = parseInt(buffer.subarray(buffer.indexOf(':') + 1, buffer.indexOf(' ')).toString('utf8'))
-    buffer = buffer.subarray(buffer.indexOf(' ') + 1, buffer.length)
-
-    const nRowsSingleChunk = parseInt(buffer.subarray(0, buffer.indexOf(' ') + 1).toString('utf8'))
-    metadata.numberOfRows += nRowsSingleChunk
-    buffer = buffer.subarray(buffer.indexOf(' ') + 1, buffer.length)
-
-    metadata.numberOfColumns = parseInt(buffer.subarray(0, buffer.indexOf(' ') + 1).toString('utf8'))
-    buffer = buffer.subarray(buffer.indexOf(' ') + 1, buffer.length)
+    // chunk header, eg: 0:VERS NROWS NCOLS
+    const { index: chunkIndex, metadata: chunkMetadata, fwdBuffer } = parseRowsetHeader(buffer)
+    buffer = fwdBuffer
 
     // first chunk? extract columns metadata
     if (chunkIndex === 1) {
+      metadata = chunkMetadata
       buffer = parseRowsetColumnsMetadata(buffer, metadata)
+    } else {
+      metadata.numberOfRows += chunkMetadata.numberOfRows
     }
 
     // extract single rowset row
-    for (let k = 0; k < nRowsSingleChunk * metadata.numberOfColumns; k++) {
-      const { data: itemData, buffer: fwdBuffer } = popData(buffer)
+    for (let k = 0; k < chunkMetadata.numberOfRows * metadata.numberOfColumns; k++) {
+      const { data: itemData, fwdBuffer } = popData(buffer)
       data.push(itemData)
       buffer = fwdBuffer
     }
@@ -628,16 +639,26 @@ function parseRowsetChunks(buffers: Buffer[]) {
   return new SQLiteCloudRowset(metadata, data)
 }
 
-/** Parse command, extract its data, return the data and the buffer moved to the first byte after the command */
-function popData(buffer: Buffer): { data: any; buffer: Buffer } {
-  console.assert(buffer && buffer instanceof Buffer)
+/** Pop one or more space separated integers from beginning of buffer, move buffer forward */
+function popIntegers(buffer: Buffer, numberOfIntegers: number = 1): { data: number[]; fwdBuffer: Buffer } {
+  const data: number[] = []
+  for (let i = 0; i < numberOfIntegers; i++) {
+    const spaceIndex = buffer.indexOf(' ')
+    data[i] = parseInt(buffer.subarray(0, spaceIndex).toString())
+    buffer = buffer.subarray(spaceIndex + 1)
+  }
+  return { data, fwdBuffer: buffer }
+}
 
-  function popResults(data: any): { data: any; buffer: Buffer } {
-    const newBuffer = buffer.subarray(commandEnd, buffer.length)
-    return { data, buffer: newBuffer }
+/** Parse command, extract its data, return the data and the buffer moved to the first byte after the command */
+function popData(buffer: Buffer): { data: any; fwdBuffer: Buffer } {
+  function popResults(data: any) {
+    const fwdBuffer = buffer.subarray(commandEnd)
+    return { data, fwdBuffer }
   }
 
   // first character is the data type
+  console.assert(buffer && buffer instanceof Buffer)
   let dataType: string = buffer.subarray(0, 1).toString('utf8')
 
   // need to decompress this buffer before decoding?
