@@ -324,4 +324,17 @@ export class Database {
   public interrupt(): void {
     // TODO sqlitecloud-js / implement database interrupt #13
   }
+
+  public async sql(sql: string, ...params: any[]): Promise<any[]> {
+    if (params?.length > 0) {
+      sql = prepareSql(sql, ...params)
+    }
+
+    const results = await this.getConnection().sendCommands(sql)
+    if (results && results instanceof SQLiteCloudRowset) {
+      return results.toArray()
+    }
+
+    return results
+  }
 }

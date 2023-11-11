@@ -1,5 +1,9 @@
+//
+// utilities.test.ts
+//
+
 import { SQLiteCloudError } from '../src/protocol'
-import { prepareSql } from '../src/utilities'
+import { prepareSql, parseConnectionString } from '../src/utilities'
 
 describe('prepareSql', () => {
   it('should replace single ? parameter', () => {
@@ -78,5 +82,58 @@ describe('prepareSql', () => {
   it('should replace multiple $named parameters', () => {
     const sql = prepareSql('SELECT * FROM users WHERE first = $first AND last = $last', { $first: 'John', $last: 'Doe' })
     expect(sql).toBe("SELECT * FROM users WHERE first = 'John' AND last = 'Doe'")
+  })
+})
+
+describe('parseConnectionString', () => {
+  it('should parse connection string', () => {
+    const connectionString = 'sqlitecloud://user:password@host:1234/database?option1=xxx&option2=yyy'
+    const config = parseConnectionString(connectionString)
+
+    expect(config).toEqual({
+      username: 'user',
+      password: 'password',
+      host: 'host',
+      port: 1234,
+      database: 'database',
+      option1: 'xxx',
+      option2: 'yyy'
+    })
+  })
+
+  it('should throw SQLiteCloudError if the connection string is invalid', () => {
+    const connectionString = 'not a valid url'
+
+    expect(() => {
+      parseConnectionString(connectionString)
+    }).toThrow(SQLiteCloudError)
+  })
+
+  it('should handle connection strings without port', () => {
+    const connectionString = 'sqlitecloud://user:password@host/database?option1=xxx&option2=yyy'
+    const result = parseConnectionString(connectionString)
+
+    expect(result).toEqual({
+      username: 'user',
+      password: 'password',
+      host: 'host',
+      port: undefined,
+      database: 'database',
+      option1: 'xxx',
+      option2: 'yyy'
+    })
+  })
+
+  it('should handle connection strings without options', () => {
+    const connectionString = 'sqlitecloud://user:password@host:1234/database'
+    const config = parseConnectionString(connectionString)
+
+    expect(config).toEqual({
+      username: 'user',
+      password: 'password',
+      host: 'host',
+      port: 1234,
+      database: 'database'
+    })
   })
 })

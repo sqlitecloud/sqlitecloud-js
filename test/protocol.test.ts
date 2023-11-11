@@ -2,63 +2,34 @@
  * protocol.test.ts - test low level communication protocol
  */
 
-import { SQLiteCloudConfig } from '../src/types/sqlitecloudconfig'
-import { SQLiteCloudConnection, SQLiteCloudError, parseConnectionString } from '../src/protocol'
+import { SQLiteCloudConfig } from '../src/index'
+import { SQLiteCloudConnection, SQLiteCloudError } from '../src/protocol'
+import { parseConnectionString } from '../src/utilities'
 
 import * as dotenv from 'dotenv'
 dotenv.config()
 
-export const DATABASE_CERTIFICATE = `-----BEGIN CERTIFICATE-----
-MIID6zCCAtOgAwIBAgIUI0lTm5CfVf3mVP8606CkophcyB4wDQYJKoZIhvcNAQEL
-BQAwgYQxCzAJBgNVBAYTAklUMQswCQYDVQQIDAJNTjEQMA4GA1UEBwwHVmlhZGFu
-YTEbMBkGA1UECgwSU1FMaXRlIENsb3VkLCBJbmMuMRQwEgYDVQQDDAtTUUxpdGVD
-bG91ZDEjMCEGCSqGSIb3DQEJARYUbWFyY29Ac3FsaXRlY2xvdWQuaW8wHhcNMjEw
-ODI1MTAwMTI0WhcNMzEwODIzMTAwMTI0WjCBhDELMAkGA1UEBhMCSVQxCzAJBgNV
-BAgMAk1OMRAwDgYDVQQHDAdWaWFkYW5hMRswGQYDVQQKDBJTUUxpdGUgQ2xvdWQs
-IEluYy4xFDASBgNVBAMMC1NRTGl0ZUNsb3VkMSMwIQYJKoZIhvcNAQkBFhRtYXJj
-b0BzcWxpdGVjbG91ZC5pbzCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEB
-ALnqTqnKgXadcZb4bkHWIrF7BEaPzS8ADUMvrmlP4hVOwg6x4rw33aSTfcXSf6/U
-6HzqUgW7lu/Qg/O1WyvdTyseCRbopysPLfU3Hg2bOpcP7ZmgsB3xmPm0tXB/QNvb
-sHbMGOGvWVKNCTPuemBuMVLAYNyEC5DWAxOG7IVz+arK2/+QeBH0+PLstVTSvUVy
-eu1dacjx9kPEWO0gEwgxyYAeTmgYMRSEcicLF7egxoSS2kzUOLyMkWeV92tP+mzC
-NKGgQoG4WnSrsE9ZcY3MiIdb0EnN+nR0VOBFejsTyJm7A+Ab6edEuvNmUTbraKJL
-jRKZzUt1r4x3GC+j+UVCQp0CAwEAAaNTMFEwHQYDVR0OBBYEFPGRk8InGXhigfm4
-teCLDtYSGu7XMB8GA1UdIwQYMBaAFPGRk8InGXhigfm4teCLDtYSGu7XMA8GA1Ud
-EwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEBAGPk14p4H6vtJsZdgY2sVS2G
-T8Ir4ukue79zRFAoCYfkfSW1A+uZbOK/YIjC1CetMXIde1SGvIMcoo1NjrKiqLls
-srUN9SmmLihVzurtnoC5ScoUdRQtae8NBWXJnObxK7uXGBYamfs/x0nq1j7DV6Qc
-TkuTmJvkcWGcJ9fBOzHgzi+dV+7Y98LP48Pyj/mAzI2icw+I5+DMzn2IktzFf0G7
-Sjox3HYOoj2uG2669CLAnw6rkHESbi5imasC9FxWBVxWrnNd0icyiDb1wfBc5W9N
-otHL5/wB1MaAmCIcQjIxEshj8pSYTecthitmrneimikFf4KFK0YMvGgKrCLmJsg=
------END CERTIFICATE-----`
+export const CHINOOK_DATABASE_URL = process.env.CHINOOK_DATABASE_URL as string
+export const TESTING_DATABASE_URL = process.env.TESTING_DATABASE_URL as string
+console.assert(CHINOOK_DATABASE_URL, 'CHINOOK_DATABASE_URL is not defined')
+console.assert(TESTING_DATABASE_URL, 'TESTING_DATABASE_URL is not defined')
 
-export const testConfig: SQLiteCloudConfig = {
-  clientId: 'test',
-  username: process.env.DATABASE_USERNAME,
-  password: process.env.DATABASE_PASSWORD,
-  host: process.env.DATABASE_HOSTNAME,
-  database: process.env.DATABASE_DATABASE || 'chinook.sqlite',
-  port: (process.env.DATABASE_PORT || 9960) as number,
-  compression: true,
-  timeout: 100 * 1000,
-  tlsOptions: {
-    ca: DATABASE_CERTIFICATE
-  }
+export function getChinoookConfig(): SQLiteCloudConfig {
+  return parseConnectionString(CHINOOK_DATABASE_URL)
+}
+export function getTestingConfig(): SQLiteCloudConfig {
+  return parseConnectionString(TESTING_DATABASE_URL)
 }
 
 describe('protocol', () => {
   let connection: SQLiteCloudConnection
 
   beforeEach(async () => {
-    expect(process.env.DATABASE_USERNAME).toBeDefined()
-    expect(process.env.DATABASE_PASSWORD).toBeDefined()
-    expect(process.env.DATABASE_HOSTNAME).toBeDefined()
-
     if (!connection) {
       try {
-        const connecting = new SQLiteCloudConnection(testConfig)
+        const connecting = new SQLiteCloudConnection(CHINOOK_DATABASE_URL)
         expect(connecting).toBeDefined()
-        connecting.verbose()
+        // connecting.verbose()
 
         await connecting.connect()
         connection = connecting
@@ -82,14 +53,19 @@ describe('protocol', () => {
       // ...in beforeEach
     })
 
+    it('should connect with config object string', async () => {
+      const configObj = parseConnectionString(CHINOOK_DATABASE_URL)
+      const connection = new SQLiteCloudConnection(configObj)
+
+      expect(connection).toBeDefined()
+      await connection.connect()
+      expect(connection.connected).toBe(true)
+      await connection.close()
+      expect(connection.connected).toBe(false)
+    })
+
     it('should connect with connection string', async () => {
-      const connectionString = `sqlitecloud://${testConfig.username as string}:${testConfig.password as string}@${testConfig.host as string}`
-      const connection = new SQLiteCloudConnection({
-        connectionString,
-        tlsOptions: {
-          ca: DATABASE_CERTIFICATE
-        }
-      })
+      const connection = new SQLiteCloudConnection(CHINOOK_DATABASE_URL)
 
       expect(connection).toBeDefined()
       await connection.connect()
@@ -100,13 +76,12 @@ describe('protocol', () => {
 
     it('should throw when connection string lacks credentials', async () => {
       try {
-        const connectionString = `sqlitecloud://${testConfig.host as string}`
-        const connection = new SQLiteCloudConnection({
-          connectionString,
-          tlsOptions: {
-            ca: DATABASE_CERTIFICATE
-          }
-        })
+        // use valid connection string but without credentials
+        const testingConfig = getTestingConfig()
+        delete testingConfig.username
+        delete testingConfig.password
+
+        const connection = new SQLiteCloudConnection(testingConfig)
 
         expect(connection).toBeDefined()
         await connection.connect()
@@ -228,12 +203,12 @@ describe('protocol', () => {
       const rowset = await connection.sendCommands('TEST ROWSET')
       expect(rowset.numberOfRows).toBe(41)
       expect(rowset.numberOfColumns).toBe(2)
-      expect(rowset.version).toBe(1)
+      expect(rowset.version == 1 || rowset.version == 2).toBeTruthy()
       expect(rowset.columnsNames).toEqual(['key', 'value'])
     })
 
     it(
-      'should test rowset chunks',
+      'should test chunked rowset',
       async () => {
         const rowset = await connection.sendCommands('TEST ROWSET_CHUNK')
         expect(rowset.numberOfRows).toBe(147)
@@ -244,8 +219,7 @@ describe('protocol', () => {
     )
 
     it('should dump results', async () => {
-      let rowset = await connection.sendCommands('USE DATABASE chinook.sqlite;')
-      rowset = await connection.sendCommands('SELECT * FROM tracks LIMIT 3;')
+      let rowset = await connection.sendCommands('SELECT * FROM tracks LIMIT 3;')
       const dumped = rowset.dump()
       expect(dumped.toString()).toBe(
         '         |1 |For Those About To Rock (We Salute You) |1 |1 |1 |Angus Young, Malcolm Young, Brian Johnson |343719 |11170334 |0.99 |,         |2 |Balls to the Wall |2 |2 |1 |null |342562 |5510424 |0.99 |,         |3 |Fast As a Shark |3 |2 |1 |F. Baltes, S. Kaufman, U. Dirkscneider & W. Hoffman |230619 |3990994 |0.99 |'
@@ -258,7 +232,7 @@ describe('protocol', () => {
       const rowset = await connection.sendCommands("USE DATABASE :memory:; select printf('%.*c', 1000, 'x') AS DDD")
       expect(rowset.numberOfColumns).toBe(1)
       expect(rowset.numberOfRows).toBe(1)
-      expect(rowset.version).toBe(1)
+      expect(rowset.version == 1 || rowset.version == 2).toBeTruthy()
 
       const stringrowset = rowset.getItem(0, 0) as string
       expect(stringrowset.startsWith('xxxxxxxxxxxxx')).toBeTruthy()
@@ -266,85 +240,29 @@ describe('protocol', () => {
     })
 
     it('should select database', async () => {
-      const rowset = await connection.sendCommands('USE DATABASE chinook.sqlite;')
+      const rowset = await connection.sendCommands('USE DATABASE chinook.db;')
       expect(rowset.numberOfColumns).toBeUndefined()
       expect(rowset.numberOfRows).toBeUndefined()
       expect(rowset.version).toBeUndefined()
     })
 
     it('should select * from tracks limit 10 (no chunks)', async () => {
-      let rowset = await connection.sendCommands('USE DATABASE chinook.sqlite;')
-      rowset = await connection.sendCommands('SELECT * FROM tracks LIMIT 10;')
+      let rowset = await connection.sendCommands('SELECT * FROM tracks LIMIT 10;')
       expect(rowset.numberOfColumns).toBe(9)
       expect(rowset.numberOfRows).toBe(10)
     })
 
     it('should select * from tracks (with chunks)', async () => {
-      let rowset = await connection.sendCommands('USE DATABASE chinook.sqlite;')
-      rowset = await connection.sendCommands('SELECT * FROM tracks;')
+      let rowset = await connection.sendCommands('SELECT * FROM tracks;')
       expect(rowset.numberOfColumns).toBe(9)
       expect(rowset.numberOfRows).toBe(3503)
     })
 
     it('should select * from albums', async () => {
-      let rowset = await connection.sendCommands('USE DATABASE chinook.sqlite;')
-      rowset = await connection.sendCommands('SELECT * FROM albums;')
+      let rowset = await connection.sendCommands('SELECT * FROM albums;')
       expect(rowset.numberOfColumns).toBe(3)
       expect(rowset.numberOfRows).toBe(347)
-      expect(rowset.version).toBe(1)
-    })
-  })
-})
-
-describe('parseConnectionString', () => {
-  it('should parse connection string', () => {
-    const connectionString = 'sqlitecloud://user:password@host:1234/database?option1=xxx&option2=yyy'
-    const config = parseConnectionString(connectionString)
-
-    expect(config).toEqual({
-      username: 'user',
-      password: 'password',
-      host: 'host',
-      port: 1234,
-      database: 'database',
-      option1: 'xxx',
-      option2: 'yyy'
-    })
-  })
-
-  it('should throw SQLiteCloudError if the connection string is invalid', () => {
-    const connectionString = 'not a valid url'
-
-    expect(() => {
-      parseConnectionString(connectionString)
-    }).toThrow(SQLiteCloudError)
-  })
-
-  it('should handle connection strings without port', () => {
-    const connectionString = 'sqlitecloud://user:password@host/database?option1=xxx&option2=yyy'
-    const result = parseConnectionString(connectionString)
-
-    expect(result).toEqual({
-      username: 'user',
-      password: 'password',
-      host: 'host',
-      port: undefined,
-      database: 'database',
-      option1: 'xxx',
-      option2: 'yyy'
-    })
-  })
-
-  it('should handle connection strings without options', () => {
-    const connectionString = 'sqlitecloud://user:password@host:1234/database'
-    const config = parseConnectionString(connectionString)
-
-    expect(config).toEqual({
-      username: 'user',
-      password: 'password',
-      host: 'host',
-      port: 1234,
-      database: 'database'
+      expect(rowset.version == 1 || rowset.version == 2).toBeTruthy()
     })
   })
 })

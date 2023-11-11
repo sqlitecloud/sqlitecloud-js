@@ -2,15 +2,13 @@
  * database.test.ts - test driver api
  */
 
-import { SQLiteCloudError } from '../src/index'
+import { SQLiteCloudError, SQLiteCloudConnection } from '../src/index'
 import { Database, ErrorCallback } from '../src/database'
-import { testConfig } from './protocol.test'
+import { CHINOOK_DATABASE_URL, TESTING_DATABASE_URL } from './protocol.test'
 import * as dotenv from 'dotenv'
 dotenv.config()
 
 const LONG_TIMEOUT = 30 * 1000
-
-const testingDatabaseUrl = 'sqlitecloud://admin:uN3ARhdcKQ@rymbzy6am.sqlite.cloud:8860/testing.db?sqliteMode=1'
 
 // Function to generate a random name
 const generateRandomName = (): string => {
@@ -21,20 +19,47 @@ const generateRandomName = (): string => {
 
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
+import { join } from 'path'
+import { readFileSync } from 'fs'
+const PREPARE_TESTING_SQL = readFileSync(join(__dirname, 'assets/testing.sql'), 'utf8')
+
 describe('Database', () => {
+  let database: Database
+
+  beforeEach(done => {
+    try {
+      const db = new Database(TESTING_DATABASE_URL + '?sqliteMode=1', null, () => {
+        db.exec(PREPARE_TESTING_SQL, error => {
+          expect(error).toBeNull()
+          database = db
+          done()
+        })
+      })
+    } catch (error) {
+      console.error(error)
+      throw error
+    }
+  })
+
+  afterEach(async () => {
+    if (database) {
+      await database.close()
+      // @ts-ignore
+      database = undefined
+    }
+  })
+
   describe('run', () => {
     it('simple update', done => {
       const updateSql = "UPDATE people SET name = 'Charlie Brown' WHERE id = 3; UPDATE people SET name = 'David Bowie' WHERE id = 4; "
 
-      const db = new Database(testingDatabaseUrl, null, () => {
-        db.run(updateSql, (err: Error, results: any) => {
-          expect(err).toBeNull()
-          // TODO sqlitecloud-js // Database.run should return number of rows modified and lastId #15
+      database.run(updateSql, (err: Error, results: any) => {
+        expect(err).toBeNull()
+        // TODO sqlitecloud-js // Database.run should return number of rows modified and lastId #15
 
-          db.close(error => {
-            expect(error).toBeNull()
-            done()
-          })
+        database.close(error => {
+          expect(error).toBeNull()
+          done()
         })
       })
     })
@@ -42,18 +67,15 @@ describe('Database', () => {
     it(
       'insert with parameter value',
       done => {
-        const insertSql = `INSERT INTO people (name) VALUES ('${generateRandomName()}');`
+        const insertSql = `INSERT INTO people (name, hobby, age) VALUES ('Fantozzi Ugo', 'Competitive pranking', 42);`
 
-        const db = new Database(testingDatabaseUrl, null, () => {
-          db.verbose()
-          db.run(insertSql, (err: Error, results: any) => {
-            expect(err).toBeNull()
-            // TODO sqlitecloud-js // Database.run should return number of rows modified and lastId #15
+        database.run(insertSql, (err: Error, results: any) => {
+          expect(err).toBeNull()
+          // TODO sqlitecloud-js // Database.run should return number of rows modified and lastId #15
 
-            db.close(error => {
-              expect(error).toBeNull()
-              done()
-            })
+          database.close(error => {
+            expect(error).toBeNull()
+            done()
           })
         })
       },
@@ -65,7 +87,7 @@ describe('Database', () => {
     it(
       'SELECT * FROM tracks',
       done => {
-        const db = new Database(testConfig, null, () => {
+        const db = new Database(CHINOOK_DATABASE_URL, null, () => {
           db.all('SELECT * FROM tracks', (err: Error, rows: any[]) => {
             expect(err).toBeNull()
             expect(rows).toBeDefined()
@@ -93,7 +115,7 @@ describe('Database', () => {
     )
 
     it('SELECT * FROM tracks WHERE composer = ?', done => {
-      const db = new Database(testConfig, null, () => {
+      const db = new Database(CHINOOK_DATABASE_URL, null, () => {
         db.all('SELECT * FROM tracks WHERE composer = ?', 'AC/DC', (err: Error, rows: any[]) => {
           expect(err).toBeNull()
           expect(rows).toBeDefined()
@@ -121,7 +143,7 @@ describe('Database', () => {
 
   describe('get', () => {
     it('SELECT * FROM tracks', done => {
-      const db = new Database(testConfig, null, () => {
+      const db = new Database(CHINOOK_DATABASE_URL, null, () => {
         db.get('SELECT * FROM tracks', (err: Error, row: any) => {
           expect(err).toBeNull()
           expect(row).toBeDefined()
@@ -166,7 +188,7 @@ describe('Database', () => {
         })
       }
 
-      const db = new Database(testConfig, null, () => {
+      const db = new Database(CHINOOK_DATABASE_URL, null, () => {
         db.each('SELECT * FROM tracks', rowCallback, completeCallback)
       })
     })
@@ -174,7 +196,7 @@ describe('Database', () => {
 
   describe('exec', () => {
     it('execute simple statement', done => {
-      const db = new Database(testConfig, null, () => {
+      const db = new Database(CHINOOK_DATABASE_URL, null, () => {
         db.exec('SET CLIENT KEY COMPRESSION TO 1;', error => {
           expect(error).toBeNull()
 
@@ -187,7 +209,7 @@ describe('Database', () => {
     })
 
     it('execute statement with errors', done => {
-      const db = new Database(testConfig, null, () => {
+      const db = new Database(CHINOOK_DATABASE_URL, null, () => {
         db.exec('SET BOGUS STATEMENT TO 1;', error => {
           expect(error).toBeInstanceOf(SQLiteCloudError)
           expect(error).toMatchObject({

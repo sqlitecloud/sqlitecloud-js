@@ -3,6 +3,7 @@
 //
 
 import { SQLiteCloudError } from './protocol'
+import { SQLiteCloudConfig } from './types/sqlitecloudconfig'
 
 export type SQLiteTypes = string | number | boolean | Record<string | number, unknown> | Buffer | undefined | null
 
@@ -100,4 +101,29 @@ export function popCallback<T extends ErrorCallback = ErrorCallback>(args: any[]
     return { args: args.slice(0, -1), callback: args[args.length - 1] as T }
   }
   return { args }
+}
+
+/** Parse connectionString like sqlitecloud://usernam:password@host:port/database?option1=xxx&option2=xxx into its components */
+export function parseConnectionString(connectionString: string): SQLiteCloudConfig {
+  try {
+    // The URL constructor throws a TypeError if the URL is not valid.
+    const url = new URL(connectionString)
+    const database = url.pathname.replace('/', '') // pathname is database name, remove the leading slash
+    const options: { [key: string]: string } = {}
+
+    url.searchParams.forEach((value, key) => {
+      options[key] = value
+    })
+
+    return {
+      username: url.username,
+      password: url.password,
+      host: url.hostname,
+      port: url.port ? parseInt(url.port) : undefined,
+      database,
+      ...options
+    }
+  } catch (error) {
+    throw new SQLiteCloudError(`Invalid connection string: ${connectionString}`)
+  }
 }

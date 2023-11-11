@@ -6,6 +6,7 @@ import tls from 'tls'
 import lz4 from 'lz4'
 
 import { SQLiteCloudConfig } from './types/sqlitecloudconfig'
+import { parseConnectionString } from './utilities'
 
 /**
  * The server communicates with clients via commands defined
@@ -709,31 +710,6 @@ function popData(buffer: Buffer): { data: any; fwdBuffer: Buffer } {
   }
 
   throw new TypeError(`Data type: ${dataType} is not defined in SCSP`)
-}
-
-/** Parse connectionString like sqlitecloud://usernam:password@host:port/database?option1=xxx&option2=xxx into its components */
-export function parseConnectionString(connectionString: string): SQLiteCloudConfig {
-  try {
-    // The URL constructor throws a TypeError if the URL is not valid.
-    const url = new URL(connectionString)
-    const database = url.pathname.replace('/', '') // pathname is database name, remove the leading slash
-    const options: { [key: string]: string } = {}
-
-    url.searchParams.forEach((value, key) => {
-      options[key] = value
-    })
-
-    return {
-      username: url.username,
-      password: url.password,
-      host: url.hostname,
-      port: url.port ? parseInt(url.port) : undefined,
-      database,
-      ...options
-    }
-  } catch (error) {
-    throw new SQLiteCloudError(`Invalid connection string: ${connectionString}`)
-  }
 }
 
 /** Format a command to be sent via SCSP protocol */
