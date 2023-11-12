@@ -336,14 +336,11 @@ export class Database {
     // TODO sqlitecloud-js / implement database interrupt #13
   }
 
-  get allPending(): Promise<void> {
-    return Promise.all(this._pending)
-  }
-
-  private async waitForPending(): Promise<void> {
-    if (this._pending.length > 0) {
-      await Promise.all(this._pending)
+  get pendingPromises(): Promise<any[]> {
+    if (this._pending?.length > 0) {
+      return Promise.all(this._pending)
     }
+    return Promise.resolve([])
   }
 
   public async sql(sql: TemplateStringsArray | string, ...values: any[]): Promise<any> {
@@ -368,9 +365,7 @@ export class Database {
     }
 
     // wait for pending operations to complete
-    if (this._pending.length > 0) {
-      await Promise.all(this._pending)
-    }
+    await this.pendingPromises
 
     // execute prepared statement or regular statement
     const results = await this.getConnection().sendCommands(preparedSql)

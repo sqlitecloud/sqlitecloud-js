@@ -14,6 +14,8 @@ export const TESTING_DATABASE_URL = process.env.TESTING_DATABASE_URL as string
 console.assert(CHINOOK_DATABASE_URL, 'CHINOOK_DATABASE_URL is not defined')
 console.assert(TESTING_DATABASE_URL, 'TESTING_DATABASE_URL is not defined')
 
+const LONG_TIMEOUT = 100 * 1000 // 100 seconds
+
 export function getChinoookConfig(): SQLiteCloudConfig {
   return parseConnectionString(CHINOOK_DATABASE_URL)
 }
@@ -264,5 +266,44 @@ describe('protocol', () => {
       expect(rowset.numberOfRows).toBe(347)
       expect(rowset.version == 1 || rowset.version == 2).toBeTruthy()
     })
+  })
+
+  describe('connection stress testing', () => {
+    it(
+      'run individual selects',
+      async () => {
+        const numQueries = 150
+        const startTime = Date.now()
+        for (let i = 0; i < numQueries; i++) {
+          let rowset = await connection.sendCommands('SELECT * FROM albums ORDER BY RANDOM() LIMIT 4;')
+          expect(rowset.numberOfColumns).toBe(3)
+          expect(rowset.numberOfRows).toBe(4)
+        }
+        const queryMs = (Date.now() - startTime) / numQueries
+        console.log(`${numQueries}x individual selects, ${queryMs.toFixed(0)}ms per query`)
+        expect(queryMs).toBeLessThan(500)
+      },
+      LONG_TIMEOUT
+    )
+
+    it(
+      'run batched selects',
+      async () => {
+        const numQueries = 150
+        const startTime = Date.now()
+        for (let i = 0; i < numQueries; i++) {
+          let rowset = await connection.sendCommands(
+            'SELECT * FROM albums ORDER BY RANDOM() LIMIT 16; SELECT * FROM albums ORDER BY RANDOM() LIMIT 12; SELECT * FROM albums ORDER BY RANDOM() LIMIT 8; SELECT * FROM albums ORDER BY RANDOM() LIMIT 4;'
+          )
+          // server only returns the last rowset?
+          expect(rowset.numberOfColumns).toBe(3)
+          expect(rowset.numberOfRows).toBe(4)
+        }
+        const queryMs = (Date.now() - startTime) / numQueries
+        console.log(`${numQueries}x batched selects, ${queryMs.toFixed(0)}ms per query`)
+        expect(queryMs).toBeLessThan(500)
+      },
+      LONG_TIMEOUT
+    )
   })
 })
