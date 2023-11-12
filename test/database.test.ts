@@ -266,5 +266,12 @@ describe('Database', () => {
       const results = await database.sql`SELECT * FROM people WHERE name = 'Eva' OR name = ${name} OR age < 30`
       expect(results).toHaveLength(11)
     })
+
+    it('template string with multiple queries', async () => {
+      for (let i = 0; i < 2; i++) {
+        const results = await database.sql`SELECT * FROM people ORDER BY RANDOM() LIMIT 12`
+        expect(results).toHaveLength(12)
+      }
+    })
   })
 })
