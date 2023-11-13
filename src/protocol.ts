@@ -97,8 +97,8 @@ export class SQLiteCloudConnection {
   private log(message: string, ...optionalParams: any[]): void {
     if (this.config.verbose) {
       // hide password in AUTH command if needed
-      const passwordRegex = /PASSWORD \S+?(?=;)/
-      message = message.replace(passwordRegex, 'PASSWORD xxx')
+      message = message.replace(/PASSWORD \S+?(?=;)/, 'PASSWORD ******')
+      message = message.replace(/HASH \S+?(?=;)/, 'HASH ******')
       console.log(`${new Date().toISOString()} ${this.config.clientId as string}: ${message}`, ...optionalParams)
     }
   }
