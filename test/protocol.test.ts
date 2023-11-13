@@ -283,6 +283,23 @@ describe('protocol', () => {
 
   describe('connection stress testing', () => {
     it(
+      '20x test string',
+      async () => {
+        const numQueries = 20
+        const startTime = Date.now()
+        // connection.verbose()
+        for (let i = 0; i < numQueries; i++) {
+          let result = await connection.sendCommands('TEST STRING')
+          expect(result).toBe('Hello World, this is a test string.')
+        }
+        const queryMs = (Date.now() - startTime) / numQueries
+        console.log(`${numQueries}x test string, ${queryMs.toFixed(0)}ms per query`)
+        expect(queryMs).toBeLessThan(2000)
+      },
+      LONG_TIMEOUT
+    )
+
+    it(
       '20x individual selects',
       async () => {
         const numQueries = 20
