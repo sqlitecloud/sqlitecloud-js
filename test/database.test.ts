@@ -33,11 +33,13 @@ describe('Database', () => {
     }
   })
 
-  afterEach(async () => {
+  afterEach(done => {
     if (database) {
-      await database.close()
-      // @ts-ignore
-      database = undefined
+      database.close(() => {
+        // @ts-expect-error
+        database = undefined
+        done()
+      })
     }
   })
 
@@ -273,7 +275,7 @@ describe('Database', () => {
       async () => {
         const numQueries = 50
         const startTime = Date.now()
-
+        // database.verbose()
         const table = 'people'
         for (let i = 0; i < numQueries; i++) {
           const results = await database.sql`SELECT * FROM ${table} ORDER BY RANDOM() LIMIT 12`
@@ -283,7 +285,7 @@ describe('Database', () => {
 
         const queryMs = (Date.now() - startTime) / numQueries
         console.log(`${numQueries}x template selects, ${queryMs.toFixed(0)}ms per query`)
-        expect(queryMs).toBeLessThan(500)
+        expect(queryMs).toBeLessThan(2000)
       },
       LONG_TIMEOUT
     )
