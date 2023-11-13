@@ -1,9 +1,9 @@
 /**
- * protocol.test.ts - test low level communication protocol
+ * connection.test.ts - test low level communication protocol
  */
 
 import { SQLiteCloudConfig, SQLiteCloudError } from '../src/index'
-import { SQLiteCloudConnection } from '../src/protocol'
+import { SQLiteCloudConnection } from '../src/connection'
 import { parseConnectionString } from '../src/utilities'
 
 import * as dotenv from 'dotenv'
@@ -11,8 +11,6 @@ dotenv.config()
 
 export const CHINOOK_DATABASE_URL = process.env.CHINOOK_DATABASE_URL as string
 export const TESTING_DATABASE_URL = process.env.TESTING_DATABASE_URL as string
-console.assert(CHINOOK_DATABASE_URL, 'CHINOOK_DATABASE_URL is not defined')
-console.assert(TESTING_DATABASE_URL, 'TESTING_DATABASE_URL is not defined')
 
 export const LONG_TIMEOUT = 100 * 1000 // 100 seconds
 
@@ -23,14 +21,16 @@ export function getTestingConfig(): SQLiteCloudConfig {
   return parseConnectionString(TESTING_DATABASE_URL)
 }
 
-describe('protocol', () => {
+describe('connection', () => {
   let connection: SQLiteCloudConnection
 
   beforeEach(async () => {
+    expect(CHINOOK_DATABASE_URL).toBeDefined()
+    expect(TESTING_DATABASE_URL).toBeDefined()
+
     if (!connection) {
       try {
-        connection = new SQLiteCloudConnection(CHINOOK_DATABASE_URL)
-        await connection.sendCommands('SET CLIENT KEY NONLINEARIZABLE TO 1;')
+        connection = new SQLiteCloudConnection(CHINOOK_DATABASE_URL + '?nonlinearizable=1')
         expect(connection).toBeDefined()
         // connecting.verbose()
       } catch (error) {
@@ -49,7 +49,7 @@ describe('protocol', () => {
   })
 
   describe('connect', () => {
-    it('should connect', async () => {
+    it('should connect', () => {
       // ...in beforeEach
     })
 
@@ -65,13 +65,13 @@ describe('protocol', () => {
     })
 
     it('should connect with connection string', async () => {
-      const connection = new SQLiteCloudConnection(CHINOOK_DATABASE_URL)
+      const conn = new SQLiteCloudConnection(CHINOOK_DATABASE_URL)
 
-      expect(connection).toBeDefined()
-      await connection.connect()
-      expect(connection.connected).toBe(true)
-      await connection.close()
-      expect(connection.connected).toBe(false)
+      expect(conn).toBeDefined()
+      await conn.connect()
+      expect(conn.connected).toBe(true)
+      await conn.close()
+      expect(conn.connected).toBe(false)
     })
 
     it('should throw when connection string lacks credentials', async () => {
@@ -82,7 +82,6 @@ describe('protocol', () => {
         delete testingConfig.password
 
         const connection = new SQLiteCloudConnection(testingConfig)
-
         expect(connection).toBeDefined()
         await connection.connect()
         // fail the test if the error is not thrown
@@ -305,7 +304,6 @@ describe('protocol', () => {
       async () => {
         const numQueries = 20
         const startTime = Date.now()
-        await connection.sendCommands('SET CLIENT KEY NONLINEARIZABLE TO 1;')
         for (let i = 0; i < numQueries; i++) {
           let rowset = await connection.sendCommands('SELECT * FROM albums ORDER BY RANDOM() LIMIT 4;')
           expect(rowset.numberOfColumns).toBe(3)
@@ -323,7 +321,6 @@ describe('protocol', () => {
       async () => {
         const numQueries = 20
         const startTime = Date.now()
-        await connection.sendCommands('SET CLIENT KEY NONLINEARIZABLE TO 1;')
         for (let i = 0; i < numQueries; i++) {
           let rowset = await connection.sendCommands(
             'SELECT * FROM albums ORDER BY RANDOM() LIMIT 16; SELECT * FROM albums ORDER BY RANDOM() LIMIT 12; SELECT * FROM albums ORDER BY RANDOM() LIMIT 8; SELECT * FROM albums ORDER BY RANDOM() LIMIT 4;'

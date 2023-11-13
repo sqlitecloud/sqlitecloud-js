@@ -1,5 +1,5 @@
 /**
- * protocol.ts - handles low level communication with sqlitecloud server
+ * connection.ts - handles low level communication with sqlitecloud server
  */
 
 import tls from 'tls'
@@ -7,7 +7,7 @@ import lz4 from 'lz4'
 
 import { SQLiteCloudConfig, SQLCloudRowsetMetadata, SQLiteCloudError, SQLiteCloudDataTypes } from './types'
 import { SQLiteCloudRowset } from './rowset'
-import { parseConnectionString } from './utilities'
+import { parseConnectionString, parseBoolean } from './utilities'
 
 /**
  * The server communicates with clients via commands defined
@@ -37,9 +37,7 @@ export const DEFAULT_TIMEOUT = 300 * 1000
 /** Default tls connection port */
 export const DEFAULT_PORT = 9960
 
-/**
- * SQLiteCloud low-level connection, will do messaging, handle socket, authentication, etc.
- */
+/** SQLiteCloud low-level connection, will do messaging, handle socket, authentication, etc. */
 export class SQLiteCloudConnection {
   /** Parse and validate provided connectionString or configuration */
   constructor(config: SQLiteCloudConfig | string) {
@@ -86,6 +84,13 @@ export class SQLiteCloudConnection {
     config.timeout = config.timeout && config.timeout > 0 ? config.timeout : DEFAULT_TIMEOUT
     config.clientId ||= 'SQLiteCloud'
 
+    config.verbose = parseBoolean(config.verbose)
+    config.noBlob = parseBoolean(config.noBlob)
+    config.compression = parseBoolean(config.compression)
+    config.createDatabase = parseBoolean(config.createDatabase)
+    config.nonlinearizable = parseBoolean(config.nonlinearizable)
+    config.sqliteMode = parseBoolean(config.sqliteMode)
+
     if (!config.username || !config.password || !config.host) {
       throw new SQLiteCloudError('The user, password and host arguments must be specified.', { errorCode: 'ERR_MISSING_ARGS' })
     }
@@ -107,32 +112,34 @@ export class SQLiteCloudConnection {
   private get initializationCommands(): string {
     // first user authentication, then all other commands
     const config = this.config
-    let commands = `AUTH USER ${config.username || ''} ${config.passwordHashed ? 'HASH' : 'PASSWORD'} ${config.password || ''};`
+    let commands = `AUTH USER ${config.username || ''} ${config.passwordHashed ? 'HASH' : 'PASSWORD'} ${config.password || ''}; `
 
     if (config.database) {
-      if (config.createDatabase && !config.dbMemory) commands += `CREATE DATABASE ${config.database} IF NOT EXISTS;`
-      commands += `USE DATABASE ${config.database};`
+      if (config.createDatabase && !config.dbMemory) {
+        commands += `CREATE DATABASE ${config.database} IF NOT EXISTS; `
+      }
+      commands += `USE DATABASE ${config.database}; `
     }
     if (config.sqliteMode) {
-      commands += 'SET CLIENT KEY SQLITE TO 1;'
+      commands += 'SET CLIENT KEY SQLITE TO 1; '
     }
     if (config.compression) {
-      commands += 'SET CLIENT KEY COMPRESSION TO 1;'
+      commands += 'SET CLIENT KEY COMPRESSION TO 1; '
     }
     if (config.nonlinearizable) {
-      commands += 'SET CLIENT KEY NONLINEARIZABLE TO 1;'
+      commands += 'SET CLIENT KEY NONLINEARIZABLE TO 1; '
     }
     if (config.noBlob) {
-      commands += 'SET CLIENT KEY NOBLOB TO 1;'
+      commands += 'SET CLIENT KEY NOBLOB TO 1; '
     }
     if (config.maxData) {
-      commands += `SET CLIENT KEY MAXDATA TO ${config.maxData};`
+      commands += `SET CLIENT KEY MAXDATA TO ${config.maxData}; `
     }
     if (config.maxRows) {
-      commands += `SET CLIENT KEY MAXROWS TO ${config.maxRows};`
+      commands += `SET CLIENT KEY MAXROWS TO ${config.maxRows}; `
     }
     if (config.maxRowset) {
-      commands += `SET CLIENT KEY MAXROWSET TO ${config.maxRowset};`
+      commands += `SET CLIENT KEY MAXROWSET TO ${config.maxRowset}; `
     }
 
     return commands
@@ -204,7 +211,7 @@ export class SQLiteCloudConnection {
   }
 
   /** Will send a command and return the resulting rowset or result or throw an error */
-  public async sendCommands(commands: string): Promise<SQLiteCloudRowset | SQLiteCloudDataTypes> {
+  public async sendCommands<T = SQLiteCloudRowset>(commands: string): Promise<T> {
     // connection needs to be established?
     if (this.socket === undefined) {
       await this.connect()
@@ -226,7 +233,7 @@ export class SQLiteCloudConnection {
     let socketTimeout: number
 
     // define the Promise that waits for the server response
-    this.pending = new Promise<SQLiteCloudRowset | SQLiteCloudDataTypes>((resolve, reject) => {
+    this.pending = new Promise<T>((resolve, reject) => {
       const readData = (data: Uint8Array) => {
         this.log(`Received: ${data.length > 100 ? data.toString().substring(0, 100) + '...' : data.toString()}`)
 
@@ -257,7 +264,7 @@ export class SQLiteCloudConnection {
               clearTimeout(socketTimeout)
               try {
                 const { data } = popData(buffer)
-                resolve(data as SQLiteCloudRowset | SQLiteCloudDataTypes)
+                resolve(data as T)
               } catch (error) {
                 reject(error)
               }
@@ -268,7 +275,7 @@ export class SQLiteCloudConnection {
                 clearTimeout(socketTimeout)
                 try {
                   const parsedData = parseRowsetChunks(rowsetChunks)
-                  resolve(parsedData)
+                  resolve(parsedData as T)
                 } catch (error) {
                   reject(error)
                 }
@@ -286,7 +293,7 @@ export class SQLiteCloudConnection {
           if (lastChar == ' ') {
             try {
               const { data } = popData(buffer)
-              resolve(data)
+              resolve(data as T)
             } catch (error) {
               reject(error)
             }
@@ -600,18 +607,4 @@ function popData(buffer: Buffer): { data: SQLiteCloudDataTypes | SQLiteCloudRows
 function formatCommand(command: string): string {
   const commandLength = Buffer.byteLength(command, 'utf-8')
   return `+${commandLength} ${command}`
-}
-
-function containsKeyword(inputString: string, keywords: string[]): boolean {
-  // Normalize the input string for a case-insensitive search
-  const normalizedString = inputString.toLowerCase()
-
-  // Check each keyword
-  for (let keyword of keywords) {
-    if (normalizedString.includes(keyword.toLowerCase())) {
-      return true
-    }
-  }
-
-  return false
 }

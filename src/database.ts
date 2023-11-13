@@ -7,7 +7,7 @@
 // https://github.com/TryGhost/node-sqlite3
 // https://github.com/TryGhost/node-sqlite3/blob/master/lib/sqlite3.d.ts
 
-import { SQLiteCloudConnection } from './protocol'
+import { SQLiteCloudConnection } from './connection'
 import { SQLiteCloudRowset, SQLiteCloudRow } from './rowset'
 import { SQLiteCloudConfig, SQLiteCloudDataTypes, SQLiteCloudError } from './types'
 import { prepareSql, popCallback } from './utilities'

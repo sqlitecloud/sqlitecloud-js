@@ -3,10 +3,8 @@
  */
 
 import { SQLiteCloudRowset } from '../src'
-import { Database, ErrorCallback } from '../src/database'
-import { CHINOOK_DATABASE_URL, TESTING_DATABASE_URL } from './protocol.test'
-import * as dotenv from 'dotenv'
-dotenv.config()
+import { Database } from '../src/database'
+import { CHINOOK_DATABASE_URL } from './connection.test'
 
 describe('statement', () => {
   it('prepare without initial bindings', done => {

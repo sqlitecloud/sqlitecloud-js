@@ -2,7 +2,7 @@
 // utilities.test.ts
 //
 
-import { SQLiteCloudError } from '../src/protocol'
+import { SQLiteCloudError } from '../src/index'
 import { prepareSql, parseConnectionString } from '../src/utilities'
 
 describe('prepareSql', () => {

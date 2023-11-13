@@ -3,8 +3,8 @@
  */
 
 import { SQLiteCloudRowset } from '../src/index'
-import { SQLiteCloudConnection } from '../src/protocol'
-import { CHINOOK_DATABASE_URL } from './protocol.test'
+import { SQLiteCloudConnection } from '../src/connection'
+import { CHINOOK_DATABASE_URL } from './connection.test'
 
 describe('rowset', () => {
   let connection: SQLiteCloudConnection

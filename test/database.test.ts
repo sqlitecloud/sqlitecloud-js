@@ -4,7 +4,7 @@
 
 import { SQLiteCloudError, SQLiteCloudConnection, SQLiteCloudRow } from '../src/index'
 import { Database, ErrorCallback } from '../src/database'
-import { CHINOOK_DATABASE_URL, TESTING_DATABASE_URL, LONG_TIMEOUT } from './protocol.test'
+import { CHINOOK_DATABASE_URL, TESTING_DATABASE_URL, LONG_TIMEOUT } from './connection.test'
 
 import * as dotenv from 'dotenv'
 dotenv.config()

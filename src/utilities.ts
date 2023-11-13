@@ -88,7 +88,9 @@ export function prepareSql(sql: string, ...params: (SQLiteCloudDataTypes | SQLit
  * If there are multiple callbacks, the first one is returned as 'callback' and the last one
  * as 'completeCallback'.
  */
-export function popCallback<T extends ErrorCallback = ErrorCallback>(args: any[]): { args: any[]; callback?: T | undefined; complete?: ErrorCallback } {
+export function popCallback<T extends ErrorCallback = ErrorCallback>(
+  args: SQLiteCloudDataTypes[]
+): { args: SQLiteCloudDataTypes[]; callback?: T | undefined; complete?: ErrorCallback } {
   // at least 1 callback?
   if (args && args.length > 0 && typeof args[args.length - 1] === 'function') {
     // at least 2 callbacks?
@@ -123,4 +125,12 @@ export function parseConnectionString(connectionString: string): SQLiteCloudConf
   } catch (error) {
     throw new SQLiteCloudError(`Invalid connection string: ${connectionString}`)
   }
+}
+
+/** Returns true if value is 1 or true */
+export function parseBoolean(value: string | boolean | null | undefined): boolean {
+  if (typeof value === 'string') {
+    return value.toLowerCase() === 'true' || value === '1'
+  }
+  return value ? true : false
 }

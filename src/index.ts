@@ -4,4 +4,4 @@
 
 export { SQLiteCloudConfig, SQLCloudRowsetMetadata, SQLiteCloudError } from './types'
 export { SQLiteCloudRowset, SQLiteCloudRow } from './rowset'
-export { SQLiteCloudConnection } from './protocol'
+export { SQLiteCloudConnection } from './connection'
