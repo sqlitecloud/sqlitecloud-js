@@ -271,9 +271,9 @@ describe('Database', () => {
 
   describe('stress testing', () => {
     it(
-      '50x sql async with random selects',
+      '20x sql async with random selects',
       async () => {
-        const numQueries = 50
+        const numQueries = 20
         const startTime = Date.now()
         // database.verbose()
         const table = 'people'

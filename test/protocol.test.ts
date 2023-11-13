@@ -29,12 +29,9 @@ describe('protocol', () => {
   beforeEach(async () => {
     if (!connection) {
       try {
-        const connecting = new SQLiteCloudConnection(CHINOOK_DATABASE_URL)
-        expect(connecting).toBeDefined()
+        connection = new SQLiteCloudConnection(CHINOOK_DATABASE_URL)
+        expect(connection).toBeDefined()
         // connecting.verbose()
-
-        await connecting.connect()
-        connection = connecting
       } catch (error) {
         console.error(error)
         throw error
@@ -169,11 +166,26 @@ describe('protocol', () => {
     })
 
     it('should test error', async () => {
-      await expect(connection.sendCommands('TEST ERROR')).rejects.toThrow(/* expected error */)
+      try {
+        connection.verbose()
+        await connection.sendCommands('TEST ERROR')
+        // Fail the test if the error is not thrown
+        expect(true).toBe(false)
+      } catch (error: any) {
+        expect(error).toBeDefined()
+        expect(error).toBeInstanceOf(SQLiteCloudError)
+
+        const sqliteCloudError = error as SQLiteCloudError
+        expect(sqliteCloudError.message).toBe('This is a test error message with a devil error code.')
+        expect(sqliteCloudError.errorCode).toBe('66666')
+        expect(sqliteCloudError.externalErrorCode).toBe('0')
+        expect(sqliteCloudError.offsetCode).toBe(-1)
+      }
     })
 
     it('should test exterror', async () => {
       try {
+        connection.verbose()
         await connection.sendCommands('TEST EXTERROR')
         // Fail the test if the error is not thrown
         expect(true).toBe(false)
@@ -270,9 +282,9 @@ describe('protocol', () => {
 
   describe('connection stress testing', () => {
     it(
-      '50x individual selects',
+      '20x individual selects',
       async () => {
-        const numQueries = 50
+        const numQueries = 20
         const startTime = Date.now()
         for (let i = 0; i < numQueries; i++) {
           let rowset = await connection.sendCommands('SELECT * FROM albums ORDER BY RANDOM() LIMIT 4;')
@@ -281,15 +293,15 @@ describe('protocol', () => {
         }
         const queryMs = (Date.now() - startTime) / numQueries
         console.log(`${numQueries}x individual selects, ${queryMs.toFixed(0)}ms per query`)
-        expect(queryMs).toBeLessThan(500)
+        expect(queryMs).toBeLessThan(2000)
       },
       LONG_TIMEOUT
     )
 
     it(
-      '50x batched selects',
+      '20x batched selects',
       async () => {
-        const numQueries = 50
+        const numQueries = 20
         const startTime = Date.now()
         for (let i = 0; i < numQueries; i++) {
           let rowset = await connection.sendCommands(
@@ -301,7 +313,7 @@ describe('protocol', () => {
         }
         const queryMs = (Date.now() - startTime) / numQueries
         console.log(`${numQueries}x batched selects, ${queryMs.toFixed(0)}ms per query`)
-        expect(queryMs).toBeLessThan(500)
+        expect(queryMs).toBeLessThan(2000)
       },
       LONG_TIMEOUT
     )

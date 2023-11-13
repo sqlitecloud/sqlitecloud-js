@@ -3,4 +3,5 @@
 //
 
 export { SQLiteCloudConfig } from './types/sqlitecloudconfig'
-export { SQLiteCloudConnection, SQLiteCloudRowset, SQLiteCloudError } from './protocol'
+export { SQLCloudRowsetMetadata, SQLiteCloudRowset } from './rowset'
+export { SQLiteCloudConnection, SQLiteCloudError } from './protocol'

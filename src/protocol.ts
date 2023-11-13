@@ -6,6 +6,7 @@ import tls from 'tls'
 import lz4 from 'lz4'
 
 import { SQLiteCloudConfig } from './types/sqlitecloudconfig'
+import { SQLiteCloudRowset, SQLCloudRowsetMetadata } from './rowset'
 import { parseConnectionString } from './utilities'
 
 /**
@@ -36,155 +37,43 @@ export const DEFAULT_TIMEOUT = 300 * 1000
 /** Default tls connection port */
 export const DEFAULT_PORT = 9960
 
-//
-// exported classes
-//
-
-export class SQLCloudRow {
-  constructor(rowset: SQLiteCloudRowset, row: number) {
-    this._rowset = rowset
-    this._row = row
-  }
-
-  private _rowset: SQLiteCloudRowset
-  private _row: number
-
-  /** Return value of item at given column */
-  getItem(column: number): any {
-    return this._rowset.getItem(this._row, column)
-  }
-}
-
-export interface SQLCloudRowsetMetadata {
-  /** Rowset version 1 has column's name, version 2 has extended metadata */
-  version: number
-  /** Number of rows */
-  numberOfRows: number
-  /** Number of columns */
-  numberOfColumns: number
-
-  /** Columns' metadata */
-  columns: {
-    /** Column name in query (may be altered from original name) */
-    name: string
-    /** Declare column type */
-    type?: string
-    /** Database name */
-    database?: string
-    /** Database table */
-    table?: string
-    /** Original name of the column */
-    column?: string
-  }[]
-}
-
-/* A set of rows returned by a query */
-export class SQLiteCloudRowset {
-  /* Create a new rowset object */
-  constructor(metadata: SQLCloudRowsetMetadata, data: any[]) {
-    this._metadata = metadata
-    this._data = data
-  }
-
-  private _metadata: SQLCloudRowsetMetadata
-  private _data: any[] = []
-
-  /**
-   * Rowset version is 1 for a rowset with simple column names, 2 for extended metadata
-   * @see https://github.com/sqlitecloud/sdk/blob/master/PROTOCOL.md
-   */
-  get version(): number {
-    return this._metadata.version
-  }
-
-  /** Number of rows in row set */
-  get numberOfRows(): number {
-    return this._metadata.numberOfRows
-  }
-
-  /** Number of columns in row set */
-  get numberOfColumns(): number {
-    return this._metadata.numberOfColumns
-  }
-
-  /** Array of columns names */
-  get columnsNames(): string[] {
-    return this._metadata.columns.map(column => column.name)
-  }
-
-  /** Get rowset metadata */
-  get metadata(): SQLCloudRowsetMetadata {
-    return this._metadata
-  }
-
-  /** Return value of item at given row and column */
-  getItem(row: number, column: number): any {
-    if (row < 0 || row >= this.numberOfRows || column < 0 || column >= this.numberOfColumns) {
-      throw new SQLiteCloudError(
-        `This rowset has ${this.numberOfColumns} columns by ${this.numberOfRows} rows, requested column ${column} and row ${row} is invalid.`
-      )
-    }
-    return this._data[row * this.numberOfColumns + column]
-  }
-
-  /* Dump values for diagnostic purposes */
-  dump(): string[] {
-    const rows = []
-    for (let i = 0; i < this.numberOfRows; i++) {
-      let row = '|'
-      for (let j = 0; j < this.numberOfColumns; j++) {
-        row = ` ${row}${this.getItem(i, j) as string} |`
-      }
-      rows.push(row)
-    }
-    return rows
-  }
-
-  toArray(fromRow?: number, toRow?: number): any[] {
-    const rowsetValues = []
-    const columnsNames = this.columnsNames
-
-    fromRow = Math.max(fromRow !== undefined ? fromRow : 0, 0)
-    toRow = Math.min(toRow !== undefined ? toRow : this.numberOfRows, this.numberOfRows)
-
-    for (let row = fromRow || 0; row < toRow; row++) {
-      const rowValues: { [key: string]: any } = {}
-      for (let column = 0; column < this.numberOfColumns; column++) {
-        rowValues[columnsNames[column]] = this.getItem(row, column)
-      }
-      rowsetValues.push(rowValues)
-    }
-
-    return rowsetValues
-  }
-}
-
 /**
  * SQLiteCloud low-level connection, will do messaging, handle socket, authentication, etc.
  */
 export class SQLiteCloudConnection {
-  /** Connection string if passed */
-  _connectionString?: string
-  /** Configuration passed by client or extracted from connection string */
-  _config: SQLiteCloudConfig
-  /** Currently opened tls socket used to communicated with SQLiteCloud server */
-  _socket?: tls.TLSSocket
-
   /** Parse and validate provided connectionString or configuration */
   constructor(config: SQLiteCloudConfig | string) {
     if (typeof config === 'string') {
-      this._config = this._validateConfiguration({ connectionString: config })
+      this.config = this.validateConfiguration({ connectionString: config })
     } else {
-      this._config = this._validateConfiguration(config)
+      this.config = this.validateConfiguration(config)
     }
   }
 
+  /** Configuration passed by client or extracted from connection string */
+  private config: SQLiteCloudConfig
+
+  /** Currently opened tls socket used to communicated with SQLiteCloud server */
+  private socket?: tls.TLSSocket
+
+  /** Operations are serialized by waiting an any pending promises */
+  private pending?: Promise<any>
+
   //
-  // internal methods
+  // public properties
+  //
+
+  /** True if connection is open */
+  public get connected(): boolean {
+    return this.socket !== undefined
+  }
+
+  //
+  // private methods
   //
 
   /** Validate configuration, apply defaults, throw if something is missing or misconfigured */
-  private _validateConfiguration(config: SQLiteCloudConfig): SQLiteCloudConfig {
+  private validateConfiguration(config: SQLiteCloudConfig): SQLiteCloudConfig {
     if (config.connectionString) {
       config = {
         ...config,
@@ -205,25 +94,19 @@ export class SQLiteCloudConnection {
   }
 
   /** Will log to console if verbose mode is enabled */
-  private _log(message: string, ...optionalParams: any[]): void {
-    if (this._config.verbose) {
-      console.log(`${new Date().toISOString()} ${this._config.clientId as string}: ${message}`, ...optionalParams)
+  private log(message: string, ...optionalParams: any[]): void {
+    if (this.config.verbose) {
+      // hide password in AUTH command if needed
+      const passwordRegex = /PASSWORD \S+?(?=;)/
+      message = message.replace(passwordRegex, 'PASSWORD xxx')
+      console.log(`${new Date().toISOString()} ${this.config.clientId as string}: ${message}`, ...optionalParams)
     }
   }
 
-  //
-  // public properties
-  //
-
-  /** True if connection is open */
-  public get connected(): boolean {
-    return this._socket !== undefined
-  }
-
   /** Initialization commands sent to database when connection is established */
-  public get initializationCommands(): string {
+  private get initializationCommands(): string {
     // first user authentication, then all other commands
-    const config = this._config
+    const config = this.config
     let commands = `AUTH USER ${config.username || ''} ${config.passwordHashed ? 'HASH' : 'PASSWORD'} ${config.password || ''};`
 
     if (config.database) {
@@ -261,61 +144,75 @@ export class SQLiteCloudConnection {
 
   /** Enable verbose logging for debug purposes */
   public verbose(): void {
-    this._config.verbose = true
+    this.config.verbose = true
   }
 
   /* Opens a connection with the server and sends the initialization commands. Will throw in case of errors. */
   public async connect(): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-      // connect to tls socket, initialize connection, setup event handlers
-      const client: tls.TLSSocket = tls.connect(this._config.port as number, this._config.host, this._config.tlsOptions, () => {
-        if (client.authorized) {
-          const commands = this.initializationCommands
-          this._log('Connection initializing')
+    let client: tls.TLSSocket
 
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-          this._socket = client
+    const promise = new Promise<void>((resolve, reject) => {
+      // connect to tls socket, initialize connection, setup event handlers
+      client = tls.connect(this.config.port as number, this.config.host, this.config.tlsOptions, () => {
+        if (client.authorized) {
+          this.log('Connection initializing')
+          const commands = this.initializationCommands
+          this.socket = client
 
           this.sendCommands(commands).then(
             () => {
-              this._log('Connection initialized')
+              this.log('Connection initialized')
               resolve()
             },
             error => {
-              this._log('Error with initialization commands', error)
+              this.log('Error with initialization commands', error)
               reject(error)
             }
           )
         } else {
-          this._log('Connection was not authorized', client.authorizationError)
+          this.log('Connection was not authorized', client.authorizationError)
           reject(new SQLiteCloudError('Connection was not authorized', { cause: client.authorizationError }))
         }
       })
 
       client.on('close', () => {
-        if (this._socket) {
+        if (this.socket) {
           // no loggin if already disposed
-          this._log('Connection closed')
-          this._socket.destroy()
-          this._socket = undefined
+          this.log('Connection closed')
+          this.socket.destroy()
+          this.socket = undefined
         }
       })
 
       client.once('error', (error: any) => {
-        this._log('Connection error', error)
-        if (this._socket) {
-          this._socket.destroy()
-          this._socket = undefined
+        this.log('Connection error', error)
+        if (this.socket) {
+          this.socket.destroy()
+          this.socket = undefined
         }
         reject(new SQLiteCloudError('Connection error', { cause: error }))
       })
     })
+
+    promise.finally(() => {
+      if (client) {
+        client.removeAllListeners('error')
+      }
+    })
+
+    return promise
   }
 
   /** Will send a command and return the resulting rowset or throw an error */
   public async sendCommands(commands: string): Promise<SQLiteCloudRowset> {
-    if (!this._socket) {
-      throw new SQLiteCloudError('Connection is not open')
+    // connection needs to be established?
+    if (this.socket === undefined) {
+      await this.connect()
+    }
+
+    // serialize commands by waiting on any other pending operations
+    if (this.pending) {
+      await this.pending
     }
 
     // compose commands following SCPC protocol
@@ -323,15 +220,15 @@ export class SQLiteCloudConnection {
 
     let buffer = Buffer.alloc(0)
     const rowsetChunks: Buffer[] = []
-    this._log(`Sending: ${commands}`)
+    this.log(`Sending: ${commands}`)
+
+    // define what to do if an answer does not arrive within the set timeout
+    let socketTimeout: number
 
     // define the Promise that waits for the server response
-    return new Promise((resolve, reject) => {
-      // define what to do if an answer does not arrive within the set timeout
-      let socketTimeout: number
-
+    this.pending = new Promise<SQLiteCloudRowset>((resolve, reject) => {
       const readData = (data: Uint8Array) => {
-        this._log(`Received: ${data.length > 100 ? data.toString().substring(0, 100) + '...' : data.toString()}`)
+        this.log(`Received: ${data.length > 100 ? data.toString().substring(0, 100) + '...' : data.toString()}`)
 
         // on first ondata event, dataType is read from data, on subsequent ondata event, is read from buffer that is the concatanations of data received on each ondata event
         const dataType = buffer.length === 0 ? data.subarray(0, 1).toString() : buffer.subarray(0, 1).toString('utf8')
@@ -356,10 +253,10 @@ export class SQLiteCloudConnection {
           const hasReceivedEntireCommand = buffer.length - buffer.indexOf(' ') - 1 >= commandLength ? true : false
           if (hasReceivedEntireCommand) {
             if (dataType !== CMD_ROWSET_CHUNK && compressedDataType !== CMD_ROWSET_CHUNK) {
-              this._socket?.off('data', readData)
+              this.socket?.off('data', readData)
               clearTimeout(socketTimeout)
               try {
-                const { data, fwdBuffer: newBuffer } = popData(buffer)
+                const { data } = popData(buffer)
                 resolve(data)
               } catch (error) {
                 reject(error)
@@ -379,7 +276,7 @@ export class SQLiteCloudConnection {
                 // no ending string? ask server for another chunk
                 rowsetChunks.push(buffer)
                 buffer = Buffer.alloc(0)
-                this._socket?.write(formatCommand('OK'))
+                this.socket?.write(formatCommand('OK'))
               }
             }
           }
@@ -387,10 +284,8 @@ export class SQLiteCloudConnection {
           // command with no explicit len so make sure that the final character is a space
           const lastChar = buffer.subarray(buffer.length - 1, buffer.length).toString('utf8')
           if (lastChar == ' ') {
-            this._socket?.off('data', readData)
-            clearTimeout(socketTimeout)
             try {
-              const { data, fwdBuffer: newBuffer } = popData(buffer)
+              const { data } = popData(buffer)
               resolve(data)
             } catch (error) {
               reject(error)
@@ -399,33 +294,42 @@ export class SQLiteCloudConnection {
         }
       }
 
-      this._socket?.write(commands, 'utf8', () => {
+      this.socket?.write(commands, 'utf8', () => {
         socketTimeout = setTimeout(() => {
-          this._socket?.off('data', readData)
-          clearTimeout(socketTimeout)
           reject(new SQLiteCloudError('Request timed out', { cause: commands }))
-        }, this._config.timeout)
-        this._socket?.on('data', readData)
+        }, this.config.timeout)
+        this.socket?.on('data', readData)
       })
 
-      this._socket?.once('error', (error: any) => {
-        this._log('Socket error', error)
-        if (this._socket) {
-          this._socket.destroy()
-          this._socket = undefined
+      this.socket?.once('error', (error: any) => {
+        this.log('Socket error', error)
+        if (this.socket) {
+          this.socket.destroy()
+          this.socket = undefined
         }
         reject(new SQLiteCloudError('Connection on error event', { cause: error }))
       })
     })
+
+    this.pending.finally(() => {
+      clearTimeout(socketTimeout)
+      if (this.socket) {
+        this.socket.removeAllListeners('data')
+        this.socket.removeAllListeners('error')
+      }
+      this.pending = undefined
+    })
+
+    return this.pending
   }
 
   /** Disconnect from server, release connection. */
   public async close(): Promise<void> {
     return new Promise(resolve => {
-      this._socket?.end(() => {
-        this._socket?.destroy()
-        this._socket = undefined
-        this._log('Connection closed')
+      this.socket?.end(() => {
+        this.socket?.destroy()
+        this.socket = undefined
+        this.log('Connection closed')
         resolve()
       })
     })
@@ -716,4 +620,18 @@ function popData(buffer: Buffer): { data: any; fwdBuffer: Buffer } {
 function formatCommand(command: string): string {
   const commandLength = Buffer.byteLength(command, 'utf-8')
   return `+${commandLength} ${command}`
+}
+
+function containsKeyword(inputString: string, keywords: string[]): boolean {
+  // Normalize the input string for a case-insensitive search
+  const normalizedString = inputString.toLowerCase()
+
+  // Check each keyword
+  for (let keyword of keywords) {
+    if (normalizedString.includes(keyword.toLowerCase())) {
+      return true
+    }
+  }
+
+  return false
 }

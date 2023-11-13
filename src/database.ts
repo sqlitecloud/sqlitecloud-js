@@ -7,7 +7,8 @@
 // https://github.com/TryGhost/node-sqlite3
 // https://github.com/TryGhost/node-sqlite3/blob/master/lib/sqlite3.d.ts
 
-import { SQLiteCloudConnection, SQLiteCloudRowset } from './protocol'
+import { SQLiteCloudConnection } from './protocol'
+import { SQLiteCloudRowset } from './rowset'
 import { SQLiteCloudConfig } from './types/sqlitecloudconfig'
 import { prepareSql, popCallback } from './utilities'
 import { Statement } from './statement'
@@ -30,11 +31,11 @@ export class RunResult {
 export class Database {
   /** Create and initialize a database from a full configuration object, or connection string */
   constructor(config: SQLiteCloudConfig | string, _mode?: string | null, callback?: ErrorCallback) {
-    this._config = typeof config === 'string' ? { connectionString: config } : config
+    this.config = typeof config === 'string' ? { connectionString: config } : config
 
     // opens first connection to the database automatically
-    const connection = new SQLiteCloudConnection(this._config)
-    this._connections = [connection]
+    const connection = new SQLiteCloudConnection(this.config)
+    this.connections = [connection]
 
     const job = new Promise<void>((resolve, reject) => {
       void connection
@@ -55,19 +56,19 @@ export class Database {
           }
         })
     }).finally(() => {
-      this._pending = this._pending.filter(p => p !== job)
+      this.pending = this.pending.filter(p => p !== job)
     })
-    this._pending.push(job)
+    this.pending.push(job)
   }
 
   /** Configuration used to open database connections */
-  private _config: SQLiteCloudConfig
+  private config: SQLiteCloudConfig
 
   /** Database connections */
-  private _connections: SQLiteCloudConnection[]
+  private connections: SQLiteCloudConnection[]
 
   /** Pending operations */
-  private _pending: Promise<any>[] = []
+  private pending: Promise<any>[] = []
 
   //
   // private methods
@@ -76,13 +77,13 @@ export class Database {
   /** Returns first available connection from connection pool */
   private getConnection(): SQLiteCloudConnection {
     // TODO sqlitecloud-js / implement database connection pool #10
-    return this._connections?.[0]
+    return this.connections?.[0]
   }
 
   /** Emits given event with optional arguments */
   private emitEvent(event: string, ...args: any[]): void {
     // TODO sqlitecloud-js / database emit event #16
-    if (this._config.verbose) {
+    if (this.config.verbose) {
       console.log(`Database.emitEvent - '${event}'`, ...args)
     }
   }
@@ -93,10 +94,10 @@ export class Database {
 
   /** Enable verbose mode */
   public verbose(): this {
-    for (const connection of this._connections) {
-      connection._config.verbose = true
+    this.config.verbose = true
+    for (const connection of this.connections) {
+      connection.verbose()
     }
-    this._config.verbose = true
     return this
   }
 
@@ -286,9 +287,9 @@ export class Database {
    * parameters is emitted, regardless of whether a callback was provided or not.
    */
   public close(callback?: ErrorCallback): void {
-    const closingPromises = this._connections.map(connection =>
+    const closingPromises = this.connections.map(connection =>
       connection.close().then(() => {
-        this._connections = this._connections.filter(c => c !== connection)
+        this.connections = this.connections.filter(c => c !== connection)
       })
     )
     Promise.all(closingPromises)
@@ -337,8 +338,8 @@ export class Database {
   }
 
   get pendingPromises(): Promise<any[]> {
-    if (this._pending?.length > 0) {
-      return Promise.all(this._pending)
+    if (this.pending?.length > 0) {
+      return Promise.all(this.pending)
     }
     return Promise.resolve([])
   }
