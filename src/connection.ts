@@ -331,15 +331,11 @@ export class SQLiteCloudConnection {
   }
 
   /** Disconnect from server, release connection. */
-  public async close(): Promise<void> {
-    return new Promise(resolve => {
-      this.socket?.end(() => {
-        this.socket?.destroy()
-        this.socket = undefined
-        this.log('Connection closed')
-        resolve()
-      })
-    })
+  public close() {
+    if (this.socket) {
+      this.socket.destroy()
+      this.socket = undefined
+    }
   }
 }
 

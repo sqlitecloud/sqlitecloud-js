@@ -295,26 +295,12 @@ export class Database {
    * parameters is emitted, regardless of whether a callback was provided or not.
    */
   public close(callback?: ErrorCallback): void {
-    const closingPromises = this.connections.map(connection =>
-      connection.close().then(() => {
-        this.connections = this.connections.filter(c => c !== connection)
-      })
-    )
-    Promise.all(closingPromises)
-      .then(() => {
-        // all connections closed
-        if (callback) {
-          callback.call(this, null)
-        }
-        this.emitEvent('close')
-      })
-      .catch(error => {
-        if (callback) {
-          callback.call(this, error)
-        } else {
-          this.emitEvent('error', error)
-        }
-      })
+    if (this.connections?.length > 0) {
+      for (const connection of this.connections) {
+        connection.close()
+      }
+    }
+    callback?.call(this, null)
   }
 
   /**

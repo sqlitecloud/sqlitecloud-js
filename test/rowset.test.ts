@@ -17,7 +17,7 @@ describe('rowset', () => {
 
   afterAll(async () => {
     if (connection) {
-      await connection.close()
+      connection.close()
       // @ts-ignore
       connection = undefined
     }
@@ -79,6 +79,6 @@ describe('rowset', () => {
       { column: 'Bytes', database: 'main', name: 'Bytes', table: 'tracks', type: 'INTEGER' },
       { column: 'UnitPrice', database: 'main', name: 'UnitPrice', table: 'tracks', type: 'NUMERIC(10,2)' }
     ])
-    await connection.close()
+    connection.close()
   })
 })

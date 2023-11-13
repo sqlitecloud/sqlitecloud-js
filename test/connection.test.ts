@@ -40,9 +40,9 @@ describe('connection', () => {
     }
   })
 
-  afterEach(async () => {
+  afterEach(() => {
     if (connection) {
-      await connection.close()
+      connection.close()
       // @ts-ignore
       connection = undefined
     }
@@ -55,22 +55,26 @@ describe('connection', () => {
 
     it('should connect with config object string', async () => {
       const configObj = parseConnectionString(CHINOOK_DATABASE_URL)
-      const connection = new SQLiteCloudConnection(configObj)
+      const conn = new SQLiteCloudConnection(configObj)
 
-      expect(connection).toBeDefined()
-      await connection.connect()
-      expect(connection.connected).toBe(true)
-      await connection.close()
-      expect(connection.connected).toBe(false)
+      const r1 = await connection.sendCommands('TEST STRING')
+
+      expect(conn).toBeDefined()
+      await conn.connect()
+      expect(conn.connected).toBe(true)
+      conn.close()
+      expect(conn.connected).toBe(false)
     })
 
     it('should connect with connection string', async () => {
       const conn = new SQLiteCloudConnection(CHINOOK_DATABASE_URL)
 
+      const r1 = await connection.sendCommands('TEST STRING')
+
       expect(conn).toBeDefined()
       await conn.connect()
       expect(conn.connected).toBe(true)
-      await conn.close()
+      conn.close()
       expect(conn.connected).toBe(false)
     })
 
