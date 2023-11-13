@@ -236,68 +236,60 @@ export class SQLiteCloudConnection {
     this.pending = new Promise<T>((resolve, reject) => {
       const readData = (data: Uint8Array) => {
         this.log(`Received: ${data.length > 100 ? data.toString().substring(0, 100) + '...' : data.toString()}`)
+        try {
+          // on first ondata event, dataType is read from data, on subsequent ondata event, is read from buffer that is the concatanations of data received on each ondata event
+          const dataType = buffer.length === 0 ? data.subarray(0, 1).toString() : buffer.subarray(0, 1).toString('utf8')
+          buffer = Buffer.concat([buffer, data])
+          const commandLength = hasCommandLength(dataType)
 
-        // on first ondata event, dataType is read from data, on subsequent ondata event, is read from buffer that is the concatanations of data received on each ondata event
-        const dataType = buffer.length === 0 ? data.subarray(0, 1).toString() : buffer.subarray(0, 1).toString('utf8')
-        buffer = Buffer.concat([buffer, data])
-        const commandLength = hasCommandLength(dataType)
+          if (commandLength) {
+            const commandLength = parseCommandLength(buffer)
 
-        if (commandLength) {
-          const commandLength = parseCommandLength(buffer)
+            // in case of compressed data, extract the dataType of compressed data
+            let compressedDataType = null
+            if (dataType === CMD_COMPRESSED) {
+              // remove LEN
+              let compressedBuffer = buffer.subarray(buffer.indexOf(' ') + 1, buffer.length)
+              // remove compressed size
+              compressedBuffer = compressedBuffer.subarray(compressedBuffer.indexOf(' ') + 1, compressedBuffer.length)
+              // remove decompressed size
+              compressedBuffer = compressedBuffer.subarray(compressedBuffer.indexOf(' ') + 1, compressedBuffer.length)
+              compressedDataType = compressedBuffer.subarray(0, 1).toString('utf8')
+            }
 
-          // in case of compressed data, extract the dataType of compressed data
-          let compressedDataType = null
-          if (dataType === CMD_COMPRESSED) {
-            // remove LEN
-            let compressedBuffer = buffer.subarray(buffer.indexOf(' ') + 1, buffer.length)
-            // remove compressed size
-            compressedBuffer = compressedBuffer.subarray(compressedBuffer.indexOf(' ') + 1, compressedBuffer.length)
-            // remove decompressed size
-            compressedBuffer = compressedBuffer.subarray(compressedBuffer.indexOf(' ') + 1, compressedBuffer.length)
-            compressedDataType = compressedBuffer.subarray(0, 1).toString('utf8')
-          }
-
-          const hasReceivedEntireCommand = buffer.length - buffer.indexOf(' ') - 1 >= commandLength ? true : false
-          if (hasReceivedEntireCommand) {
-            if (dataType !== CMD_ROWSET_CHUNK && compressedDataType !== CMD_ROWSET_CHUNK) {
-              this.socket?.off('data', readData)
-              clearTimeout(socketTimeout)
-              try {
+            const hasReceivedEntireCommand = buffer.length - buffer.indexOf(' ') - 1 >= commandLength ? true : false
+            if (hasReceivedEntireCommand) {
+              if (dataType !== CMD_ROWSET_CHUNK && compressedDataType !== CMD_ROWSET_CHUNK) {
+                this.socket?.off('data', readData)
+                clearTimeout(socketTimeout)
                 const { data } = popData(buffer)
                 resolve(data as T)
-              } catch (error) {
-                reject(error)
-              }
-            } else {
-              // @ts-expect-error
-              // check if rowset received the ending chunk
-              if (data.subarray(data.indexOf(' ') + 1, data.length).toString() === '0 0 0 ') {
-                clearTimeout(socketTimeout)
-                try {
+              } else {
+                // @ts-expect-error
+                // check if rowset received the ending chunk
+                if (data.subarray(data.indexOf(' ') + 1, data.length).toString() === '0 0 0 ') {
+                  clearTimeout(socketTimeout)
                   const parsedData = parseRowsetChunks(rowsetChunks)
                   resolve(parsedData as T)
-                } catch (error) {
-                  reject(error)
+                } else {
+                  // no ending string? ask server for another chunk
+                  rowsetChunks.push(buffer)
+                  buffer = Buffer.alloc(0)
+                  this.socket?.write(formatCommand('OK'))
                 }
-              } else {
-                // no ending string? ask server for another chunk
-                rowsetChunks.push(buffer)
-                buffer = Buffer.alloc(0)
-                this.socket?.write(formatCommand('OK'))
               }
             }
-          }
-        } else {
-          // command with no explicit len so make sure that the final character is a space
-          const lastChar = buffer.subarray(buffer.length - 1, buffer.length).toString('utf8')
-          if (lastChar == ' ') {
-            try {
+          } else {
+            // command with no explicit len so make sure that the final character is a space
+            const lastChar = buffer.subarray(buffer.length - 1, buffer.length).toString('utf8')
+            if (lastChar == ' ') {
               const { data } = popData(buffer)
               resolve(data as T)
-            } catch (error) {
-              reject(error)
             }
           }
+        } catch (error) {
+          this.close()
+          reject(error)
         }
       }
 
@@ -310,10 +302,7 @@ export class SQLiteCloudConnection {
 
       this.socket?.once('error', (error: any) => {
         this.log('Socket error', error)
-        if (this.socket) {
-          this.socket.destroy()
-          this.socket = undefined
-        }
+        this.close()
         reject(new SQLiteCloudError('Connection on error event', { cause: error }))
       })
     })
@@ -334,8 +323,8 @@ export class SQLiteCloudConnection {
   public close() {
     if (this.socket) {
       this.socket.destroy()
-      this.socket = undefined
     }
+    this.socket = undefined
   }
 }
 

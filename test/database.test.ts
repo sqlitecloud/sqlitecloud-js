@@ -220,7 +220,6 @@ describe('Database', () => {
         expect(error).toBeInstanceOf(SQLiteCloudError)
         expect(false).toBeTruthy()
       }
-      done()
     })
   })
 
