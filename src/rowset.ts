@@ -101,24 +101,4 @@ export class SQLiteCloudRowset extends Array<SQLiteCloudRow> {
     }
     return this.#data[row * this.numberOfColumns + column]
   }
-
-  public slice(start?: number, end?: number): SQLiteCloudRow[] {
-    const slicedArray = super.slice(start, end)
-    //   const slicedCustomArray = new CustomArray<T>(this.customProperty)
-    // slicedCustomArray.push(...slicedArray)
-    return slicedArray
-  }
-
-  /* Dump values for diagnostic purposes */
-  dump(): string[] {
-    const rows = []
-    for (let i = 0; i < this.numberOfRows; i++) {
-      let row = '|'
-      for (let j = 0; j < this.numberOfColumns; j++) {
-        row = ` ${row}${this.getItem(i, j) as string} |`
-      }
-      rows.push(row)
-    }
-    return rows
-  }
 }

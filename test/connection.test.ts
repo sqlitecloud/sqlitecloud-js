@@ -232,14 +232,6 @@ describe('connection', () => {
       },
       30 * 1000 // long timeout
     )
-
-    it('should dump results', async () => {
-      let rowset = await connection.sendCommands('SELECT * FROM tracks LIMIT 3;')
-      const dumped = rowset.dump()
-      expect(dumped.toString()).toBe(
-        '         |1 |For Those About To Rock (We Salute You) |1 |1 |1 |Angus Young, Malcolm Young, Brian Johnson |343719 |11170334 |0.99 |,         |2 |Balls to the Wall |2 |2 |1 |null |342562 |5510424 |0.99 |,         |3 |Fast As a Shark |3 |2 |1 |F. Baltes, S. Kaufman, U. Dirkscneider & W. Hoffman |230619 |3990994 |0.99 |'
-      )
-    })
   })
 
   describe('send select commands', () => {

@@ -85,6 +85,14 @@ export class Database {
     }
   }
 
+  /** Returns a single promise that can be waited on until all current operations are completed */
+  private get pendingPromises(): Promise<any[]> {
+    if (this.pending?.length > 0) {
+      return Promise.all(this.pending)
+    }
+    return Promise.resolve([])
+  }
+
   //
   // public methods
   //
@@ -337,12 +345,9 @@ export class Database {
     // TODO sqlitecloud-js / implement database interrupt #13
   }
 
-  get pendingPromises(): Promise<any[]> {
-    if (this.pending?.length > 0) {
-      return Promise.all(this.pending)
-    }
-    return Promise.resolve([])
-  }
+  //
+  // extended APIs
+  //
 
   public async sql(sql: TemplateStringsArray | string, ...values: any[]): Promise<any> {
     let preparedSql = ''

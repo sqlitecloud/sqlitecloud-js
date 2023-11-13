@@ -10,6 +10,7 @@ describe('rowset', () => {
   let connection: SQLiteCloudConnection
 
   beforeAll(async () => {
+    expect(CHINOOK_DATABASE_URL).toBeDefined()
     connection = new SQLiteCloudConnection(CHINOOK_DATABASE_URL)
     await connection.sendCommands('SET CLIENT KEY NONLINEARIZABLE TO 1;')
   })
