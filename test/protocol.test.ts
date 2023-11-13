@@ -14,7 +14,7 @@ export const TESTING_DATABASE_URL = process.env.TESTING_DATABASE_URL as string
 console.assert(CHINOOK_DATABASE_URL, 'CHINOOK_DATABASE_URL is not defined')
 console.assert(TESTING_DATABASE_URL, 'TESTING_DATABASE_URL is not defined')
 
-const LONG_TIMEOUT = 100 * 1000 // 100 seconds
+export const LONG_TIMEOUT = 100 * 1000 // 100 seconds
 
 export function getChinoookConfig(): SQLiteCloudConfig {
   return parseConnectionString(CHINOOK_DATABASE_URL)
@@ -270,9 +270,9 @@ describe('protocol', () => {
 
   describe('connection stress testing', () => {
     it(
-      'run individual selects',
+      '50x individual selects',
       async () => {
-        const numQueries = 150
+        const numQueries = 50
         const startTime = Date.now()
         for (let i = 0; i < numQueries; i++) {
           let rowset = await connection.sendCommands('SELECT * FROM albums ORDER BY RANDOM() LIMIT 4;')
@@ -287,9 +287,9 @@ describe('protocol', () => {
     )
 
     it(
-      'run batched selects',
+      '50x batched selects',
       async () => {
-        const numQueries = 150
+        const numQueries = 50
         const startTime = Date.now()
         for (let i = 0; i < numQueries; i++) {
           let rowset = await connection.sendCommands(

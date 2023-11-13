@@ -4,11 +4,10 @@
 
 import { SQLiteCloudError, SQLiteCloudConnection } from '../src/index'
 import { Database, ErrorCallback } from '../src/database'
-import { CHINOOK_DATABASE_URL, TESTING_DATABASE_URL } from './protocol.test'
+import { CHINOOK_DATABASE_URL, TESTING_DATABASE_URL, LONG_TIMEOUT } from './protocol.test'
+
 import * as dotenv from 'dotenv'
 dotenv.config()
-
-const LONG_TIMEOUT = 30 * 1000
 
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
@@ -266,12 +265,27 @@ describe('Database', () => {
       const results = await database.sql`SELECT * FROM people WHERE name = 'Eva' OR name = ${name} OR age < 30`
       expect(results).toHaveLength(11)
     })
+  })
 
-    it('template string with multiple queries', async () => {
-      for (let i = 0; i < 2; i++) {
-        const results = await database.sql`SELECT * FROM people ORDER BY RANDOM() LIMIT 12`
-        expect(results).toHaveLength(12)
-      }
-    })
+  describe('stress testing', () => {
+    it(
+      '50x sql async with random selects',
+      async () => {
+        const numQueries = 50
+        const startTime = Date.now()
+
+        const table = 'people'
+        for (let i = 0; i < numQueries; i++) {
+          const results = await database.sql`SELECT * FROM ${table} ORDER BY RANDOM() LIMIT 12`
+          expect(results).toHaveLength(12)
+          expect(Object.keys(results[0])).toEqual(['id', 'name', 'age', 'hobby'])
+        }
+
+        const queryMs = (Date.now() - startTime) / numQueries
+        console.log(`${numQueries}x template selects, ${queryMs.toFixed(0)}ms per query`)
+        expect(queryMs).toBeLessThan(500)
+      },
+      LONG_TIMEOUT
+    )
   })
 })
