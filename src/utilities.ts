@@ -2,13 +2,10 @@
 // utilities.ts - utility methods to manipulate SQL statements
 //
 
-import { SQLiteCloudError } from './protocol'
-import { SQLiteCloudConfig } from './types/sqlitecloudconfig'
-
-export type SQLiteTypes = string | number | boolean | Record<string | number, unknown> | Buffer | undefined | null
+import { SQLiteCloudConfig, SQLiteCloudError, SQLiteCloudDataTypes } from './types'
 
 /** Takes a generic value and escapes it so it can replace ? as a binding in a prepared SQL statement */
-export function escapeSqlParameter(param: SQLiteTypes): string {
+export function escapeSqlParameter(param: SQLiteCloudDataTypes): string {
   if (param === null || param === undefined) {
     return 'NULL'
   }
@@ -43,7 +40,7 @@ export function escapeSqlParameter(param: SQLiteTypes): string {
 }
 
 /** Take a sql statement and replaces ? or $named parameters that are properly serialized and escaped. */
-export function prepareSql(sql: string, ...params: (SQLiteTypes | SQLiteTypes[])[]): string {
+export function prepareSql(sql: string, ...params: (SQLiteCloudDataTypes | SQLiteCloudDataTypes[])[]): string {
   // parameters where passed as an array of parameters?
   if (params?.length === 1 && Array.isArray(params[0])) {
     params = params[0]
@@ -55,15 +52,15 @@ export function prepareSql(sql: string, ...params: (SQLiteTypes | SQLiteTypes[])
     const index = matchIndex ? parseInt(matchIndex) : parameterIndex
     parameterIndex++
 
-    let sqlParameter: SQLiteTypes
+    let sqlParameter: SQLiteCloudDataTypes
     if (params[0] && typeof params[0] === 'object' && !(params[0] instanceof Buffer)) {
-      sqlParameter = params[0][index] as SQLiteTypes
+      sqlParameter = params[0][index] as SQLiteCloudDataTypes
     }
     if (!sqlParameter) {
       if (index > params.length) {
         throw new SQLiteCloudError('Not enough parameters')
       }
-      sqlParameter = params[index - 1] as SQLiteTypes
+      sqlParameter = params[index - 1] as SQLiteCloudDataTypes
     }
 
     return sqlParameter ? escapeSqlParameter(sqlParameter) : 'NULL'
@@ -71,7 +68,7 @@ export function prepareSql(sql: string, ...params: (SQLiteTypes | SQLiteTypes[])
 
   // replace $named or :named parameters passed as an object
   if (params?.length === 1 && params[0] && typeof params[0] === 'object') {
-    const namedParams = params[0] as Record<string, SQLiteTypes>
+    const namedParams = params[0] as Record<string, SQLiteCloudDataTypes>
     for (const [paramKey, param] of Object.entries(namedParams)) {
       const firstChar = paramKey.charAt(0)
       if (firstChar == '$' || firstChar == ':' || firstChar == '@') {

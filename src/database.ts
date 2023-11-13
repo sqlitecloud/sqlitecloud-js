@@ -8,19 +8,16 @@
 // https://github.com/TryGhost/node-sqlite3/blob/master/lib/sqlite3.d.ts
 
 import { SQLiteCloudConnection } from './protocol'
-import { SQLiteCloudRowset } from './rowset'
-import { SQLiteCloudConfig } from './types/sqlitecloudconfig'
+import { SQLiteCloudRowset, SQLiteCloudRow } from './rowset'
+import { SQLiteCloudConfig, SQLiteCloudDataTypes, SQLiteCloudError } from './types'
 import { prepareSql, popCallback } from './utilities'
 import { Statement } from './statement'
 
 export type ErrorCallback = (error: Error | null) => void
-export type RowsCallback = (error: Error | null, rows?: { [column: string]: any }[]) => void
-export type RowCallback = (error: Error | null, row?: { [column: string]: any }) => void
+export type ResultsCallback = (error: Error | null, results?: SQLiteCloudRowset | SQLiteCloudRow | SQLiteCloudDataTypes) => void
+export type RowsCallback = (error: Error | null, rows?: SQLiteCloudRowset) => void
+export type RowCallback = (error: Error | null, row?: SQLiteCloudRow) => void
 export type RowCountCallback = (error: Error | null, rowCount?: number) => void
-
-export class RunResult {
-  //
-}
 
 /**
  * Creating a Database object automatically opens a connection to the SQLite database.
@@ -115,7 +112,7 @@ export class Database {
    * which it was called to allow for function chaining.
    */
   public run(sql: string, ...params: any[]): this {
-    const { args, callback } = popCallback<RowCallback>(params)
+    const { args, callback } = popCallback<ResultsCallback>(params)
     void this.getConnection()
       .sendCommands(prepareSql(sql, ...args))
       .then(results => {
@@ -138,18 +135,19 @@ export class Database {
    * function chaining. The parameters are the same as the Database#run function,
    * with the following differences: The signature of the callback is `function(err, row) {}`.
    * If the result set is empty, the second parameter is undefined, otherwise it is an
-   * object containing the values for the first row. The property names correspond to t
-   * he column names of the result set. It is impossible to access them by column index;
+   * object containing the values for the first row. The property names correspond to
+   * the column names of the result set. It is impossible to access them by column index;
    * the only supported way is by column name.
    */
   public get(sql: string, ...params: any[]): this {
     const { args, callback } = popCallback<RowCallback>(params)
     void this.getConnection()
       .sendCommands(prepareSql(sql, ...args))
-      .then(rowset => {
-        if (callback) {
-          const rows = rowset?.toArray(0, 1)
-          callback.call(this, null, rows[0])
+      .then(results => {
+        if (results && results instanceof SQLiteCloudRowset && results.length > 0) {
+          callback?.call(this, null, results[0])
+        } else {
+          callback?.call(this, null)
         }
       })
       .catch(error => {
@@ -181,9 +179,10 @@ export class Database {
     void this.getConnection()
       .sendCommands(args?.length > 0 ? prepareSql(sql, ...args) : sql)
       .then(rowset => {
-        if (callback) {
-          const rows = rowset && rowset instanceof SQLiteCloudRowset ? rowset.toArray() : rowset
-          callback.call(this, null, rows)
+        if (rowset && rowset instanceof SQLiteCloudRowset) {
+          callback?.call(this, null, rowset)
+        } else {
+          callback?.call(this, null)
         }
       })
       .catch(error => {
@@ -218,15 +217,16 @@ export class Database {
     void this.getConnection()
       .sendCommands(args?.length > 0 ? prepareSql(sql, ...args) : sql)
       .then(rowset => {
-        if (callback) {
-          const rows = rowset.toArray()
-          for (const row of rows) {
-            callback.call(this, null, row)
+        if (rowset && rowset instanceof SQLiteCloudRowset) {
+          if (callback) {
+            for (const row of rowset as SQLiteCloudRowset) {
+              callback.call(this, null, row)
+            }
           }
-        }
-        if (complete) {
-          ;(complete as RowCountCallback).call(this, null, rowset.numberOfRows)
-        }
+          if (complete) {
+            ;(complete as RowCountCallback).call(this, null, rowset.numberOfRows)
+          }
+        } else callback?.call(this, new SQLiteCloudError('Invalid rowset'))
       })
       .catch(error => {
         if (callback) {
@@ -369,7 +369,6 @@ export class Database {
     await this.pendingPromises
 
     // execute prepared statement or regular statement
-    const results = await this.getConnection().sendCommands(preparedSql)
-    return results instanceof SQLiteCloudRowset ? results.toArray() : results
+    return await this.getConnection().sendCommands(preparedSql)
   }
 }

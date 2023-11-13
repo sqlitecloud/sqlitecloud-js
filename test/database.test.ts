@@ -2,7 +2,7 @@
  * database.test.ts - test driver api
  */
 
-import { SQLiteCloudError, SQLiteCloudConnection } from '../src/index'
+import { SQLiteCloudError, SQLiteCloudConnection, SQLiteCloudRow } from '../src/index'
 import { Database, ErrorCallback } from '../src/database'
 import { CHINOOK_DATABASE_URL, TESTING_DATABASE_URL, LONG_TIMEOUT } from './protocol.test'
 
@@ -138,7 +138,7 @@ describe('Database', () => {
   describe('get', () => {
     it('SELECT * FROM tracks', done => {
       const db = new Database(CHINOOK_DATABASE_URL, null, () => {
-        db.get('SELECT * FROM tracks', (err: Error, row: any) => {
+        db.get('SELECT * FROM tracks', (err: Error, row?: SQLiteCloudRow) => {
           expect(err).toBeNull()
           expect(row).toBeDefined()
           expect(row).toMatchObject({
@@ -203,8 +203,8 @@ describe('Database', () => {
     })
 
     it('execute statement with errors', done => {
-      const db = new Database(CHINOOK_DATABASE_URL, null, () => {
-        db.exec('SET BOGUS STATEMENT TO 1;', error => {
+      try {
+        database.exec('SET BOGUS STATEMENT TO 1;', error => {
           expect(error).toBeInstanceOf(SQLiteCloudError)
           expect(error).toMatchObject({
             errorCode: '10002',
@@ -213,13 +213,14 @@ describe('Database', () => {
             offsetCode: -1,
             message: 'Unable to find command SET BOGUS STATEMENT TO 1;'
           })
-
-          db.close(error => {
-            expect(error).toBeNull()
-            done()
-          })
+          done()
         })
-      })
+      } catch (error) {
+        // should not have raised an exception
+        expect(error).toBeInstanceOf(SQLiteCloudError)
+        expect(false).toBeTruthy()
+      }
+      done()
     })
   })
 

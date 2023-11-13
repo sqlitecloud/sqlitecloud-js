@@ -5,8 +5,8 @@
 import tls from 'tls'
 import lz4 from 'lz4'
 
-import { SQLiteCloudConfig } from './types/sqlitecloudconfig'
-import { SQLiteCloudRowset, SQLCloudRowsetMetadata } from './rowset'
+import { SQLiteCloudConfig, SQLCloudRowsetMetadata, SQLiteCloudError, SQLiteCloudDataTypes } from './types'
+import { SQLiteCloudRowset } from './rowset'
 import { parseConnectionString } from './utilities'
 
 /**
@@ -203,8 +203,8 @@ export class SQLiteCloudConnection {
     return promise
   }
 
-  /** Will send a command and return the resulting rowset or throw an error */
-  public async sendCommands(commands: string): Promise<SQLiteCloudRowset> {
+  /** Will send a command and return the resulting rowset or result or throw an error */
+  public async sendCommands(commands: string): Promise<SQLiteCloudRowset | SQLiteCloudDataTypes> {
     // connection needs to be established?
     if (this.socket === undefined) {
       await this.connect()
@@ -226,7 +226,7 @@ export class SQLiteCloudConnection {
     let socketTimeout: number
 
     // define the Promise that waits for the server response
-    this.pending = new Promise<SQLiteCloudRowset>((resolve, reject) => {
+    this.pending = new Promise<SQLiteCloudRowset | SQLiteCloudDataTypes>((resolve, reject) => {
       const readData = (data: Uint8Array) => {
         this.log(`Received: ${data.length > 100 ? data.toString().substring(0, 100) + '...' : data.toString()}`)
 
@@ -257,7 +257,7 @@ export class SQLiteCloudConnection {
               clearTimeout(socketTimeout)
               try {
                 const { data } = popData(buffer)
-                resolve(data)
+                resolve(data as SQLiteCloudRowset | SQLiteCloudDataTypes)
               } catch (error) {
                 reject(error)
               }
@@ -336,26 +336,6 @@ export class SQLiteCloudConnection {
   }
 }
 
-/** Custom error reported by SQLiteCloud drivers */
-export class SQLiteCloudError extends Error {
-  constructor(message: string, args?: Partial<SQLiteCloudError>) {
-    super(message)
-    this.name = 'SQLiteCloudError'
-    if (args) {
-      Object.assign(this, args)
-    }
-  }
-
-  /** Upstream error that cause this error */
-  cause?: Error | string
-  /** Error code returned by drivers or server */
-  errorCode?: string
-  /** Additional error code */
-  externalErrorCode?: string
-  /** Additional offset code in commands */
-  offsetCode?: number
-}
-
 //
 // utility functions
 //
@@ -432,7 +412,7 @@ function parseError(buffer: Buffer, spaceIndex: number): never {
 }
 
 /** Parse an array of items (each of which will be parsed by type separately) */
-function parseArray(buffer: Buffer, spaceIndex: number): any[] {
+function parseArray(buffer: Buffer, spaceIndex: number): SQLiteCloudDataTypes[] {
   const parsedData = []
 
   const array = buffer.subarray(spaceIndex + 1, buffer.length)
@@ -445,7 +425,7 @@ function parseArray(buffer: Buffer, spaceIndex: number): any[] {
     arrayItems = buffer
   }
 
-  return parsedData
+  return parsedData as SQLiteCloudDataTypes[]
 }
 
 /** Parse header in a rowset or chunk of a chunked rowset */
@@ -477,15 +457,15 @@ function parseRowsetColumnsMetadata(buffer: Buffer, metadata: SQLCloudRowsetMeta
   }
 
   for (let i = 0; i < metadata.numberOfColumns; i++) {
-    metadata.columns.push({ name: popForward() })
+    metadata.columns.push({ name: popForward() as string })
   }
 
   // extract additional metadata if rowset has version 2
   if (metadata.version == 2) {
-    for (let i = 0; i < metadata.numberOfColumns; i++) metadata.columns[i].type = popForward()
-    for (let i = 0; i < metadata.numberOfColumns; i++) metadata.columns[i].database = popForward()
-    for (let i = 0; i < metadata.numberOfColumns; i++) metadata.columns[i].table = popForward()
-    for (let i = 0; i < metadata.numberOfColumns; i++) metadata.columns[i].column = popForward() // original column name
+    for (let i = 0; i < metadata.numberOfColumns; i++) metadata.columns[i].type = popForward() as string
+    for (let i = 0; i < metadata.numberOfColumns; i++) metadata.columns[i].database = popForward() as string
+    for (let i = 0; i < metadata.numberOfColumns; i++) metadata.columns[i].table = popForward() as string
+    for (let i = 0; i < metadata.numberOfColumns; i++) metadata.columns[i].column = popForward() as string // original column name
   }
 
   return buffer
@@ -556,7 +536,7 @@ function popIntegers(buffer: Buffer, numberOfIntegers: number = 1): { data: numb
 }
 
 /** Parse command, extract its data, return the data and the buffer moved to the first byte after the command */
-function popData(buffer: Buffer): { data: any; fwdBuffer: Buffer } {
+function popData(buffer: Buffer): { data: SQLiteCloudDataTypes | SQLiteCloudRowset; fwdBuffer: Buffer } {
   function popResults(data: any) {
     const fwdBuffer = buffer.subarray(commandEnd)
     return { data, fwdBuffer }

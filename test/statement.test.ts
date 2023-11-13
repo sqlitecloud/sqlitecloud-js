@@ -1,25 +1,27 @@
 /**
- * database.test.ts - test driver api
+ * statement.test.ts - test prepared statements and parameter bindings
  */
 
+import { SQLiteCloudRowset } from '../src'
 import { Database, ErrorCallback } from '../src/database'
 import { CHINOOK_DATABASE_URL, TESTING_DATABASE_URL } from './protocol.test'
 import * as dotenv from 'dotenv'
 dotenv.config()
 
-describe('database.prepare', () => {
-  it('without initial bindings', done => {
+describe('statement', () => {
+  it('prepare without initial bindings', done => {
     const db = new Database(CHINOOK_DATABASE_URL, null, _database => {
       expect(db).toBeDefined()
       const statement = db.prepare('SELECT * FROM tracks WHERE albumId = ?;', (err: Error, results: any) => {
         expect(err).toBeNull()
       })
 
-      statement.all(3, (err: Error, rows: any[]) => {
+      statement.all(3, (err: Error, rowset: SQLiteCloudRowset) => {
         expect(err).toBeNull()
-        expect(rows).toBeDefined()
-        expect(rows).toHaveLength(3)
-        expect(rows).toMatchObject([
+        expect(rowset).toBeDefined()
+        expect(rowset).toHaveLength(3)
+        expect(rowset).toBeInstanceOf(SQLiteCloudRowset)
+        expect(rowset).toMatchObject([
           {
             AlbumId: 3,
             Bytes: 3990994,

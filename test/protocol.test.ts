@@ -2,8 +2,8 @@
  * protocol.test.ts - test low level communication protocol
  */
 
-import { SQLiteCloudConfig } from '../src/index'
-import { SQLiteCloudConnection, SQLiteCloudError } from '../src/protocol'
+import { SQLiteCloudConfig, SQLiteCloudError } from '../src/index'
+import { SQLiteCloudConnection } from '../src/protocol'
 import { parseConnectionString } from '../src/utilities'
 
 import * as dotenv from 'dotenv'
@@ -30,6 +30,7 @@ describe('protocol', () => {
     if (!connection) {
       try {
         connection = new SQLiteCloudConnection(CHINOOK_DATABASE_URL)
+        await connection.sendCommands('SET CLIENT KEY NONLINEARIZABLE TO 1;')
         expect(connection).toBeDefined()
         // connecting.verbose()
       } catch (error) {
@@ -304,6 +305,7 @@ describe('protocol', () => {
       async () => {
         const numQueries = 20
         const startTime = Date.now()
+        await connection.sendCommands('SET CLIENT KEY NONLINEARIZABLE TO 1;')
         for (let i = 0; i < numQueries; i++) {
           let rowset = await connection.sendCommands('SELECT * FROM albums ORDER BY RANDOM() LIMIT 4;')
           expect(rowset.numberOfColumns).toBe(3)
@@ -321,6 +323,7 @@ describe('protocol', () => {
       async () => {
         const numQueries = 20
         const startTime = Date.now()
+        await connection.sendCommands('SET CLIENT KEY NONLINEARIZABLE TO 1;')
         for (let i = 0; i < numQueries; i++) {
           let rowset = await connection.sendCommands(
             'SELECT * FROM albums ORDER BY RANDOM() LIMIT 16; SELECT * FROM albums ORDER BY RANDOM() LIMIT 12; SELECT * FROM albums ORDER BY RANDOM() LIMIT 8; SELECT * FROM albums ORDER BY RANDOM() LIMIT 4;'

@@ -1,5 +1,5 @@
 /**
- * sqlitecloudconfig.ts - configuration for sqlitecloud connection
+ * types.ts - shared types and interfaces
  */
 
 import tls from 'tls'
@@ -51,4 +51,51 @@ export interface SQLiteCloudConfig {
   clientId?: string
   /** True if connection should enable debug logs */
   verbose?: boolean
+}
+
+/** Metadata information for a set of rows resulting from a query */
+export interface SQLCloudRowsetMetadata {
+  /** Rowset version 1 has column's name, version 2 has extended metadata */
+  version: number
+  /** Number of rows */
+  numberOfRows: number
+  /** Number of columns */
+  numberOfColumns: number
+
+  /** Columns' metadata */
+  columns: {
+    /** Column name in query (may be altered from original name) */
+    name: string
+    /** Declare column type */
+    type?: string
+    /** Database name */
+    database?: string
+    /** Database table */
+    table?: string
+    /** Original name of the column */
+    column?: string
+  }[]
+}
+
+/** Basic types that can be returned by SQLiteCloud APIs */
+export type SQLiteCloudDataTypes = string | number | boolean | Record<string | number, unknown> | null | undefined
+
+/** Custom error reported by SQLiteCloud drivers */
+export class SQLiteCloudError extends Error {
+  constructor(message: string, args?: Partial<SQLiteCloudError>) {
+    super(message)
+    this.name = 'SQLiteCloudError'
+    if (args) {
+      Object.assign(this, args)
+    }
+  }
+
+  /** Upstream error that cause this error */
+  cause?: Error | string
+  /** Error code returned by drivers or server */
+  errorCode?: string
+  /** Additional error code */
+  externalErrorCode?: string
+  /** Additional offset code in commands */
+  offsetCode?: number
 }
