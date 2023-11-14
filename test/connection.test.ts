@@ -42,19 +42,11 @@ describe('connection', () => {
   beforeEach(done => {
     expect(CHINOOK_DATABASE_URL).toBeDefined()
     expect(TESTING_DATABASE_URL).toBeDefined()
-
-    if (!connection) {
-      try {
-        connection = new SQLiteCloudConnection(CHINOOK_DATABASE_URL + '?nonlinearizable=1', error => {
-          expect(connection).toBeDefined()
-          done()
-        })
-        // connection.verbose()
-      } catch (error) {
-        console.error(error)
-        throw error
-      }
-    }
+    connection = new SQLiteCloudConnection(CHINOOK_DATABASE_URL + '?nonlinearizable=1', error => {
+      expect(connection).toBeDefined()
+      done()
+    })
+    // connection.verbose()
   })
 
   afterEach(() => {
@@ -289,6 +281,28 @@ describe('connection', () => {
       },
       30 * 1000 // long timeout
     )
+  })
+
+  describe('operations', () => {
+    it('should serialize operations', done => {
+      const numQueries = 20
+      let completed = 0
+
+      for (let i = 0; i < numQueries; i++) {
+        connection.sendCommands(`select ${i} as "count", 'hello' as 'string'`, (error, results) => {
+          expect(error).toBeNull()
+          expect(results.numberOfColumns).toBe(2)
+          expect(results.numberOfRows).toBe(1)
+          expect(results.version == 1 || results.version == 2).toBeTruthy()
+          expect(results.columnsNames).toEqual(['count', 'string'])
+          expect(results.getItem(0, 0)).toBe(i)
+
+          if (++completed >= numQueries) {
+            done()
+          }
+        })
+      }
+    })
   })
 
   describe('send select commands', () => {
