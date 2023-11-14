@@ -14,9 +14,9 @@ import { prepareSql, popCallback } from './utilities'
 import { Statement } from './statement'
 
 export type ErrorCallback = (error: Error | null) => void
-export type ResultsCallback = (error: Error | null, results?: SQLiteCloudRowset | SQLiteCloudRow | SQLiteCloudDataTypes) => void
-export type RowsCallback = (error: Error | null, rows?: SQLiteCloudRowset) => void
-export type RowCallback = (error: Error | null, row?: SQLiteCloudRow) => void
+export type ResultsCallback<T = any> = (error: Error | null, results?: T) => void
+export type RowsCallback<T = Record<string, any>> = (error: Error | null, rows?: T[]) => void
+export type RowCallback<T = Record<string, any>> = (error: Error | null, row?: T) => void
 export type RowCountCallback = (error: Error | null, rowCount?: number) => void
 
 /**
@@ -27,7 +27,7 @@ export type RowCountCallback = (error: Error | null, rowCount?: number) => void
  */
 export class Database {
   /** Create and initialize a database from a full configuration object, or connection string */
-  constructor(config: SQLiteCloudConfig | string, _mode?: string | null, callback?: ErrorCallback) {
+  constructor(config: SQLiteCloudConfig | string, callback?: ErrorCallback) {
     this.config = typeof config === 'string' ? { connectionString: config } : config
 
     // opens first connection to the database automatically
@@ -77,6 +77,21 @@ export class Database {
     return this.connections?.[0]
   }
 
+  private handleError(connection: SQLiteCloudConnection, error: Error, callback?: ErrorCallback): void {
+    // an errored connection is thrown out
+    if (connection) {
+      this.connections = this.connections.filter(c => c !== connection)
+      connection.close()
+    }
+
+    if (callback) {
+      callback.call(this, error)
+    } else {
+      // TODO sqlitecloud-js / implement database error handling #12
+      this.emitEvent('error', error)
+    }
+  }
+
   /** Emits given event with optional arguments */
   private emitEvent(event: string, ...args: any[]): void {
     // TODO sqlitecloud-js / database emit event #16
@@ -121,18 +136,13 @@ export class Database {
    */
   public run(sql: string, ...params: any[]): this {
     const { args, callback } = popCallback<ResultsCallback>(params)
-    void this.getConnection()
+    const connection = this.getConnection()
+    void connection
       .sendCommands(prepareSql(sql, ...args))
       .then(results => {
         callback?.call(this, null, results)
       })
-      .catch(error => {
-        if (callback) {
-          callback?.call(this, error)
-        } else {
-          this.emitEvent('error', error)
-        }
-      })
+      .catch(error => this.handleError(connection, error, callback))
 
     return this
   }
@@ -149,7 +159,8 @@ export class Database {
    */
   public get(sql: string, ...params: any[]): this {
     const { args, callback } = popCallback<RowCallback>(params)
-    void this.getConnection()
+    const connection = this.getConnection()
+    void connection
       .sendCommands(prepareSql(sql, ...args))
       .then(results => {
         if (results && results instanceof SQLiteCloudRowset && results.length > 0) {
@@ -158,13 +169,7 @@ export class Database {
           callback?.call(this, null)
         }
       })
-      .catch(error => {
-        if (callback) {
-          callback.call(this, error)
-        } else {
-          this.emitEvent('error', error)
-        }
-      })
+      .catch(error => this.handleError(connection, error, callback))
 
     return this
   }
@@ -182,9 +187,17 @@ export class Database {
    * function to retrieve all rows or Database#prepare followed by multiple Statement#get
    * calls to retrieve a previously unknown amount of rows.
    */
+
+  //  all<T>(sql: string, callback?: (this: Statement, err: Error | null, rows: T[]) => void): this
+  //  all<T>(sql: string, params: any, callback?: (this: Statement, err: Error | null, rows: T[]) => void): this
+  // all(sql: string, ...params: any[]): this
+
+  public all<T>(sql: string, callback?: RowsCallback<T>): this
+  public all<T>(sql: string, params: any, callback?: RowsCallback<T>): this
   public all(sql: string, ...params: any[]): this {
     const { args, callback } = popCallback<RowsCallback>(params)
-    void this.getConnection()
+    const connection = this.getConnection()
+    void connection
       .sendCommands(args?.length > 0 ? prepareSql(sql, ...args) : sql)
       .then(rowset => {
         if (rowset && rowset instanceof SQLiteCloudRowset) {
@@ -193,13 +206,7 @@ export class Database {
           callback?.call(this, null)
         }
       })
-      .catch(error => {
-        if (callback) {
-          callback.call(this, error)
-        } else {
-          this.emitEvent('error', error)
-        }
-      })
+      .catch(error => this.handleError(connection, error, callback as ErrorCallback))
 
     return this
   }
@@ -221,8 +228,8 @@ export class Database {
   public each(sql: string, ...params: any[]): this {
     // extract optional parameters and one or two callbacks
     const { args, callback, complete } = popCallback<RowCallback>(params)
-
-    void this.getConnection()
+    const connection = this.getConnection()
+    void connection
       .sendCommands(args?.length > 0 ? prepareSql(sql, ...args) : sql)
       .then(rowset => {
         if (rowset && rowset instanceof SQLiteCloudRowset) {
@@ -236,13 +243,7 @@ export class Database {
           }
         } else callback?.call(this, new SQLiteCloudError('Invalid rowset'))
       })
-      .catch(error => {
-        if (callback) {
-          callback.call(this, error)
-        } else {
-          this.emitEvent('error', error)
-        }
-      })
+      .catch(error => this.handleError(connection, error, callback))
 
     return this
   }
@@ -270,18 +271,13 @@ export class Database {
    * will be emitted on the database object.
    */
   public exec(sql: string, callback?: ErrorCallback): this {
+    const connection = this.getConnection()
     void this.getConnection()
       .sendCommands(sql)
       .then(() => {
         callback?.call(this, null)
       })
-      .catch(error => {
-        if (callback) {
-          callback.call(this, error)
-        } else {
-          this.emitEvent('error', error)
-        }
-      })
+      .catch(error => this.handleError(connection, error, callback))
 
     return this
   }
@@ -360,6 +356,11 @@ export class Database {
     await this.pendingPromises
 
     // execute prepared statement or regular statement
-    return await this.getConnection().sendCommands(preparedSql)
+    const connection = this.getConnection()
+    try {
+      return await connection.sendCommands(preparedSql)
+    } catch (error) {
+      this.handleError(connection, error as Error)
+    }
   }
 }

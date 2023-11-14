@@ -5,3 +5,6 @@
 export { SQLiteCloudConfig, SQLCloudRowsetMetadata, SQLiteCloudError } from './types'
 export { SQLiteCloudRowset, SQLiteCloudRow } from './rowset'
 export { SQLiteCloudConnection } from './connection'
+
+export { Database, ErrorCallback } from './database'
+export { Statement } from './statement'

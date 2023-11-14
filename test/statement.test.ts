@@ -8,7 +8,7 @@ import { CHINOOK_DATABASE_URL } from './connection.test'
 
 describe('statement', () => {
   it('prepare without initial bindings', done => {
-    const db = new Database(CHINOOK_DATABASE_URL, null, _database => {
+    const db = new Database(CHINOOK_DATABASE_URL, error => {
       expect(db).toBeDefined()
       const statement = db.prepare('SELECT * FROM tracks WHERE albumId = ?;', (err: Error, results: any) => {
         expect(err).toBeNull()
