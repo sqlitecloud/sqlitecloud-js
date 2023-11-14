@@ -49,7 +49,7 @@ describe('connection', () => {
           expect(connection).toBeDefined()
           done()
         })
-        connection.verbose()
+        // connection.verbose()
       } catch (error) {
         console.error(error)
         throw error

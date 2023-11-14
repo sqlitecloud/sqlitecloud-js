@@ -2,7 +2,7 @@
  * database.test.ts - test driver api
  */
 
-import { SQLiteCloudRowset, SQLiteCloudRow } from '../src/index'
+import { SQLiteCloudRowset, SQLiteCloudRow, SQLiteCloudError } from '../src/index'
 import { Database } from '../src/database'
 import { CHINOOK_DATABASE_URL, TESTING_DATABASE_URL, LONG_TIMEOUT } from './connection.test'
 
@@ -183,22 +183,18 @@ describe('Database', () => {
 
   describe('exec', () => {
     it('execute simple statement', done => {
-      const db = new Database(CHINOOK_DATABASE_URL, () => {
-        db.exec('SET CLIENT KEY COMPRESSION TO 1;', error => {
+      const db = new Database(CHINOOK_DATABASE_URL)
+      db.exec('SET CLIENT KEY COMPRESSION TO 1;', error => {
+        expect(error).toBeNull()
+        db.close(error => {
           expect(error).toBeNull()
-
-          db.close(error => {
-            expect(error).toBeNull()
-            done()
-          })
+          done()
         })
       })
     })
 
-    // TODO sqlitecloud-js / fix problem with jest tests of sendCommands error conditions #24
-
-    /* 
     it('execute statement with errors', done => {
+      // sqlitecloud-js / fix problem with jest tests of sendCommands error conditions #24
       const chinook = new Database(CHINOOK_DATABASE_URL)
       try {
         chinook.exec('SET BOGUS STATEMENT TO 1;', error => {
@@ -223,75 +219,73 @@ describe('Database', () => {
       }
     })
   })
-*/
 
-    describe('sql (async)', () => {
-      it('simple select', async () => {
-        const results = await database.sql('SELECT * FROM people ORDER BY id')
-        expect(results).toBeDefined()
+  describe('sql (async)', () => {
+    it('simple select', async () => {
+      const results = await database.sql('SELECT * FROM people ORDER BY id')
+      expect(results).toBeDefined()
 
-        const row = results[0]
-        expect(row).toBeDefined()
-        expect(row).toMatchObject({
-          id: 1,
-          name: 'Emma Johnson',
-          age: 28,
-          hobby: 'Collecting clouds'
-        })
-      })
-
-      it('select with template string', async () => {
-        // trivial example here but let's suppose we have this in a variable...
-        let name = 'Ava Jones'
-
-        // prepared statement using familiar print syntax
-        let results = await database.sql`SELECT * FROM people WHERE name = ${name}`
-        // => returns { id: 5, name: 'Ava Jones', age: 22, hobby: 'Time traveling' }
-
-        expect(results[0]).toMatchObject({
-          id: 5,
-          name: 'Ava Jones',
-          age: 22,
-          hobby: 'Time traveling'
-        })
-
-        results = await database.sql`SELECT * FROM people WHERE age < 30`
-        expect(results).toHaveLength(11)
-      })
-
-      it('regular concatenated string', async () => {
-        // trivial example here but let's suppose we have this in a variable...
-        let name = 'Ava Jones'
-
-        // prepared statement with contacatenated string (shouldn't do this, weak against sql injection)
-        let results = await database.sql("SELECT * FROM people WHERE name = '" + name + "'")
-        expect(results[0]).toMatchObject({ id: 5, name: 'Ava Jones', age: 22, hobby: 'Time traveling' })
-
-        results = await database.sql('SELECT * FROM people WHERE age < 30')
-        expect(results).toHaveLength(11)
+      const row = results[0]
+      expect(row).toBeDefined()
+      expect(row).toMatchObject({
+        id: 1,
+        name: 'Emma Johnson',
+        age: 28,
+        hobby: 'Collecting clouds'
       })
     })
 
-    describe('stress testing', () => {
-      it(
-        '20x sql async with random selects',
-        async () => {
-          const numQueries = 20
-          const startTime = Date.now()
-          // database.verbose()
-          const table = 'people'
-          for (let i = 0; i < numQueries; i++) {
-            const results = await database.sql`SELECT * FROM ${table} ORDER BY RANDOM() LIMIT 12`
-            expect(results).toHaveLength(12)
-            expect(Object.keys(results[0])).toEqual(['id', 'name', 'age', 'hobby'])
-          }
+    it('select with template string', async () => {
+      // trivial example here but let's suppose we have this in a variable...
+      let name = 'Ava Jones'
 
-          const queryMs = (Date.now() - startTime) / numQueries
-          console.log(`${numQueries}x template selects, ${queryMs.toFixed(0)}ms per query`)
-          expect(queryMs).toBeLessThan(2000)
-        },
-        LONG_TIMEOUT
-      )
+      // prepared statement using familiar print syntax
+      let results = await database.sql`SELECT * FROM people WHERE name = ${name}`
+      // => returns { id: 5, name: 'Ava Jones', age: 22, hobby: 'Time traveling' }
+
+      expect(results[0]).toMatchObject({
+        id: 5,
+        name: 'Ava Jones',
+        age: 22,
+        hobby: 'Time traveling'
+      })
+
+      results = await database.sql`SELECT * FROM people WHERE age < 30`
+      expect(results).toHaveLength(11)
     })
+
+    it('regular concatenated string', async () => {
+      // trivial example here but let's suppose we have this in a variable...
+      let name = 'Ava Jones'
+
+      // prepared statement with contacatenated string (shouldn't do this, weak against sql injection)
+      let results = await database.sql("SELECT * FROM people WHERE name = '" + name + "'")
+      expect(results[0]).toMatchObject({ id: 5, name: 'Ava Jones', age: 22, hobby: 'Time traveling' })
+
+      results = await database.sql('SELECT * FROM people WHERE age < 30')
+      expect(results).toHaveLength(11)
+    })
+  })
+
+  describe('stress testing', () => {
+    it(
+      '20x sql async with random selects',
+      async () => {
+        const numQueries = 20
+        const startTime = Date.now()
+        // database.verbose()
+        const table = 'people'
+        for (let i = 0; i < numQueries; i++) {
+          const results = await database.sql`SELECT * FROM ${table} ORDER BY RANDOM() LIMIT 12`
+          expect(results).toHaveLength(12)
+          expect(Object.keys(results[0])).toEqual(['id', 'name', 'age', 'hobby'])
+        }
+
+        const queryMs = (Date.now() - startTime) / numQueries
+        console.log(`${numQueries}x template selects, ${queryMs.toFixed(0)}ms per query`)
+        expect(queryMs).toBeLessThan(2000)
+      },
+      LONG_TIMEOUT
+    )
   })
 })
