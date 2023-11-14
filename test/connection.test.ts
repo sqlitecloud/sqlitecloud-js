@@ -43,9 +43,9 @@ describe('connection', () => {
   afterEach(() => {
     if (connection) {
       connection.close()
-      // @ts-ignore
-      connection = undefined
     }
+    // @ts-ignore
+    connection = undefined
   })
 
   describe('connect', () => {
