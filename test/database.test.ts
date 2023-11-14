@@ -59,14 +59,38 @@ describe('Database', () => {
       'insert with parameter value',
       done => {
         const insertSql = `INSERT INTO people (name, hobby, age) VALUES ('Fantozzi Ugo', 'Competitive pranking', 42);`
+        /*
+          [0] -> TYPE           (ARRAY_TYPE_SQLITE_EXEC or ARRAY_TYPE_VM_STEP, see ARRAY_TYPE enum)
+          [1] -> INDEX          (VM index, in ARRAY_TYPE_SQLITE_EXEC is always 0)
+          [2] -> ROWID          (sqlite3_last_insert_rowid)
+          [3] -> CHANGES        (sqlite3_changes)
+          [4] -> TOTAL_CHANGES  (sqlite3_total_changes)
+          [5] -> FINALIZED
+        */
 
-        database.run(insertSql, (err: Error, results: any) => {
-          expect(err).toBeNull()
-          // TODO sqlitecloud-js // Database.run should return number of rows modified and lastId #15
+        database.run(insertSql, (error: Error, results1: any) => {
+          expect(error).toBeNull()
+          // sqlitecloud-js // Database.run should return number of rows modified and lastId #15
+          expect(results1[0]).toBe(10)
+          expect(results1[1]).toBe(0)
+          expect(results1[2]).toBe(21) // rowId
+          expect(results1[3]).toBe(1) // changes
+          expect(results1[4]).toBe(21) // totalChanges
+          expect(results1[5]).toBe(1) // finalized
 
-          database.close(error => {
-            expect(error).toBeNull()
-            done()
+          database.run(insertSql, (err: Error, results2: any) => {
+            expect(err).toBeNull()
+            expect(results2[0]).toBe(10)
+            expect(results2[1]).toBe(0)
+            expect(results2[2]).toBe(22)
+            expect(results2[3]).toBe(1)
+            expect(results2[4]).toBe(22)
+            expect(results2[5]).toBe(1)
+
+            database.close(error => {
+              expect(error).toBeNull()
+              done()
+            })
           })
         })
       },
