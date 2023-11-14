@@ -2,8 +2,8 @@
  * database.test.ts - test driver api
  */
 
-import { SQLiteCloudError, SQLiteCloudConnection, SQLiteCloudRow } from '../src/index'
-import { Database, ErrorCallback } from '../src/database'
+import { SQLiteCloudRowset, SQLiteCloudRow } from '../src/index'
+import { Database } from '../src/database'
 import { CHINOOK_DATABASE_URL, TESTING_DATABASE_URL, LONG_TIMEOUT } from './connection.test'
 
 import * as dotenv from 'dotenv'
@@ -20,12 +20,11 @@ describe('Database', () => {
 
   beforeEach(done => {
     try {
-      const db = new Database(TESTING_DATABASE_URL + '?sqliteMode=1', () => {
-        db.exec(PREPARE_TESTING_SQL, error => {
-          expect(error).toBeNull()
-          database = db
-          done()
-        })
+      const db = new Database(TESTING_DATABASE_URL + '?sqliteMode=1')
+      db.exec(PREPARE_TESTING_SQL, error => {
+        expect(error).toBeNull()
+        database = db
+        done()
       })
     } catch (error) {
       console.error(error)
@@ -77,69 +76,14 @@ describe('Database', () => {
 
   describe('all', () => {
     it(
-      'SELECT * FROM tracks',
+      'simple select',
       done => {
-        const db = new Database(CHINOOK_DATABASE_URL, () => {
-          db.all('SELECT * FROM tracks', (err: Error, rows: any[]) => {
-            expect(err).toBeNull()
-            expect(rows).toBeDefined()
-            expect(rows).toHaveLength(3503)
-            expect(rows[0]).toMatchObject({
-              AlbumId: 1,
-              Bytes: 11170334,
-              Composer: 'Angus Young, Malcolm Young, Brian Johnson',
-              GenreId: 1,
-              MediaTypeId: 1,
-              Milliseconds: 343719,
-              Name: 'For Those About To Rock (We Salute You)',
-              TrackId: 1,
-              UnitPrice: 0.99
-            })
-
-            db.close(error => {
-              expect(error).toBeNull()
-              done()
-            })
-          })
-        })
-      },
-      LONG_TIMEOUT
-    )
-
-    it('SELECT * FROM tracks WHERE composer = ?', done => {
-      const db = new Database(CHINOOK_DATABASE_URL, () => {
-        db.all('SELECT * FROM tracks WHERE composer = ?', 'AC/DC', (err: Error, rows: any[]) => {
+        const db = new Database(CHINOOK_DATABASE_URL)
+        db.all('SELECT * FROM tracks', (err: Error, rows: SQLiteCloudRowset) => {
           expect(err).toBeNull()
           expect(rows).toBeDefined()
-          expect(rows).toHaveLength(8)
+          expect(rows).toHaveLength(3503)
           expect(rows[0]).toMatchObject({
-            AlbumId: 4,
-            Bytes: 10847611,
-            Composer: 'AC/DC',
-            GenreId: 1,
-            MediaTypeId: 1,
-            Milliseconds: 331180,
-            Name: 'Go Down',
-            TrackId: 15,
-            UnitPrice: 0.99
-          })
-
-          db.close(error => {
-            expect(error).toBeNull()
-            done()
-          })
-        })
-      })
-    })
-  })
-
-  describe('get', () => {
-    it('SELECT * FROM tracks', done => {
-      const db = new Database(CHINOOK_DATABASE_URL, () => {
-        db.get('SELECT * FROM tracks', (err: Error, row?: SQLiteCloudRow) => {
-          expect(err).toBeNull()
-          expect(row).toBeDefined()
-          expect(row).toMatchObject({
             AlbumId: 1,
             Bytes: 11170334,
             Composer: 'Angus Young, Malcolm Young, Brian Johnson',
@@ -155,6 +99,58 @@ describe('Database', () => {
             expect(error).toBeNull()
             done()
           })
+        })
+      },
+      LONG_TIMEOUT
+    )
+
+    it('select with parameters', done => {
+      const db = new Database(CHINOOK_DATABASE_URL)
+      db.all<SQLiteCloudRow>('SELECT * FROM tracks WHERE composer = ?', 'AC/DC', (error, rows) => {
+        expect(error).toBeNull()
+        expect(rows).toBeDefined()
+        expect(rows).toHaveLength(8)
+        expect(rows?.[0]).toMatchObject({
+          AlbumId: 4,
+          Bytes: 10847611,
+          Composer: 'AC/DC',
+          GenreId: 1,
+          MediaTypeId: 1,
+          Milliseconds: 331180,
+          Name: 'Go Down',
+          TrackId: 15,
+          UnitPrice: 0.99
+        })
+
+        db.close(error => {
+          expect(error).toBeNull()
+          done()
+        })
+      })
+    })
+  })
+
+  describe('get', () => {
+    it('SELECT * FROM tracks', done => {
+      const db = new Database(CHINOOK_DATABASE_URL)
+      db.get('SELECT * FROM tracks', (err: Error, row?: SQLiteCloudRow) => {
+        expect(err).toBeNull()
+        expect(row).toBeDefined()
+        expect(row).toMatchObject({
+          AlbumId: 1,
+          Bytes: 11170334,
+          Composer: 'Angus Young, Malcolm Young, Brian Johnson',
+          GenreId: 1,
+          MediaTypeId: 1,
+          Milliseconds: 343719,
+          Name: 'For Those About To Rock (We Salute You)',
+          TrackId: 1,
+          UnitPrice: 0.99
+        })
+
+        db.close(error => {
+          expect(error).toBeNull()
+          done()
         })
       })
     })
@@ -180,9 +176,8 @@ describe('Database', () => {
         })
       }
 
-      const db = new Database(CHINOOK_DATABASE_URL, () => {
-        db.each('SELECT * FROM tracks', rowCallback, completeCallback)
-      })
+      const db = new Database(CHINOOK_DATABASE_URL)
+      db.each('SELECT * FROM tracks', rowCallback, completeCallback)
     })
   })
 
@@ -202,7 +197,7 @@ describe('Database', () => {
 
     // TODO sqlitecloud-js / fix problem with jest tests of sendCommands error conditions #24
 
-/* 
+    /* 
     it('execute statement with errors', done => {
       const chinook = new Database(CHINOOK_DATABASE_URL)
       try {
@@ -230,72 +225,73 @@ describe('Database', () => {
   })
 */
 
-  describe('sql (async)', () => {
-    it('simple select', async () => {
-      const results = await database.sql('SELECT * FROM people ORDER BY id')
-      expect(results).toBeDefined()
+    describe('sql (async)', () => {
+      it('simple select', async () => {
+        const results = await database.sql('SELECT * FROM people ORDER BY id')
+        expect(results).toBeDefined()
 
-      const row = results[0]
-      expect(row).toBeDefined()
-      expect(row).toMatchObject({
-        id: 1,
-        name: 'Emma Johnson',
-        age: 28,
-        hobby: 'Collecting clouds'
+        const row = results[0]
+        expect(row).toBeDefined()
+        expect(row).toMatchObject({
+          id: 1,
+          name: 'Emma Johnson',
+          age: 28,
+          hobby: 'Collecting clouds'
+        })
+      })
+
+      it('select with template string', async () => {
+        // trivial example here but let's suppose we have this in a variable...
+        let name = 'Ava Jones'
+
+        // prepared statement using familiar print syntax
+        let results = await database.sql`SELECT * FROM people WHERE name = ${name}`
+        // => returns { id: 5, name: 'Ava Jones', age: 22, hobby: 'Time traveling' }
+
+        expect(results[0]).toMatchObject({
+          id: 5,
+          name: 'Ava Jones',
+          age: 22,
+          hobby: 'Time traveling'
+        })
+
+        results = await database.sql`SELECT * FROM people WHERE age < 30`
+        expect(results).toHaveLength(11)
+      })
+
+      it('regular concatenated string', async () => {
+        // trivial example here but let's suppose we have this in a variable...
+        let name = 'Ava Jones'
+
+        // prepared statement with contacatenated string (shouldn't do this, weak against sql injection)
+        let results = await database.sql("SELECT * FROM people WHERE name = '" + name + "'")
+        expect(results[0]).toMatchObject({ id: 5, name: 'Ava Jones', age: 22, hobby: 'Time traveling' })
+
+        results = await database.sql('SELECT * FROM people WHERE age < 30')
+        expect(results).toHaveLength(11)
       })
     })
 
-    it('select with template string', async () => {
-      // trivial example here but let's suppose we have this in a variable...
-      let name = 'Ava Jones'
+    describe('stress testing', () => {
+      it(
+        '20x sql async with random selects',
+        async () => {
+          const numQueries = 20
+          const startTime = Date.now()
+          // database.verbose()
+          const table = 'people'
+          for (let i = 0; i < numQueries; i++) {
+            const results = await database.sql`SELECT * FROM ${table} ORDER BY RANDOM() LIMIT 12`
+            expect(results).toHaveLength(12)
+            expect(Object.keys(results[0])).toEqual(['id', 'name', 'age', 'hobby'])
+          }
 
-      // prepared statement using familiar print syntax
-      let results = await database.sql`SELECT * FROM people WHERE name = ${name}`
-      // => returns { id: 5, name: 'Ava Jones', age: 22, hobby: 'Time traveling' }
-
-      expect(results[0]).toMatchObject({
-        id: 5,
-        name: 'Ava Jones',
-        age: 22,
-        hobby: 'Time traveling'
-      })
-
-      results = await database.sql`SELECT * FROM people WHERE age < 30`
-      expect(results).toHaveLength(11)
+          const queryMs = (Date.now() - startTime) / numQueries
+          console.log(`${numQueries}x template selects, ${queryMs.toFixed(0)}ms per query`)
+          expect(queryMs).toBeLessThan(2000)
+        },
+        LONG_TIMEOUT
+      )
     })
-
-    it('regular concatenated string', async () => {
-      // trivial example here but let's suppose we have this in a variable...
-      let name = 'Ava Jones'
-
-      // prepared statement with contacatenated string (shouldn't do this, weak against sql injection)
-      let results = await database.sql("SELECT * FROM people WHERE name = '" + name + "'")
-      expect(results[0]).toMatchObject({ id: 5, name: 'Ava Jones', age: 22, hobby: 'Time traveling' })
-
-      results = await database.sql('SELECT * FROM people WHERE age < 30')
-      expect(results).toHaveLength(11)
-    })
-  })
-
-  describe('stress testing', () => {
-    it(
-      '20x sql async with random selects',
-      async () => {
-        const numQueries = 20
-        const startTime = Date.now()
-        // database.verbose()
-        const table = 'people'
-        for (let i = 0; i < numQueries; i++) {
-          const results = await database.sql`SELECT * FROM ${table} ORDER BY RANDOM() LIMIT 12`
-          expect(results).toHaveLength(12)
-          expect(Object.keys(results[0])).toEqual(['id', 'name', 'age', 'hobby'])
-        }
-
-        const queryMs = (Date.now() - startTime) / numQueries
-        console.log(`${numQueries}x template selects, ${queryMs.toFixed(0)}ms per query`)
-        expect(queryMs).toBeLessThan(2000)
-      },
-      LONG_TIMEOUT
-    )
   })
 })
