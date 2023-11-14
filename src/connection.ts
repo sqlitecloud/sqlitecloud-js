@@ -5,7 +5,7 @@
 import tls from 'tls'
 import lz4 from 'lz4'
 
-import { SQLiteCloudConfig, SQLCloudRowsetMetadata, SQLiteCloudError, SQLiteCloudDataTypes } from './types'
+import { SQLiteCloudConfig, SQLCloudRowsetMetadata, SQLiteCloudError, SQLiteCloudDataTypes, ErrorCallback, ResultsCallback } from './types'
 import { SQLiteCloudRowset } from './rowset'
 import { parseConnectionString, parseBoolean } from './utilities'
 
@@ -40,12 +40,14 @@ export const DEFAULT_PORT = 9960
 /** SQLiteCloud low-level connection, will do messaging, handle socket, authentication, etc. */
 export class SQLiteCloudConnection {
   /** Parse and validate provided connectionString or configuration */
-  constructor(config: SQLiteCloudConfig | string) {
+  constructor(config: SQLiteCloudConfig | string, callback?: ErrorCallback) {
     if (typeof config === 'string') {
       this.config = this.validateConfiguration({ connectionString: config })
     } else {
       this.config = this.validateConfiguration(config)
     }
+
+    this.connect(callback)
   }
 
   /** Configuration passed by client or extracted from connection string */
@@ -55,7 +57,7 @@ export class SQLiteCloudConnection {
   private socket?: tls.TLSSocket
 
   /** Operations are serialized by waiting an any pending promises */
-  private pending?: Promise<any>
+  private operations = new OperationsQueue()
 
   //
   // public properties
@@ -155,30 +157,25 @@ export class SQLiteCloudConnection {
   }
 
   /* Opens a connection with the server and sends the initialization commands. Will throw in case of errors. */
-  public async connect(): Promise<void> {
-    let client: tls.TLSSocket
+  public async connect(callback?: ErrorCallback) {
+    if (this.socket) {
+      callback?.call(this, null)
+      return
+    }
 
-    const promise = new Promise<void>((resolve, reject) => {
+    this.operations.enqueue(done => {
       // connect to tls socket, initialize connection, setup event handlers
-      client = tls.connect(this.config.port as number, this.config.host, this.config.tlsOptions, () => {
-        if (client.authorized) {
-          this.log('Connection initializing')
-          const commands = this.initializationCommands
-          this.socket = client
-
-          this.sendCommands(commands).then(
-            () => {
-              this.log('Connection initialized')
-              resolve()
-            },
-            error => {
-              this.log('Error with initialization commands', error)
-              reject(error)
-            }
-          )
-        } else {
+      let client: tls.TLSSocket = tls.connect(this.config.port as number, this.config.host, this.config.tlsOptions, () => {
+        if (!client.authorized) {
           this.log('Connection was not authorized', client.authorizationError)
-          reject(new SQLiteCloudError('Connection was not authorized', { cause: client.authorizationError }))
+          this.close()
+          const error = new SQLiteCloudError('Connection was not authorized', { cause: client.authorizationError })
+          callback?.call(this, error)
+          done?.call(this, error)
+        } else {
+          this.socket = client
+          callback?.call(this, null)
+          done?.call(this)
         }
       })
 
@@ -192,48 +189,51 @@ export class SQLiteCloudConnection {
       })
 
       client.once('error', (error: any) => {
+        error = new SQLiteCloudError('Connection error', { cause: error })
         this.log('Connection error', error)
-        if (this.socket) {
-          this.socket.destroy()
-          this.socket = undefined
-        }
-        reject(new SQLiteCloudError('Connection error', { cause: error }))
+        this.close()
+        callback?.call(this, error)
+        done?.call(this, error)
       })
     })
 
-    promise.finally(() => {
-      if (client) {
-        client.removeAllListeners('error')
-      }
+    // send initialization commands (will be enqued in the operations queue)
+    const commands = this.initializationCommands
+    this.sendCommands(commands, (error, _results) => {
+      callback?.call(this, error)
     })
-
-    return promise
   }
 
   /** Will send a command and return the resulting rowset or result or throw an error */
-  public async sendCommands<T = SQLiteCloudRowset>(commands: string): Promise<T> {
-    // connection needs to be established?
-    if (this.socket === undefined) {
-      await this.connect()
-    }
+  public sendCommands<T = SQLiteCloudRowset>(commands: string, callback?: ResultsCallback) {
+    this.operations.enqueue(done => {
+      // connection needs to be established?
+      if (!this.socket) {
+        callback?.call(this, new SQLiteCloudError('Connection not established', { errorCode: 'ERR_CONNECTION_NOT_ESTABLISHED' }))
+        return
+      }
 
-    // serialize commands by waiting on any other pending operations
-    if (this.pending) {
-      await this.pending
-    }
+      // compose commands following SCPC protocol
+      commands = formatCommand(commands)
 
-    // compose commands following SCPC protocol
-    commands = formatCommand(commands)
+      let buffer = Buffer.alloc(0)
+      const rowsetChunks: Buffer[] = []
+      this.log(`Sending: ${commands}`)
 
-    let buffer = Buffer.alloc(0)
-    const rowsetChunks: Buffer[] = []
-    this.log(`Sending: ${commands}`)
+      // define what to do if an answer does not arrive within the set timeout
+      let socketTimeout: number
 
-    // define what to do if an answer does not arrive within the set timeout
-    let socketTimeout: number
+      // clear all listeners and call done in the operations queue
+      const finish = (error?: Error) => {
+        clearTimeout(socketTimeout)
+        if (this.socket) {
+          this.socket.removeAllListeners('data')
+          this.socket.removeAllListeners('error')
+        }
+        done?.call(this, error)
+      }
 
-    // define the Promise that waits for the server response
-    this.pending = new Promise<T>((resolve, reject) => {
+      // define the Promise that waits for the server response
       const readData = (data: Uint8Array) => {
         this.log(`Received: ${data.length > 100 ? data.toString().substring(0, 100) + '...' : data.toString()}`)
         try {
@@ -261,16 +261,16 @@ export class SQLiteCloudConnection {
             if (hasReceivedEntireCommand) {
               if (dataType !== CMD_ROWSET_CHUNK && compressedDataType !== CMD_ROWSET_CHUNK) {
                 this.socket?.off('data', readData)
-                clearTimeout(socketTimeout)
                 const { data } = popData(buffer)
-                resolve(data as T)
+                callback?.call(this, null, data)
+                finish?.call(this)
               } else {
                 // @ts-expect-error
                 // check if rowset received the ending chunk
                 if (data.subarray(data.indexOf(' ') + 1, data.length).toString() === '0 0 0 ') {
-                  clearTimeout(socketTimeout)
                   const parsedData = parseRowsetChunks(rowsetChunks)
-                  resolve(parsedData as T)
+                  callback?.call(this, null, parsedData)
+                  finish?.call(this)
                 } else {
                   // no ending string? ask server for another chunk
                   rowsetChunks.push(buffer)
@@ -284,18 +284,20 @@ export class SQLiteCloudConnection {
             const lastChar = buffer.subarray(buffer.length - 1, buffer.length).toString('utf8')
             if (lastChar == ' ') {
               const { data } = popData(buffer)
-              resolve(data as T)
+              callback?.call(this, null, data)
+              finish?.call(this)
             }
           }
         } catch (error) {
           this.close()
-          reject(error)
+          callback?.call(this, error as Error)
+          finish?.call(this, error as Error)
         }
       }
 
       this.socket?.write(commands, 'utf8', () => {
         socketTimeout = setTimeout(() => {
-          reject(new SQLiteCloudError('Request timed out', { cause: commands }))
+          finish?.call(this, new SQLiteCloudError('Request timed out', { cause: commands }))
         }, this.config.timeout)
         this.socket?.on('data', readData)
       })
@@ -303,20 +305,9 @@ export class SQLiteCloudConnection {
       this.socket?.once('error', (error: any) => {
         this.log('Socket error', error)
         this.close()
-        reject(new SQLiteCloudError('Connection on error event', { cause: error }))
+        finish?.call(this, new SQLiteCloudError('Socket error', { cause: error }))
       })
     })
-
-    this.pending.finally(() => {
-      clearTimeout(socketTimeout)
-      if (this.socket) {
-        this.socket.removeAllListeners('data')
-        this.socket.removeAllListeners('error')
-      }
-      this.pending = undefined
-    })
-
-    return this.pending
   }
 
   /** Disconnect from server, release connection. */
@@ -592,4 +583,43 @@ function popData(buffer: Buffer): { data: SQLiteCloudDataTypes | SQLiteCloudRows
 function formatCommand(command: string): string {
   const commandLength = Buffer.byteLength(command, 'utf-8')
   return `+${commandLength} ${command}`
+}
+
+//
+// OperationsQueue is used to linearize operations on the connection
+//
+
+type OperationCallback = (error?: Error) => void
+type Operation = (done: OperationCallback) => void
+
+class OperationsQueue {
+  private queue: Operation[] = []
+  private isProcessing = false
+
+  /** Add operations to the queue, process immediately if possible, else wait for previous operations to complete */
+  enqueue(operation: Operation) {
+    this.queue.push(operation)
+    if (!this.isProcessing) {
+      this.processNext()
+    }
+  }
+
+  /** Process the next operation in the queue */
+  private processNext() {
+    if (this.queue.length === 0) {
+      this.isProcessing = false
+      return
+    }
+
+    this.isProcessing = true
+    const operation = this.queue.shift()
+    operation?.(error => {
+      if (error) {
+        console.warn('OperationQueue.processNext - error in operation', error)
+      }
+
+      // process the next operation in the queue
+      this.processNext()
+    })
+  }
 }

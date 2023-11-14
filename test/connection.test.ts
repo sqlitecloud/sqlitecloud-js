@@ -39,15 +39,17 @@ export const CHINOOK_FIRST_TRACK = {
 describe('connection', () => {
   let connection: SQLiteCloudConnection
 
-  beforeEach(async () => {
+  beforeEach(done => {
     expect(CHINOOK_DATABASE_URL).toBeDefined()
     expect(TESTING_DATABASE_URL).toBeDefined()
 
     if (!connection) {
       try {
-        connection = new SQLiteCloudConnection(CHINOOK_DATABASE_URL + '?nonlinearizable=1')
-        expect(connection).toBeDefined()
-        // connecting.verbose()
+        connection = new SQLiteCloudConnection(CHINOOK_DATABASE_URL + '?nonlinearizable=1', error => {
+          expect(connection).toBeDefined()
+          done()
+        })
+        connection.verbose()
       } catch (error) {
         console.error(error)
         throw error
@@ -68,44 +70,48 @@ describe('connection', () => {
       // ...in beforeEach
     })
 
-    it('should connect with config object string', async () => {
+    it('should connect with config object string', done => {
       const configObj = parseConnectionString(CHINOOK_DATABASE_URL)
       const conn = new SQLiteCloudConnection(configObj)
-
-      const r1 = await connection.sendCommands('TEST STRING')
-
       expect(conn).toBeDefined()
-      await conn.connect()
-      expect(conn.connected).toBe(true)
-      conn.close()
-      expect(conn.connected).toBe(false)
+
+      conn.connect(error => {
+        expect(error).toBeNull()
+        expect(conn.connected).toBe(true)
+
+        connection.sendCommands('TEST STRING', (error, results) => {
+          conn.close()
+          expect(conn.connected).toBe(false)
+          done()
+        })
+      })
     })
 
-    it('should connect with connection string', async () => {
+    it('should connect with connection string', done => {
       const conn = new SQLiteCloudConnection(CHINOOK_DATABASE_URL)
-
-      const r1 = await connection.sendCommands('TEST STRING')
-
       expect(conn).toBeDefined()
-      await conn.connect()
-      expect(conn.connected).toBe(true)
-      conn.close()
-      expect(conn.connected).toBe(false)
+
+      conn.connect(error => {
+        expect(error).toBeNull()
+        expect(conn.connected).toBe(true)
+
+        connection.sendCommands('TEST STRING', (error, results) => {
+          conn.close()
+          expect(conn.connected).toBe(false)
+          done()
+        })
+      })
     })
 
-    it('should throw when connection string lacks credentials', async () => {
-      try {
-        // use valid connection string but without credentials
-        const testingConfig = getTestingConfig()
-        delete testingConfig.username
-        delete testingConfig.password
+    it('should throw when connection string lacks credentials', done => {
+      // use valid connection string but without credentials
+      const testingConfig = getTestingConfig()
+      delete testingConfig.username
+      delete testingConfig.password
 
-        const connection = new SQLiteCloudConnection(testingConfig)
-        expect(connection).toBeDefined()
-        await connection.connect()
-        // fail the test if the error is not thrown
-        expect(true).toBe(false)
-      } catch (error: any) {
+      try {
+        const conn = new SQLiteCloudConnection(testingConfig)
+      } catch (error) {
         expect(error).toBeDefined()
         expect(error).toBeInstanceOf(SQLiteCloudError)
         const sqliteCloudError = error as SQLiteCloudError
@@ -113,84 +119,111 @@ describe('connection', () => {
         expect(sqliteCloudError.errorCode).toBe('ERR_MISSING_ARGS')
         expect(sqliteCloudError.externalErrorCode).toBeUndefined()
         expect(sqliteCloudError.offsetCode).toBeUndefined()
+
+        done()
       }
     })
   })
 
   describe('send test commands', () => {
-    it('should test integer', async () => {
-      const rowset = await connection.sendCommands('TEST INTEGER')
-      expect(rowset).toBe(123456)
-    })
-
-    it('should test null', async () => {
-      const rowset = await connection.sendCommands('TEST NULL')
-      expect(rowset).toBeNull()
-    })
-
-    it('should test float', async () => {
-      const rowset = await connection.sendCommands('TEST FLOAT')
-      expect(rowset).toBe(3.1415926)
-    })
-
-    it('should test string', async () => {
-      const rowset = await connection.sendCommands('TEST STRING')
-      expect(rowset).toBe('Hello World, this is a test string.')
-    })
-
-    it('should test zero string', async () => {
-      const rowset = await connection.sendCommands('TEST ZERO_STRING')
-      expect(rowset).toBe('Hello World, this is a zero-terminated test string.')
-    })
-
-    it('should test string0', async () => {
-      const rowset = await connection.sendCommands('TEST STRING0')
-      expect(rowset).toBe('')
-    })
-
-    it('should test command', async () => {
-      const rowset = await connection.sendCommands('TEST COMMAND')
-      expect(rowset).toBe('PING')
-    })
-
-    it('should test json', async () => {
-      const rowset = await connection.sendCommands('TEST JSON')
-      expect(rowset).toEqual({
-        'msg-from': { class: 'soldier', name: 'Wixilav' },
-        'msg-to': { class: 'supreme-commander', name: '[Redacted]' },
-        'msg-type': ['0xdeadbeef', 'irc log'],
-        'msg-log': [
-          'soldier: Boss there is a slight problem with the piece offering to humans',
-          'supreme-commander: Explain yourself soldier!',
-          "soldier: Well they don't seem to move anymore...",
-          'supreme-commander: Oh snap, I came here to see them twerk!'
-        ]
+    it('should test integer', done => {
+      connection.sendCommands('TEST INTEGER', (error, results) => {
+        expect(error).toBeNull()
+        expect(results).toBe(123456)
+        done()
       })
     })
 
-    it('should test blob', async () => {
-      const rowset = await connection.sendCommands('TEST BLOB')
-      expect(typeof rowset).toBe('object')
-      expect(rowset).toBeInstanceOf(Buffer)
-      const bufferrowset = rowset as any as Buffer
-      expect(bufferrowset.length).toBe(1000)
+    it('should test null', done => {
+      connection.sendCommands('TEST NULL', (error, results) => {
+        expect(error).toBeNull()
+        expect(results).toBeNull()
+        done()
+      })
     })
 
-    it('should test blob0', async () => {
-      const rowset = await connection.sendCommands('TEST BLOB0')
-      expect(typeof rowset).toBe('object')
-      expect(rowset).toBeInstanceOf(Buffer)
-      const bufferrowset = rowset as any as Buffer
-      expect(bufferrowset.length).toBe(0)
+    it('should test float', done => {
+      connection.sendCommands('TEST FLOAT', (error, results) => {
+        expect(error).toBeNull()
+        expect(results).toBe(3.1415926)
+        done()
+      })
     })
-    /*
-    it('should test error', async () => {
-      try {
-        connection.verbose()
-        await connection.sendCommands('TEST ERROR')
-        // Fail the test if the error is not thrown
-        expect(true).toBe(false)
-      } catch (error: any) {
+
+    it('should test string', done => {
+      connection.sendCommands('TEST STRING', (error, results) => {
+        expect(error).toBeNull()
+        expect(results).toBe('Hello World, this is a test string.')
+        done()
+      })
+    })
+
+    it('should test zero string', done => {
+      connection.sendCommands('TEST ZERO_STRING', (error, results) => {
+        expect(error).toBeNull()
+        expect(results).toBe('Hello World, this is a zero-terminated test string.')
+        done()
+      })
+    })
+
+    it('should test string0', done => {
+      connection.sendCommands('TEST STRING0', (error, results) => {
+        expect(error).toBeNull()
+        expect(results).toBe('')
+        done()
+      })
+    })
+
+    it('should test command', done => {
+      connection.sendCommands('TEST COMMAND', (error, results) => {
+        expect(error).toBeNull()
+        expect(results).toBe('PING')
+        done()
+      })
+    })
+
+    it('should test json', done => {
+      connection.sendCommands('TEST JSON', (error, results) => {
+        expect(error).toBeNull()
+        expect(results).toEqual({
+          'msg-from': { class: 'soldier', name: 'Wixilav' },
+          'msg-to': { class: 'supreme-commander', name: '[Redacted]' },
+          'msg-type': ['0xdeadbeef', 'irc log'],
+          'msg-log': [
+            'soldier: Boss there is a slight problem with the piece offering to humans',
+            'supreme-commander: Explain yourself soldier!',
+            "soldier: Well they don't seem to move anymore...",
+            'supreme-commander: Oh snap, I came here to see them twerk!'
+          ]
+        })
+        done()
+      })
+    })
+
+    it('should test blob', done => {
+      connection.sendCommands('TEST BLOB', (error, results) => {
+        expect(error).toBeNull()
+        expect(typeof results).toBe('object')
+        expect(results).toBeInstanceOf(Buffer)
+        const bufferrowset = results as any as Buffer
+        expect(bufferrowset.length).toBe(1000)
+        done()
+      })
+    })
+
+    it('should test blob0', done => {
+      connection.sendCommands('TEST BLOB0', (error, results) => {
+        expect(error).toBeNull()
+        expect(typeof results).toBe('object')
+        expect(results).toBeInstanceOf(Buffer)
+        const bufferrowset = results as any as Buffer
+        expect(bufferrowset.length).toBe(0)
+        done()
+      })
+    })
+
+    it('should test error', done => {
+      connection.sendCommands('TEST ERROR', (error, results) => {
         expect(error).toBeDefined()
         expect(error).toBeInstanceOf(SQLiteCloudError)
 
@@ -199,17 +232,13 @@ describe('connection', () => {
         expect(sqliteCloudError.errorCode).toBe('66666')
         expect(sqliteCloudError.externalErrorCode).toBe('0')
         expect(sqliteCloudError.offsetCode).toBe(-1)
-      }
-      console.log('test finished')
+
+        done()
+      })
     })
 
-    it('should test exterror', async () => {
-      try {
-        connection.verbose()
-        await connection.sendCommands('TEST EXTERROR')
-        // Fail the test if the error is not thrown
-        expect(true).toBe(false)
-      } catch (error: any) {
+    it('should test exterror', done => {
+      connection.sendCommands('TEST EXTERROR', (error, results) => {
         expect(error).toBeDefined()
         expect(error).toBeInstanceOf(SQLiteCloudError)
 
@@ -218,131 +247,167 @@ describe('connection', () => {
         expect(sqliteCloudError.errorCode).toBe('66666')
         expect(sqliteCloudError.externalErrorCode).toBe('333')
         expect(sqliteCloudError.offsetCode).toBe(-1)
-      }
-    })
-*/
-    it('should test array', async () => {
-      const rowset = await connection.sendCommands('TEST ARRAY')
-      expect(Array.isArray(rowset)).toBe(true)
 
-      const arrayrowset = rowset as any as Array<any>
-      expect(arrayrowset.length).toBe(5)
-      expect(arrayrowset[0]).toBe('Hello World')
-      expect(arrayrowset[1]).toBe(123456)
-      expect(arrayrowset[2]).toBe(3.1415)
-      expect(arrayrowset[3]).toBeNull()
+        done()
+      })
     })
 
-    it('should test rowset', async () => {
-      const rowset = await connection.sendCommands('TEST ROWSET')
-      expect(rowset.numberOfRows).toBe(41)
-      expect(rowset.numberOfColumns).toBe(2)
-      expect(rowset.version == 1 || rowset.version == 2).toBeTruthy()
-      expect(rowset.columnsNames).toEqual(['key', 'value'])
+    it('should test array', done => {
+      connection.sendCommands('TEST ARRAY', (error, results) => {
+        expect(error).toBeNull()
+        expect(Array.isArray(results)).toBe(true)
+
+        const arrayrowset = results as any as Array<any>
+        expect(arrayrowset.length).toBe(5)
+        expect(arrayrowset[0]).toBe('Hello World')
+        expect(arrayrowset[1]).toBe(123456)
+        expect(arrayrowset[2]).toBe(3.1415)
+        expect(arrayrowset[3]).toBeNull()
+        done()
+      })
+    })
+
+    it('should test rowset', done => {
+      connection.sendCommands('TEST ROWSET', (error, results) => {
+        expect(results.numberOfRows).toBe(41)
+        expect(results.numberOfColumns).toBe(2)
+        expect(results.version == 1 || results.version == 2).toBeTruthy()
+        expect(results.columnsNames).toEqual(['key', 'value'])
+        done()
+      })
     })
 
     it(
       'should test chunked rowset',
-      async () => {
-        const rowset = await connection.sendCommands('TEST ROWSET_CHUNK')
-        expect(rowset.numberOfRows).toBe(147)
-        expect(rowset.numberOfColumns).toBe(1)
-        expect(rowset.columnsNames).toEqual(['key'])
+      done => {
+        connection.sendCommands('TEST ROWSET_CHUNK', (error, results) => {
+          expect(results.numberOfRows).toBe(147)
+          expect(results.numberOfColumns).toBe(1)
+          expect(results.columnsNames).toEqual(['key'])
+          done()
+        })
       },
       30 * 1000 // long timeout
     )
   })
 
   describe('send select commands', () => {
-    it('should select long formatted string', async () => {
-      const rowset = await connection.sendCommands("USE DATABASE :memory:; select printf('%.*c', 1000, 'x') AS DDD")
-      expect(rowset.numberOfColumns).toBe(1)
-      expect(rowset.numberOfRows).toBe(1)
-      expect(rowset.version == 1 || rowset.version == 2).toBeTruthy()
+    it('should select long formatted string', done => {
+      connection.sendCommands("USE DATABASE :memory:; select printf('%.*c', 1000, 'x') AS DDD", (error, results) => {
+        expect(results.numberOfColumns).toBe(1)
+        expect(results.numberOfRows).toBe(1)
+        expect(results.version == 1 || results.version == 2).toBeTruthy()
 
-      const stringrowset = rowset.getItem(0, 0) as string
-      expect(stringrowset.startsWith('xxxxxxxxxxxxx')).toBeTruthy()
-      expect(stringrowset).toHaveLength(1000)
+        const stringrowset = results.getItem(0, 0) as string
+        expect(stringrowset.startsWith('xxxxxxxxxxxxx')).toBeTruthy()
+        expect(stringrowset).toHaveLength(1000)
+
+        done()
+      })
     })
 
-    it('should select database', async () => {
-      const rowset = await connection.sendCommands('USE DATABASE chinook.db;')
-      expect(rowset.numberOfColumns).toBeUndefined()
-      expect(rowset.numberOfRows).toBeUndefined()
-      expect(rowset.version).toBeUndefined()
+    it('should select database', done => {
+      connection.sendCommands('USE DATABASE chinook.db;', (error, results) => {
+        expect(results.numberOfColumns).toBeUndefined()
+        expect(results.numberOfRows).toBeUndefined()
+        expect(results.version).toBeUndefined()
+        done()
+      })
     })
 
-    it('should select * from tracks limit 10 (no chunks)', async () => {
-      let rowset = await connection.sendCommands('SELECT * FROM tracks LIMIT 10;')
-      expect(rowset.numberOfColumns).toBe(9)
-      expect(rowset.numberOfRows).toBe(10)
+    it('should select * from tracks limit 10 (no chunks)', done => {
+      connection.sendCommands('SELECT * FROM tracks LIMIT 10;', (error, results) => {
+        expect(results.numberOfColumns).toBe(9)
+        expect(results.numberOfRows).toBe(10)
+        done()
+      })
     })
 
-    it('should select * from tracks (with chunks)', async () => {
-      let rowset = await connection.sendCommands('SELECT * FROM tracks;')
-      expect(rowset.numberOfColumns).toBe(9)
-      expect(rowset.numberOfRows).toBe(3503)
+    it('should select * from tracks (with chunks)', done => {
+      connection.sendCommands('SELECT * FROM tracks;', (error, results) => {
+        expect(results.numberOfColumns).toBe(9)
+        expect(results.numberOfRows).toBe(3503)
+        done()
+      })
     })
 
-    it('should select * from albums', async () => {
-      let rowset = await connection.sendCommands('SELECT * FROM albums;')
-      expect(rowset.numberOfColumns).toBe(3)
-      expect(rowset.numberOfRows).toBe(347)
-      expect(rowset.version == 1 || rowset.version == 2).toBeTruthy()
+    it('should select * from albums', done => {
+      connection.sendCommands('SELECT * FROM albums;', (error, results) => {
+        expect(results.numberOfColumns).toBe(3)
+        expect(results.numberOfRows).toBe(347)
+        expect(results.version == 1 || results.version == 2).toBeTruthy()
+        done()
+      })
     })
   })
 
   describe('connection stress testing', () => {
     it(
       '20x test string',
-      async () => {
+      done => {
         const numQueries = 20
+        let completed = 0
         const startTime = Date.now()
-        // connection.verbose()
         for (let i = 0; i < numQueries; i++) {
-          let result = await connection.sendCommands('TEST STRING')
-          expect(result).toBe('Hello World, this is a test string.')
+          connection.sendCommands('TEST STRING', (error, results) => {
+            expect(results).toBe('Hello World, this is a test string.')
+            if (++completed >= numQueries) {
+              const queryMs = (Date.now() - startTime) / numQueries
+              console.log(`${numQueries}x test string, ${queryMs.toFixed(0)}ms per query`)
+              expect(queryMs).toBeLessThan(2000)
+              done()
+            }
+          })
         }
-        const queryMs = (Date.now() - startTime) / numQueries
-        console.log(`${numQueries}x test string, ${queryMs.toFixed(0)}ms per query`)
-        expect(queryMs).toBeLessThan(2000)
       },
       LONG_TIMEOUT
     )
 
     it(
       '20x individual selects',
-      async () => {
+      done => {
         const numQueries = 20
+        let completed = 0
         const startTime = Date.now()
         for (let i = 0; i < numQueries; i++) {
-          let rowset = await connection.sendCommands('SELECT * FROM albums ORDER BY RANDOM() LIMIT 4;')
-          expect(rowset.numberOfColumns).toBe(3)
-          expect(rowset.numberOfRows).toBe(4)
+          connection.sendCommands('SELECT * FROM albums ORDER BY RANDOM() LIMIT 4;', (error, results) => {
+            expect(error).toBeNull()
+            expect(results.numberOfColumns).toBe(3)
+            expect(results.numberOfRows).toBe(4)
+            if (++completed >= numQueries) {
+              const queryMs = (Date.now() - startTime) / numQueries
+              console.log(`${numQueries}x individual selects, ${queryMs.toFixed(0)}ms per query`)
+              expect(queryMs).toBeLessThan(2000)
+              done()
+            }
+          })
         }
-        const queryMs = (Date.now() - startTime) / numQueries
-        console.log(`${numQueries}x individual selects, ${queryMs.toFixed(0)}ms per query`)
-        expect(queryMs).toBeLessThan(2000)
       },
       LONG_TIMEOUT
     )
 
     it(
       '20x batched selects',
-      async () => {
+      done => {
         const numQueries = 20
+        let completed = 0
         const startTime = Date.now()
         for (let i = 0; i < numQueries; i++) {
-          let rowset = await connection.sendCommands(
-            'SELECT * FROM albums ORDER BY RANDOM() LIMIT 16; SELECT * FROM albums ORDER BY RANDOM() LIMIT 12; SELECT * FROM albums ORDER BY RANDOM() LIMIT 8; SELECT * FROM albums ORDER BY RANDOM() LIMIT 4;'
+          connection.sendCommands(
+            'SELECT * FROM albums ORDER BY RANDOM() LIMIT 16; SELECT * FROM albums ORDER BY RANDOM() LIMIT 12; SELECT * FROM albums ORDER BY RANDOM() LIMIT 8; SELECT * FROM albums ORDER BY RANDOM() LIMIT 4;',
+            (error, results) => {
+              // server only returns the last rowset?
+              expect(results.numberOfColumns).toBe(3)
+              expect(results.numberOfRows).toBe(4)
+              if (++completed >= numQueries) {
+                const queryMs = (Date.now() - startTime) / numQueries
+                console.log(`${numQueries}x batched selects, ${queryMs.toFixed(0)}ms per query`)
+                expect(queryMs).toBeLessThan(2000)
+                done()
+              }
+            }
           )
-          // server only returns the last rowset?
-          expect(rowset.numberOfColumns).toBe(3)
-          expect(rowset.numberOfRows).toBe(4)
         }
-        const queryMs = (Date.now() - startTime) / numQueries
-        console.log(`${numQueries}x batched selects, ${queryMs.toFixed(0)}ms per query`)
-        expect(queryMs).toBeLessThan(2000)
       },
       LONG_TIMEOUT
     )
