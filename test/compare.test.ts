@@ -2,35 +2,11 @@
  * compare.test.ts - test driver api against sqlite3 equivalents
  */
 
-import { SQLiteCloudError, SQLiteCloudConnection, SQLiteCloudRow } from '../src/index'
-import { Database, ErrorCallback } from '../src/index'
-
-import { CHINOOK_DATABASE_URL, TESTING_DATABASE_URL, LONG_TIMEOUT } from './connection.test'
+import { Database } from '../src/index'
+import { CHINOOK_DATABASE_URL, CHINOOK_DATABASE_FILE, CHINOOK_FIRST_TRACK } from './connection.test'
 
 // https://github.com/TryGhost/node-sqlite3/wiki/API
 import sqlite3 from 'sqlite3'
-
-import * as dotenv from 'dotenv'
-dotenv.config()
-
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-
-import { join } from 'path'
-import { readFileSync } from 'fs'
-
-const CHINOOK_DATABASE_FILE = join(__dirname, 'assets/chinook.db')
-
-const CHINOOK_FIRST_TRACK = {
-  AlbumId: 1,
-  Bytes: 11170334,
-  Composer: 'Angus Young, Malcolm Young, Brian Johnson',
-  GenreId: 1,
-  MediaTypeId: 1,
-  Milliseconds: 343719,
-  Name: 'For Those About To Rock (We Salute You)',
-  TrackId: 1,
-  UnitPrice: 0.99
-}
 
 describe('compare', () => {
   let chinookCloud: Database
@@ -95,14 +71,36 @@ describe('compare', () => {
       chinookCloud.all(sql, -1, (cloudError, cloudRows) => {
         expect(cloudError).toBeFalsy()
         expect(cloudRows).toHaveLength(0)
+        expect(Array.isArray(cloudRows)).toBeTruthy() // returns empty array [] not null
 
         chinookFile.all(sql, -1, (fileError, fileRows) => {
           expect(fileError).toBeNull()
           expect(fileRows).toHaveLength(0)
           expect(fileRows).toMatchObject(cloudRows as any)
+          expect(Array.isArray(fileRows)).toBeTruthy()
 
           done()
         })
+      })
+    })
+
+    // TODO sqlitecloud-js / fix problem with jest tests of sendCommands error conditions #24
+
+    it('sqlitecloud: select with errors', done => {
+      const sql = 'SELECT * FROM missingTable;'
+      chinookCloud.all(sql, (cloudError, cloudRows) => {
+        expect(cloudError).toBeTruthy()
+        expect(cloudRows).toBeFalsy()
+        done()
+      })
+    })
+
+    it('sqlite3: select with errors', done => {
+      const sql = 'SELECT * FROM missingTable;'
+      chinookFile.all(sql, (fileError, fileRows) => {
+        expect(fileError).toBeTruthy()
+        expect(fileRows).toBeFalsy()
+        done()
       })
     })
 

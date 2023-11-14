@@ -12,6 +12,9 @@ dotenv.config()
 export const CHINOOK_DATABASE_URL = process.env.CHINOOK_DATABASE_URL as string
 export const TESTING_DATABASE_URL = process.env.TESTING_DATABASE_URL as string
 
+import { join } from 'path'
+export const CHINOOK_DATABASE_FILE = join(__dirname, 'assets/chinook.db')
+
 export const LONG_TIMEOUT = 100 * 1000 // 100 seconds
 
 export function getChinoookConfig(): SQLiteCloudConfig {
@@ -19,6 +22,18 @@ export function getChinoookConfig(): SQLiteCloudConfig {
 }
 export function getTestingConfig(): SQLiteCloudConfig {
   return parseConnectionString(TESTING_DATABASE_URL)
+}
+
+export const CHINOOK_FIRST_TRACK = {
+  AlbumId: 1,
+  Bytes: 11170334,
+  Composer: 'Angus Young, Malcolm Young, Brian Johnson',
+  GenreId: 1,
+  MediaTypeId: 1,
+  Milliseconds: 343719,
+  Name: 'For Those About To Rock (We Salute You)',
+  TrackId: 1,
+  UnitPrice: 0.99
 }
 
 describe('connection', () => {

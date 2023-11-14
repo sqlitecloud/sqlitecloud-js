@@ -187,11 +187,6 @@ export class Database {
    * function to retrieve all rows or Database#prepare followed by multiple Statement#get
    * calls to retrieve a previously unknown amount of rows.
    */
-
-  //  all<T>(sql: string, callback?: (this: Statement, err: Error | null, rows: T[]) => void): this
-  //  all<T>(sql: string, params: any, callback?: (this: Statement, err: Error | null, rows: T[]) => void): this
-  // all(sql: string, ...params: any[]): this
-
   public all<T>(sql: string, callback?: RowsCallback<T>): this
   public all<T>(sql: string, params: any, callback?: RowsCallback<T>): this
   public all(sql: string, ...params: any[]): this {
@@ -206,7 +201,9 @@ export class Database {
           callback?.call(this, null)
         }
       })
-      .catch(error => this.handleError(connection, error, callback as ErrorCallback))
+      .catch(error => {
+        this.handleError(connection, error, callback as ErrorCallback)
+      })
 
     return this
   }
