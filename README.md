@@ -7,7 +7,7 @@
 [![codecov](https://codecov.io/gh/sqlitecloud/sqlitecloud-js/graph/badge.svg?token=ZOKE9WFH62)](https://codecov.io/gh/sqlitecloud/sqlitecloud-js)
 
 > This is the future home of SQLiteCloud drivers for Javascript and Typescript v2  
-> Currently under development, please keep using https://github.com/sqlitecloud/sdk
+> Currently under development, please open an issue for any problems, suggestions.
 
 ## Install
 
@@ -18,13 +18,20 @@ npm install sqlitecloud-js
 ## Usage
 
 ```ts
-import { myPackage } from 'my-package-name'
+// import sqlitecloud driver
+import { Database } from 'sqlitecloud-js'
 
-myPackage('hello')
-//=> 'hello from my package'
+// trivial example here but let's suppose we have this in a variable
+let name = 'Ava Jones'
+
+// run our prepared statement (or plain sql) with familiar print syntax
+let results = await database.sql`SELECT * FROM people WHERE name = ${name}`
+// => returns [{ id: 5, name: 'Ava Jones', age: 22, hobby: 'Time traveling' }]
 ```
 
 ## API
+
+We are striving to be 100% compatibile with the widely used sqlite3 APIs, the difference being that this driver connects to your SQLiteCloud database. You can take you local SQLite, deploy in the cloud and keep using the same code. Easy! You can also use Database.sql to run an async query.
 
 ### myPackage(input, options?)
 
