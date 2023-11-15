@@ -1,5 +1,5 @@
 //
-// database.ts - database driver api
+// database.ts - database driver api, implements and extends sqlite3
 //
 
 // Trying as much as possible to be a drop-in replacement for SQLite3 API
@@ -9,7 +9,7 @@
 
 import { SQLiteCloudConnection } from './connection'
 import { SQLiteCloudRowset } from './rowset'
-import { SQLiteCloudConfig, SQLiteCloudError, RowCountCallback } from './types'
+import { SQLiteCloudConfig, SQLiteCloudError, RowCountCallback, SQLiteCloudArrayType } from './types'
 import { prepareSql, popCallback } from './utilities'
 import { Statement } from './statement'
 import { ErrorCallback, ResultsCallback, RowCallback, RowsCallback } from './types'
@@ -91,6 +91,34 @@ export class Database {
     }
   }
 
+  /**
+   * Some queries like inserts or updates processed via run or exec may generate
+   * an empty result (eg. no data was selected), but still have some metadata.
+   * For example the server may pass the id of the last row that was modified.
+   * In this case the callback results should be empty but the context may contain
+   * additional information like lastID, etc.
+   * @see https://github.com/TryGhost/node-sqlite3/wiki/API#runsql--param---callback
+   * @param results Results received from the server
+   * @returns A context object if one makes sense, otherwise undefined
+   */
+  private processContext(results?: any): Record<string, any> | undefined {
+    if (results) {
+      if (Array.isArray(results) && results.length > 0) {
+        switch (results[0]) {
+          case SQLiteCloudArrayType.ARRAY_TYPE_SQLITE_EXEC:
+            return {
+              lastID: results[2], // ROWID (sqlite3_last_insert_rowid)
+              changes: results[3], // CHANGES(sqlite3_changes)
+              totalChanges: results[4], // TOTAL_CHANGES (sqlite3_total_changes)
+              finalized: results[5] // FINALIZED
+            }
+        }
+      }
+    }
+
+    return undefined
+  }
+
   //
   // public methods
   //
@@ -117,6 +145,8 @@ export class Database {
    * It does not retrieve any result data. The function returns the Database object for
    * which it was called to allow for function chaining.
    */
+  public run<T>(sql: string, callback?: ResultsCallback<T>): this
+  public run<T>(sql: string, params: any, callback?: ResultsCallback<T>): this
   public run(sql: string, ...params: any[]): this {
     const { args, callback } = popCallback<ResultsCallback>(params)
     const preparedSql = args?.length > 0 ? prepareSql(sql, ...args) : sql
@@ -128,7 +158,9 @@ export class Database {
           if (error) {
             this.handleError(connection, error, callback)
           } else {
-            callback?.call(this, null, results)
+            // context may include id of last row inserted, total changes, etc...
+            const context = this.processContext(results)
+            callback?.call(context || this, null, context ? undefined : results)
           }
         })
       }
@@ -146,6 +178,8 @@ export class Database {
    * the column names of the result set. It is impossible to access them by column index;
    * the only supported way is by column name.
    */
+  public get<T>(sql: string, callback?: RowCallback<T>): this
+  public get<T>(sql: string, params: any, callback?: RowCallback<T>): this
   public get(sql: string, ...params: any[]): this {
     const { args, callback } = popCallback<RowCallback>(params)
     const preparedSql = args?.length > 0 ? prepareSql(sql, ...args) : sql
@@ -221,6 +255,8 @@ export class Database {
    * it might be more convenient to use Database#all to retrieve all rows at once. There is currently no
    * way to abort execution.
    */
+  public each<T>(sql: string, callback?: RowCallback<T>, complete?: RowCountCallback): this
+  public each<T>(sql: string, params: any, callback?: RowCallback<T>, complete?: RowCountCallback): this
   public each(sql: string, ...params: any[]): this {
     // extract optional parameters and one or two callbacks
     const { args, callback, complete } = popCallback<RowCallback>(params)
@@ -284,7 +320,8 @@ export class Database {
           if (error) {
             this.handleError(connection, error, callback)
           } else {
-            callback?.call(this, null)
+            const context = this.processContext(results)
+            callback?.call(context ? context : this, null)
           }
         })
       }
@@ -371,7 +408,9 @@ export class Database {
             if (error) {
               reject(error)
             } else {
-              resolve(results)
+              // metadata for operations like insert, update, delete?
+              const context = this.processContext(results)
+              resolve(context ? context : results)
             }
           })
         }

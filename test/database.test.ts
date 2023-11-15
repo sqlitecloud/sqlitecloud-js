@@ -13,7 +13,14 @@ dotenv.config()
 
 import { join } from 'path'
 import { readFileSync } from 'fs'
-const PREPARE_TESTING_SQL = readFileSync(join(__dirname, 'assets/testing.sql'), 'utf8')
+import { RowCountCallback } from '../src/types'
+export const PREPARE_TESTING_SQL = readFileSync(join(__dirname, 'assets/testing.sql'), 'utf8')
+
+export function getTestingDatabase(): Database {
+  const database = new Database(TESTING_DATABASE_URL + '?sqliteMode=1')
+  database.exec(PREPARE_TESTING_SQL)
+  return database
+}
 
 describe('Database', () => {
   let database: Database
@@ -44,55 +51,69 @@ describe('Database', () => {
     it('simple update', done => {
       const updateSql = "UPDATE people SET name = 'Charlie Brown' WHERE id = 3; UPDATE people SET name = 'David Bowie' WHERE id = 4; "
 
-      database.run(updateSql, (err: Error, results: any) => {
+      // lambda callback would "hide" this
+      function plainCallbackNotALambda(err: Error, results: any) {
         expect(err).toBeNull()
-        // TODO sqlitecloud-js // Database.run should return number of rows modified and lastId #15
+        expect(results).toBeUndefined()
+
+        // Database.run should return number of rows modified and lastID
+        // @ts-expect-error
+        const context = this as any
+        expect(context.lastID).toBe(20)
+        expect(context.changes).toBe(1) // should this be 2?
+        expect(context.totalChanges).toBe(22)
+        expect(context.finalized).toBe(1)
 
         database.close(error => {
           expect(error).toBeNull()
           done()
         })
-      })
+      }
+
+      database.run(updateSql, plainCallbackNotALambda)
     })
 
     it(
       'insert with parameter value',
       done => {
-        const insertSql = `INSERT INTO people (name, hobby, age) VALUES ('Fantozzi Ugo', 'Competitive pranking', 42);`
-        /*
-          [0] -> TYPE           (ARRAY_TYPE_SQLITE_EXEC or ARRAY_TYPE_VM_STEP, see ARRAY_TYPE enum)
-          [1] -> INDEX          (VM index, in ARRAY_TYPE_SQLITE_EXEC is always 0)
-          [2] -> ROWID          (sqlite3_last_insert_rowid)
-          [3] -> CHANGES        (sqlite3_changes)
-          [4] -> TOTAL_CHANGES  (sqlite3_total_changes)
-          [5] -> FINALIZED
-        */
+        const insertSql = `INSERT INTO people (name, hobby, age) VALUES ('Fantozzi Ugo', 'Competitive unicorn farting', 42);`
 
-        database.run(insertSql, (error: Error, results1: any) => {
-          expect(error).toBeNull()
-          // sqlitecloud-js // Database.run should return number of rows modified and lastId #15
-          expect(results1[0]).toBe(10)
-          expect(results1[1]).toBe(0)
-          expect(results1[2]).toBe(21) // rowId
-          expect(results1[3]).toBe(1) // changes
-          expect(results1[4]).toBe(21) // totalChanges
-          expect(results1[5]).toBe(1) // finalized
+        // lambda callback would "hide" this
+        function plainCallbackNotALambdaOne(err: Error, results: any) {
+          expect(err).toBeNull()
+          expect(results).toBeUndefined()
 
-          database.run(insertSql, (err: Error, results2: any) => {
-            expect(err).toBeNull()
-            expect(results2[0]).toBe(10)
-            expect(results2[1]).toBe(0)
-            expect(results2[2]).toBe(22)
-            expect(results2[3]).toBe(1)
-            expect(results2[4]).toBe(22)
-            expect(results2[5]).toBe(1)
+          // Database.run should return number of rows modified and lastID
+          // @ts-expect-error
+          const context = this as any
+          expect(context.lastID).toBe(21)
+          expect(context.changes).toBe(1)
+          expect(context.totalChanges).toBe(21)
+          expect(context.finalized).toBe(1)
 
-            database.close(error => {
-              expect(error).toBeNull()
-              done()
-            })
+          database.run(insertSql, plainCallbackNotALambdaTwo)
+        }
+
+        // lambda callback would "hide" this
+        function plainCallbackNotALambdaTwo(err: Error, results: any) {
+          expect(err).toBeNull()
+          expect(results).toBeUndefined()
+
+          // Database.run should return number of rows modified and lastID
+          // @ts-expect-error
+          const context = this as any
+          expect(context.lastID).toBe(22)
+          expect(context.changes).toBe(1)
+          expect(context.totalChanges).toBe(22)
+          expect(context.finalized).toBe(1)
+
+          database.close(error => {
+            expect(error).toBeNull()
+            done()
           })
-        })
+        }
+
+        database.run(insertSql, plainCallbackNotALambdaOne)
       },
       LONG_TIMEOUT
     )
@@ -191,7 +212,7 @@ describe('Database', () => {
         expect(row).toMatchObject({})
       }
 
-      const completeCallback = (error: Error, numberOfRows: number) => {
+      const completeCallback: RowCountCallback = (error, numberOfRows) => {
         expect(error).toBeNull()
         expect(rowCount).toBe(numberOfRows)
         db.close(error => {
@@ -201,7 +222,7 @@ describe('Database', () => {
       }
 
       const db = new Database(CHINOOK_DATABASE_URL)
-      db.each('SELECT * FROM tracks', rowCallback, completeCallback)
+      db.each<any>('SELECT * FROM tracks', rowCallback, completeCallback)
     })
   })
 

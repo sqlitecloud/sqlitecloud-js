@@ -105,3 +105,27 @@ export type ResultsCallback<T = any> = (error: Error | null, results?: T) => voi
 export type RowsCallback<T = Record<string, any>> = (error: Error | null, rows?: T[]) => void
 export type RowCallback<T = Record<string, any>> = (error: Error | null, row?: T) => void
 export type RowCountCallback = (error: Error | null, rowCount?: number) => void
+
+/**
+ * Certain responses include arrays with various types of metadata.
+ * The first entry is always an array type from this list. This enum
+ * is called SQCLOUD_ARRAY_TYPE in the C API.
+ */
+export enum SQLiteCloudArrayType {
+  ARRAY_TYPE_SQLITE_EXEC = 10, // used in SQLITE_MODE only when a write statement is executed (instead of the OK reply)
+  ARRAY_TYPE_DB_STATUS = 11,
+  ARRAY_TYPE_METADATA = 12,
+
+  ARRAY_TYPE_VM_STEP = 20, // used in VM_STEP (when SQLITE_DONE is returned)
+  ARRAY_TYPE_VM_COMPILE = 21, // used in VM_PREPARE
+  ARRAY_TYPE_VM_STEP_ONE = 22, // unused in this version (will be used to step in a server-side rowset)
+  ARRAY_TYPE_VM_SQL = 23,
+  ARRAY_TYPE_VM_STATUS = 24,
+  ARRAY_TYPE_VM_LIST = 25,
+
+  ARRAY_TYPE_BACKUP_INIT = 40, // used in BACKUP_INIT
+  ARRAY_TYPE_BACKUP_STEP = 41, // used in backupWrite (VFS)
+  ARRAY_TYPE_BACKUP_END = 42, // used in backupClose (VFS)
+
+  ARRAY_TYPE_SQLITE_STATUS = 50 // used in sqlite_status
+}
