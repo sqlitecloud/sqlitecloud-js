@@ -296,7 +296,7 @@ export class Database {
    * is null, otherwise it is the error object. When bind parameters are supplied,
    * they are bound to the prepared statement before calling the callback.
    */
-  public prepare(sql: string, ...params: any[]): Statement {
+  public prepare<T = any>(sql: string, ...params: any[]): Statement<T> {
     const { args, callback } = popCallback(params)
     return new Statement(this, sql, ...args, callback)
   }
