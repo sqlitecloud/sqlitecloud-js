@@ -29,12 +29,11 @@ export class Database {
     const connection = new SQLiteCloudConnection(this.config)
     this.connections = [connection]
 
-    this.getConnection((error, connection) => {
+    this.getConnection((error, _connection) => {
       if (error) {
         this.handleError(null, error, callback)
       } else {
         callback?.call(this, null)
-        //if (callback) callback(null)
       }
     })
   }

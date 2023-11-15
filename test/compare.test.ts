@@ -21,11 +21,11 @@ function getTestingDatabaseFile(): sqlite3.Database {
   return testingFile
 }
 
-describe('compare', () => {
+describe('compare.test.ts', () => {
   let chinookCloud: Database
   let chinookFile: sqlite3.Database
 
-  beforeAll(done => {
+  beforeEach(done => {
     chinookCloud = new Database(CHINOOK_DATABASE_URL, error => {
       expect(error).toBeNull()
 
@@ -38,7 +38,7 @@ describe('compare', () => {
     // chinookCloud.verbose()
   })
 
-  afterAll(() => {
+  afterEach(() => {
     chinookCloud.close()
     chinookFile.close()
   })

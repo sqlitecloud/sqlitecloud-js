@@ -9,7 +9,7 @@ import { CHINOOK_DATABASE_URL } from './connection.test'
 describe('rowset', () => {
   let connection: SQLiteCloudConnection
 
-  beforeAll(done => {
+  beforeEach(done => {
     expect(CHINOOK_DATABASE_URL).toBeDefined()
     connection = new SQLiteCloudConnection(CHINOOK_DATABASE_URL)
     connection.sendCommands('SET CLIENT KEY NONLINEARIZABLE TO 1;', (error, rowset) => {
@@ -17,7 +17,7 @@ describe('rowset', () => {
     })
   })
 
-  afterAll(() => {
+  afterEach(() => {
     if (connection) {
       connection.close()
       // @ts-ignore

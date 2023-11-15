@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"jestrunner.runOptions": [
+			"--runInBand",
+			"--detectOpenHandles",
+			"--watchAll=false"
+		]
+	}
+}
