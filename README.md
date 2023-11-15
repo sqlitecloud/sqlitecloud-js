@@ -18,20 +18,21 @@ npm install sqlitecloud-js
 ## Usage
 
 ```ts
-// import sqlitecloud driver
 import { Database } from 'sqlitecloud-js'
 
-// trivial example here but let's suppose we have this in a variable
 let name = 'Ava Jones'
 
-// run our prepared statement (or plain sql) with familiar print syntax
 let results = await database.sql`SELECT * FROM people WHERE name = ${name}`
 // => returns [{ id: 5, name: 'Ava Jones', age: 22, hobby: 'Time traveling' }]
 ```
 
-## API
+Use `Database.sql` for executing both your prepared statements and plain SQL queries asynchronously. This method returns an array of rows for SELECT queries and supports the standard syntax for UPDATE, INSERT, and DELETE.
 
-We are striving to be 100% compatibile with the widely used sqlite3 APIs, the difference being that this driver connects to your SQLiteCloud database. You can take you local SQLite, deploy in the cloud and keep using the same code. Easy! You can also use Database.sql to run an async query.
+We aim for full compatibility with the established [sqlite3](https://www.npmjs.com/package/sqlite3) API, with the primary distinction being that our driver connects to SQLiteCloud databases. This allows you to migrate your local SQLite databases to the cloud while continuing to use your existing codebase.
+
+The package is developed entirely in TypeScript and is fully compatible with JavaScript, without requiring any native libraries. This makes it a straightforward and effective tool for managing cloud-based databases in a familiar SQLite environment.
+
+## API
 
 ### myPackage(input, options?)
 
@@ -54,9 +55,9 @@ Lorem ipsum.
 
 [build-img]: https://github.com/ryansonshine/typescript-npm-package-template/actions/workflows/release.yml/badge.svg
 [build-url]: https://github.com/ryansonshine/typescript-npm-package-template/actions/workflows/release.yml
-[downloads-img]: https://img.shields.io/npm/dt/typescript-npm-package-template
-[downloads-url]: https://www.npmtrends.com/typescript-npm-package-template
-[npm-img]: https://img.shields.io/npm/v/typescript-npm-package-template
-[npm-url]: https://www.npmjs.com/package/typescript-npm-package-template
+[downloads-img]: https://img.shields.io/npm/dt/sqlitecloud-js
+[downloads-url]: https://www.npmtrends.com/sqlitecloud-js
+[npm-img]: https://img.shields.io/npm/v/sqlitecloud-js
+[npm-url]: https://www.npmjs.com/package/sqlitecloud-js
 [issues-img]: https://img.shields.io/github/issues/sqlitecloud/sqlitecloud-js
 [issues-url]: https://github.com/sqlitecloud/sqlitecloud-js/issues
