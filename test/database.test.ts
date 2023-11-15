@@ -22,7 +22,7 @@ export function getTestingDatabase(): Database {
   return database
 }
 
-describe('Database', () => {
+describe('database', () => {
   let database: Database
 
   beforeEach(done => {
@@ -266,7 +266,7 @@ describe('Database', () => {
   })
 
   describe('sql (async)', () => {
-    it('simple select', async () => {
+    it('should select and return multiple rows', async () => {
       const results = await database.sql('SELECT * FROM people ORDER BY id')
       expect(results).toBeDefined()
 
@@ -280,7 +280,20 @@ describe('Database', () => {
       })
     })
 
-    it('select with template string', async () => {
+    it('should select and return a single row', async () => {
+      const results = await database.sql('SELECT * FROM people ORDER BY id LIMIT 1')
+      expect(results).toBeDefined()
+      const row = results[0]
+      expect(row).toBeDefined()
+      expect(row).toMatchObject({
+        id: 1,
+        name: 'Emma Johnson',
+        age: 28,
+        hobby: 'Collecting clouds'
+      })
+    })
+
+    it('should select with template string parameters', async () => {
       // trivial example here but let's suppose we have this in a variable...
       let name = 'Ava Jones'
 
@@ -299,7 +312,7 @@ describe('Database', () => {
       expect(results).toHaveLength(11)
     })
 
-    it('regular concatenated string', async () => {
+    it('should take regular concatenated string as parameters', async () => {
       // trivial example here but let's suppose we have this in a variable...
       let name = 'Ava Jones'
 
@@ -309,6 +322,28 @@ describe('Database', () => {
 
       results = await database.sql('SELECT * FROM people WHERE age < 30')
       expect(results).toHaveLength(11)
+    })
+
+    it('should update and respond with metadata', async () => {
+      const updateSql = "UPDATE people SET name = 'Charlie Brown' WHERE id = 3; UPDATE people SET name = 'David Bowie' WHERE id = 4; "
+      let results = await database.sql(updateSql)
+      expect(results).toMatchObject({
+        lastID: 20,
+        changes: 1,
+        totalChanges: 22,
+        finalized: 1
+      })
+    })
+
+    it('should insert and respond with metadata', async () => {
+      const insertSql = "INSERT INTO people (name, hobby, age) VALUES ('Barnaby Bumblecrump', 'Rubber Duck Dressing', 42); "
+      let results = await database.sql(insertSql)
+      expect(results).toMatchObject({
+        lastID: 21,
+        changes: 1,
+        totalChanges: 21,
+        finalized: 1
+      })
     })
   })
 

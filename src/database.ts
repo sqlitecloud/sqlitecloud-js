@@ -67,6 +67,7 @@ export class Database {
     }
   }
 
+  /** Handles an error by closing the connection, calling the callback and/or emitting an error event */
   private handleError(connection: SQLiteCloudConnection | null, error: Error, callback?: ErrorCallback): void {
     // an errored connection is thrown out
     if (connection) {
@@ -376,6 +377,16 @@ export class Database {
   //
   // extended APIs
   //
+
+  /**
+   * Sql is a promise based API for executing SQL statements. You can
+   * pass a simple string with a SQL statement or a template string
+   * using backticks and parameters in ${parameter} format. These parameters
+   * will be properly escaped and quoted like when using a prepared statement.
+   * @param sql A sql string or a template string in `backticks` format
+   * @returns An array of rows in case of selections or an object with
+   * metadata in case of insert, update, delete.
+   */
 
   public async sql(sql: TemplateStringsArray | string, ...values: any[]): Promise<any> {
     let preparedSql = ''
