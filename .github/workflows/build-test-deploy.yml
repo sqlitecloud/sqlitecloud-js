@@ -11,8 +11,11 @@ permissions:
 jobs:
   build:
     name: 'Build'
-    timeout-minutes: 15
+    timeout-minutes: 5
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
@@ -30,11 +33,24 @@ jobs:
       - uses: actions/upload-pages-artifact@v2
         with:
           path: ./docs
+      - name: Deploy to GitHub Pages
+        id: deployment
+        # https://github.com/actions/deploy-pages
+        uses: actions/deploy-pages@v2
 
   test:
     name: 'Test'
-    needs: build
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18.x'
+      - name: Setup Dependencies
+        run: |
+          corepack enable
+          npm install
       - name: Jest Tests
         env:
           CHINOOK_DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
@@ -44,16 +60,3 @@ jobs:
         uses: codecov/codecov-action@v3
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
-  deploy:
-    name: 'Deploy'
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        # https://github.com/actions/deploy-pages
-        uses: actions/deploy-pages@v2
