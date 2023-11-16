@@ -8,7 +8,6 @@ import lz4 from 'lz4'
 import { SQLiteCloudConfig, SQLCloudRowsetMetadata, SQLiteCloudError, SQLiteCloudDataTypes, ErrorCallback, ResultsCallback } from './types'
 import { SQLiteCloudRowset } from './rowset'
 import { parseConnectionString, parseBoolean } from './utilities'
-import { OperationsQueue } from './queue'
 
 /**
  * The server communicates with clients via commands defined
@@ -104,9 +103,7 @@ export class SQLiteCloudConnection {
   /** Will log to console if verbose mode is enabled */
   private log(message: string, ...optionalParams: any[]): void {
     if (this.config.verbose) {
-      // hide password in AUTH command if needed
-      message = message.replace(/PASSWORD \S+?(?=;)/, 'PASSWORD ******')
-      message = message.replace(/HASH \S+?(?=;)/, 'HASH ******')
+      message = anonimizeCommand(message)
       console.log(`${new Date().toISOString()} ${this.config.clientId as string}: ${message}`, ...optionalParams)
     }
   }
@@ -168,9 +165,10 @@ export class SQLiteCloudConnection {
       // connect to tls socket, initialize connection, setup event handlers
       const client: tls.TLSSocket = tls.connect(this.config.port as number, this.config.host, this.config.tlsOptions, () => {
         if (!client.authorized) {
-          this.log('Connection was not authorized', client.authorizationError)
+          const anonimizedError = anonimizeError(client.authorizationError)
+          this.log('Connection was not authorized', anonimizedError)
           this.close()
-          const error = new SQLiteCloudError('Connection was not authorized', { cause: client.authorizationError })
+          const error = new SQLiteCloudError('Connection was not authorized', { cause: anonimizedError })
           callback?.call(this, error)
           done?.call(this, error)
         } else {
@@ -300,7 +298,7 @@ export class SQLiteCloudConnection {
 
       this.socket?.write(commands, 'utf8', () => {
         socketTimeout = setTimeout(() => {
-          finish?.call(this, new SQLiteCloudError('Request timed out', { cause: commands }))
+          finish?.call(this, new SQLiteCloudError('Request timed out', { cause: anonimizeCommand(commands) }))
         }, this.config.timeout)
         this.socket?.on('data', readData)
       })
@@ -308,7 +306,7 @@ export class SQLiteCloudConnection {
       this.socket?.once('error', (error: any) => {
         this.log('Socket error', error)
         this.close()
-        finish?.call(this, new SQLiteCloudError('Socket error', { cause: error }))
+        finish?.call(this, new SQLiteCloudError('Socket error', { cause: anonimizeError(error) }))
       })
     })
 
@@ -323,6 +321,51 @@ export class SQLiteCloudConnection {
     this.operations.clear()
     this.socket = undefined
     return this
+  }
+}
+
+//
+// OperationsQueue - used to linearize operations on the connection
+//
+
+type OperationCallback = (error?: Error) => void
+type Operation = (done: OperationCallback) => void
+
+export class OperationsQueue {
+  private queue: Operation[] = []
+  private isProcessing = false
+
+  /** Add operations to the queue, process immediately if possible, else wait for previous operations to complete */
+  public enqueue(operation: Operation): void {
+    this.queue.push(operation)
+    if (!this.isProcessing) {
+      this.processNext()
+    }
+  }
+
+  /** Clear the queue */
+  public clear(): void {
+    this.queue = []
+    this.isProcessing = false
+  }
+
+  /** Process the next operation in the queue */
+  private processNext(): void {
+    if (this.queue.length === 0) {
+      this.isProcessing = false
+      return
+    }
+
+    this.isProcessing = true
+    const operation = this.queue.shift()
+    operation?.(error => {
+      if (error) {
+        console.warn('OperationQueue.processNext - error in operation', error)
+      }
+
+      // process the next operation in the queue
+      this.processNext()
+    })
   }
 }
 
@@ -590,4 +633,21 @@ function popData(buffer: Buffer): { data: SQLiteCloudDataTypes | SQLiteCloudRows
 function formatCommand(command: string): string {
   const commandLength = Buffer.byteLength(command, 'utf-8')
   return `+${commandLength} ${command}`
+}
+
+/** Messages going to the server are sometimes logged when error conditions occour and need to be stripped of user credentials  */
+function anonimizeCommand(message: string): string {
+  // hide password in AUTH command if needed
+  message = message.replace(/USER \S+?(?=;)/, 'USER ******')
+  message = message.replace(/PASSWORD \S+?(?=;)/, 'PASSWORD ******')
+  message = message.replace(/HASH \S+?(?=;)/, 'HASH ******')
+  return message
+}
+
+/** Strip message code in error of user credentials */
+function anonimizeError(error: Error): Error {
+  if (error?.message) {
+    error.message = anonimizeCommand(error.message)
+  }
+  return error
 }
