@@ -39,7 +39,7 @@ Optional identifier used for verbose logging
 
 #### Defined in
 
-[src/types.ts:51](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L51)
+[src/types.ts:51](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L51)
 
 ___
 
@@ -49,7 +49,7 @@ ___
 
 #### Defined in
 
-[src/types.ts:35](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L35)
+[src/types.ts:35](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L35)
 
 ___
 
@@ -61,7 +61,7 @@ Connection string in the form of sqlitecloud://user:password@host:port/database?
 
 #### Defined in
 
-[src/types.ts:10](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L10)
+[src/types.ts:10](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L10)
 
 ___
 
@@ -73,7 +73,7 @@ Create the database if it doesn't exist?
 
 #### Defined in
 
-[src/types.ts:29](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L29)
+[src/types.ts:29](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L29)
 
 ___
 
@@ -85,7 +85,7 @@ Name of database to open
 
 #### Defined in
 
-[src/types.ts:26](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L26)
+[src/types.ts:26](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L26)
 
 ___
 
@@ -97,7 +97,7 @@ Database will be created in memory
 
 #### Defined in
 
-[src/types.ts:31](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L31)
+[src/types.ts:31](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L31)
 
 ___
 
@@ -109,7 +109,7 @@ Host name is required unless connectionString is provided
 
 #### Defined in
 
-[src/types.ts:20](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L20)
+[src/types.ts:20](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L20)
 
 ___
 
@@ -121,7 +121,7 @@ Do not send columns with more than max_data bytes
 
 #### Defined in
 
-[src/types.ts:41](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L41)
+[src/types.ts:41](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L41)
 
 ___
 
@@ -133,7 +133,7 @@ Server should chunk responses with more than maxRows
 
 #### Defined in
 
-[src/types.ts:43](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L43)
+[src/types.ts:43](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L43)
 
 ___
 
@@ -145,7 +145,7 @@ Server should limit total number of rows in a set to maxRowset
 
 #### Defined in
 
-[src/types.ts:45](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L45)
+[src/types.ts:45](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L45)
 
 ___
 
@@ -157,7 +157,7 @@ Server should send BLOB columns
 
 #### Defined in
 
-[src/types.ts:39](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L39)
+[src/types.ts:39](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L39)
 
 ___
 
@@ -169,7 +169,7 @@ Request for immediate responses from the server node without waiting for lineriz
 
 #### Defined in
 
-[src/types.ts:37](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L37)
+[src/types.ts:37](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L37)
 
 ___
 
@@ -181,7 +181,7 @@ Password is required unless connection string is provided
 
 #### Defined in
 
-[src/types.ts:15](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L15)
+[src/types.ts:15](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L15)
 
 ___
 
@@ -193,7 +193,7 @@ True if password is hashed, default is false
 
 #### Defined in
 
-[src/types.ts:17](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L17)
+[src/types.ts:17](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L17)
 
 ___
 
@@ -205,7 +205,7 @@ Port number for tls socket
 
 #### Defined in
 
-[src/types.ts:22](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L22)
+[src/types.ts:22](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L22)
 
 ___
 
@@ -217,7 +217,7 @@ Enable SQLite compatibility mode
 
 #### Defined in
 
-[src/types.ts:33](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L33)
+[src/types.ts:33](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L33)
 
 ___
 
@@ -229,7 +229,7 @@ Optional query timeout passed directly to TLS socket
 
 #### Defined in
 
-[src/types.ts:24](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L24)
+[src/types.ts:24](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L24)
 
 ___
 
@@ -241,7 +241,7 @@ Custom options and configurations for tls socket, eg: additional certificates
 
 #### Defined in
 
-[src/types.ts:48](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L48)
+[src/types.ts:48](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L48)
 
 ___
 
@@ -253,7 +253,7 @@ User name is required unless connectionString is provided
 
 #### Defined in
 
-[src/types.ts:13](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L13)
+[src/types.ts:13](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L13)
 
 ___
 
@@ -265,4 +265,4 @@ True if connection should enable debug logs
 
 #### Defined in
 
-[src/types.ts:53](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L53)
+[src/types.ts:53](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L53)

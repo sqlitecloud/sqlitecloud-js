@@ -51,7 +51,7 @@ Parse and validate provided connectionString or configuration
 
 #### Defined in
 
-[src/connection.ts:43](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/connection.ts#L43)
+[src/connection.ts:43](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/connection.ts#L43)
 
 ## Properties
 
@@ -63,7 +63,7 @@ Configuration passed by client or extracted from connection string
 
 #### Defined in
 
-[src/connection.ts:54](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/connection.ts#L54)
+[src/connection.ts:54](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/connection.ts#L54)
 
 ___
 
@@ -75,7 +75,7 @@ Operations are serialized by waiting an any pending promises
 
 #### Defined in
 
-[src/connection.ts:60](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/connection.ts#L60)
+[src/connection.ts:60](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/connection.ts#L60)
 
 ___
 
@@ -87,7 +87,7 @@ Currently opened tls socket used to communicated with SQLiteCloud server
 
 #### Defined in
 
-[src/connection.ts:57](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/connection.ts#L57)
+[src/connection.ts:57](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/connection.ts#L57)
 
 ## Accessors
 
@@ -103,7 +103,7 @@ True if connection is open
 
 #### Defined in
 
-[src/connection.ts:67](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/connection.ts#L67)
+[src/connection.ts:67](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/connection.ts#L67)
 
 ___
 
@@ -119,7 +119,7 @@ Initialization commands sent to database when connection is established
 
 #### Defined in
 
-[src/connection.ts:112](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/connection.ts#L112)
+[src/connection.ts:112](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/connection.ts#L112)
 
 ## Methods
 
@@ -135,7 +135,7 @@ Disconnect from server, release connection.
 
 #### Defined in
 
-[src/connection.ts:317](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/connection.ts#L317)
+[src/connection.ts:317](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/connection.ts#L317)
 
 ___
 
@@ -155,7 +155,7 @@ ___
 
 #### Defined in
 
-[src/connection.ts:158](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/connection.ts#L158)
+[src/connection.ts:158](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/connection.ts#L158)
 
 ___
 
@@ -178,7 +178,7 @@ Will log to console if verbose mode is enabled
 
 #### Defined in
 
-[src/connection.ts:104](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/connection.ts#L104)
+[src/connection.ts:104](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/connection.ts#L104)
 
 ___
 
@@ -201,7 +201,7 @@ Will send a command and return the resulting rowset or result or throw an error
 
 #### Defined in
 
-[src/connection.ts:209](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/connection.ts#L209)
+[src/connection.ts:209](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/connection.ts#L209)
 
 ___
 
@@ -223,7 +223,7 @@ Validate configuration, apply defaults, throw if something is missing or misconf
 
 #### Defined in
 
-[src/connection.ts:76](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/connection.ts#L76)
+[src/connection.ts:76](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/connection.ts#L76)
 
 ___
 
@@ -239,4 +239,4 @@ Enable verbose logging for debug purposes
 
 #### Defined in
 
-[src/connection.ts:153](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/connection.ts#L153)
+[src/connection.ts:153](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/connection.ts#L153)

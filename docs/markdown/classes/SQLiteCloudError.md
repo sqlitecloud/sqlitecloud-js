@@ -55,7 +55,7 @@ Error.constructor
 
 #### Defined in
 
-[src/types.ts:85](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L85)
+[src/types.ts:85](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L85)
 
 ## Properties
 
@@ -67,7 +67,7 @@ Upstream error that cause this error
 
 #### Defined in
 
-[src/types.ts:94](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L94)
+[src/types.ts:94](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L94)
 
 ___
 
@@ -79,7 +79,7 @@ Error code returned by drivers or server
 
 #### Defined in
 
-[src/types.ts:96](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L96)
+[src/types.ts:96](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L96)
 
 ___
 
@@ -91,7 +91,7 @@ Additional error code
 
 #### Defined in
 
-[src/types.ts:98](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L98)
+[src/types.ts:98](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L98)
 
 ___
 
@@ -131,7 +131,7 @@ Additional offset code in commands
 
 #### Defined in
 
-[src/types.ts:100](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L100)
+[src/types.ts:100](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L100)
 
 ___
 

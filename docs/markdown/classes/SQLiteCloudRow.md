@@ -44,7 +44,7 @@ Column values are accessed by column name
 
 #### Defined in
 
-[src/rowset.ts:9](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/rowset.ts#L9)
+[src/rowset.ts:9](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/rowset.ts#L9)
 
 ## Properties
 
@@ -54,7 +54,7 @@ Column values are accessed by column name
 
 #### Defined in
 
-[src/rowset.ts:17](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/rowset.ts#L17)
+[src/rowset.ts:17](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/rowset.ts#L17)
 
 ## Methods
 
@@ -70,4 +70,4 @@ Returns the rowset that this row belongs to
 
 #### Defined in
 
-[src/rowset.ts:21](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/rowset.ts#L21)
+[src/rowset.ts:21](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/rowset.ts#L21)

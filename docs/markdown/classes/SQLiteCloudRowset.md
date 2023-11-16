@@ -90,7 +90,7 @@ Array\&lt;SQLiteCloudRow\&gt;.constructor
 
 #### Defined in
 
-[src/rowset.ts:31](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/rowset.ts#L31)
+[src/rowset.ts:31](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/rowset.ts#L31)
 
 ## Properties
 
@@ -102,7 +102,7 @@ Actual data organized in rows
 
 #### Defined in
 
-[src/rowset.ts:65](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/rowset.ts#L65)
+[src/rowset.ts:65](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/rowset.ts#L65)
 
 ___
 
@@ -114,7 +114,7 @@ Metadata contains number of rows and columns, column names, types, etc.
 
 #### Defined in
 
-[src/rowset.ts:62](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/rowset.ts#L62)
+[src/rowset.ts:62](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/rowset.ts#L62)
 
 ___
 
@@ -160,7 +160,7 @@ Array of columns names
 
 #### Defined in
 
-[src/rowset.ts:86](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/rowset.ts#L86)
+[src/rowset.ts:86](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/rowset.ts#L86)
 
 ___
 
@@ -176,7 +176,7 @@ Get rowset metadata
 
 #### Defined in
 
-[src/rowset.ts:91](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/rowset.ts#L91)
+[src/rowset.ts:91](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/rowset.ts#L91)
 
 ___
 
@@ -192,7 +192,7 @@ Number of columns in row set
 
 #### Defined in
 
-[src/rowset.ts:81](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/rowset.ts#L81)
+[src/rowset.ts:81](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/rowset.ts#L81)
 
 ___
 
@@ -208,7 +208,7 @@ Number of rows in row set
 
 #### Defined in
 
-[src/rowset.ts:76](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/rowset.ts#L76)
+[src/rowset.ts:76](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/rowset.ts#L76)
 
 ___
 
@@ -228,7 +228,7 @@ https://github.com/sqlitecloud/sdk/blob/master/PROTOCOL.md
 
 #### Defined in
 
-[src/rowset.ts:71](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/rowset.ts#L71)
+[src/rowset.ts:71](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/rowset.ts#L71)
 
 ## Methods
 
@@ -651,7 +651,7 @@ Return value of item at given row and column
 
 #### Defined in
 
-[src/rowset.ts:96](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/rowset.ts#L96)
+[src/rowset.ts:96](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/rowset.ts#L96)
 
 ___
 

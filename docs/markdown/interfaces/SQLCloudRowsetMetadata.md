@@ -23,7 +23,7 @@ Columns' metadata
 
 #### Defined in
 
-[src/types.ts:66](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L66)
+[src/types.ts:66](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L66)
 
 ___
 
@@ -35,7 +35,7 @@ Number of columns
 
 #### Defined in
 
-[src/types.ts:63](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L63)
+[src/types.ts:63](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L63)
 
 ___
 
@@ -47,7 +47,7 @@ Number of rows
 
 #### Defined in
 
-[src/types.ts:61](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L61)
+[src/types.ts:61](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L61)
 
 ___
 
@@ -59,4 +59,4 @@ Rowset version 1 has column's name, version 2 has extended metadata
 
 #### Defined in
 
-[src/types.ts:59](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/types.ts#L59)
+[src/types.ts:59](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/types.ts#L59)

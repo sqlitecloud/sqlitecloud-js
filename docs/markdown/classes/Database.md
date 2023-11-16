@@ -58,7 +58,7 @@ Create and initialize a database from a full configuration object, or connection
 
 #### Defined in
 
-[src/database.ts:28](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/database.ts#L28)
+[src/database.ts:28](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/database.ts#L28)
 
 ## Properties
 
@@ -70,7 +70,7 @@ Configuration used to open database connections
 
 #### Defined in
 
-[src/database.ts:46](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/database.ts#L46)
+[src/database.ts:46](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/database.ts#L46)
 
 ___
 
@@ -82,7 +82,7 @@ Database connections
 
 #### Defined in
 
-[src/database.ts:49](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/database.ts#L49)
+[src/database.ts:49](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/database.ts#L49)
 
 ## Methods
 
@@ -121,7 +121,7 @@ calls to retrieve a previously unknown amount of rows.
 
 #### Defined in
 
-[src/database.ts:223](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/database.ts#L223)
+[src/database.ts:223](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/database.ts#L223)
 
 ▸ **all**\<`T`\>(`sql`, `params`, `callback?`): [`Database`](Database.md)
 
@@ -145,7 +145,7 @@ calls to retrieve a previously unknown amount of rows.
 
 #### Defined in
 
-[src/database.ts:224](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/database.ts#L224)
+[src/database.ts:224](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/database.ts#L224)
 
 ___
 
@@ -172,7 +172,7 @@ parameters is emitted, regardless of whether a callback was provided or not.
 
 #### Defined in
 
-[src/database.ts:344](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/database.ts#L344)
+[src/database.ts:344](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/database.ts#L344)
 
 ___
 
@@ -195,7 +195,7 @@ Set a configuration option for the database
 
 #### Defined in
 
-[src/database.ts:140](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/database.ts#L140)
+[src/database.ts:140](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/database.ts#L140)
 
 ___
 
@@ -236,7 +236,7 @@ way to abort execution.
 
 #### Defined in
 
-[src/database.ts:262](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/database.ts#L262)
+[src/database.ts:262](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/database.ts#L262)
 
 ▸ **each**\<`T`\>(`sql`, `params`, `callback?`, `complete?`): [`Database`](Database.md)
 
@@ -261,7 +261,7 @@ way to abort execution.
 
 #### Defined in
 
-[src/database.ts:263](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/database.ts#L263)
+[src/database.ts:263](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/database.ts#L263)
 
 ___
 
@@ -284,7 +284,7 @@ Emits given event with optional arguments
 
 #### Defined in
 
-[src/database.ts:91](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/database.ts#L91)
+[src/database.ts:91](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/database.ts#L91)
 
 ___
 
@@ -314,7 +314,7 @@ will be emitted on the database object.
 
 #### Defined in
 
-[src/database.ts:318](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/database.ts#L318)
+[src/database.ts:318](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/database.ts#L318)
 
 ___
 
@@ -350,7 +350,7 @@ the only supported way is by column name.
 
 #### Defined in
 
-[src/database.ts:185](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/database.ts#L185)
+[src/database.ts:185](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/database.ts#L185)
 
 ▸ **get**\<`T`\>(`sql`, `params`, `callback?`): [`Database`](Database.md)
 
@@ -374,7 +374,7 @@ the only supported way is by column name.
 
 #### Defined in
 
-[src/database.ts:186](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/database.ts#L186)
+[src/database.ts:186](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/database.ts#L186)
 
 ___
 
@@ -396,7 +396,7 @@ Returns first available connection from connection pool
 
 #### Defined in
 
-[src/database.ts:56](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/database.ts#L56)
+[src/database.ts:56](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/database.ts#L56)
 
 ___
 
@@ -420,7 +420,7 @@ Handles an error by closing the connection, calling the callback and/or emitting
 
 #### Defined in
 
-[src/database.ts:75](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/database.ts#L75)
+[src/database.ts:75](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/database.ts#L75)
 
 ___
 
@@ -439,7 +439,7 @@ open to use this function.
 
 #### Defined in
 
-[src/database.ts:378](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/database.ts#L378)
+[src/database.ts:378](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/database.ts#L378)
 
 ___
 
@@ -462,7 +462,7 @@ Loads a compiled SQLite extension into the database connection object.
 
 #### Defined in
 
-[src/database.ts:362](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/database.ts#L362)
+[src/database.ts:362](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/database.ts#L362)
 
 ___
 
@@ -495,7 +495,7 @@ they are bound to the prepared statement before calling the callback.
 
 #### Defined in
 
-[src/database.ts:303](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/database.ts#L303)
+[src/database.ts:303](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/database.ts#L303)
 
 ___
 
@@ -527,7 +527,7 @@ https://github.com/TryGhost/node-sqlite3/wiki/API#runsql--param---callback
 
 #### Defined in
 
-[src/database.ts:108](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/database.ts#L108)
+[src/database.ts:108](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/database.ts#L108)
 
 ___
 
@@ -560,7 +560,7 @@ which it was called to allow for function chaining.
 
 #### Defined in
 
-[src/database.ts:152](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/database.ts#L152)
+[src/database.ts:152](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/database.ts#L152)
 
 ▸ **run**\<`T`\>(`sql`, `params`, `callback?`): [`Database`](Database.md)
 
@@ -584,7 +584,7 @@ which it was called to allow for function chaining.
 
 #### Defined in
 
-[src/database.ts:153](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/database.ts#L153)
+[src/database.ts:153](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/database.ts#L153)
 
 ___
 
@@ -613,7 +613,7 @@ metadata in case of insert, update, delete.
 
 #### Defined in
 
-[src/database.ts:396](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/database.ts#L396)
+[src/database.ts:396](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/database.ts#L396)
 
 ___
 
@@ -629,4 +629,4 @@ Enable verbose mode
 
 #### Defined in
 
-[src/database.ts:131](https://github.com/sqlitecloud/sqlitecloud-js/blob/dbbcde8/src/database.ts#L131)
+[src/database.ts:131](https://github.com/sqlitecloud/sqlitecloud-js/blob/802b4cb/src/database.ts#L131)
