@@ -636,16 +636,16 @@ function formatCommand(command: string): string {
 }
 
 /** Messages going to the server are sometimes logged when error conditions occour and need to be stripped of user credentials  */
-function anonimizeCommand(message: string): string {
+export function anonimizeCommand(message: string): string {
   // hide password in AUTH command if needed
-  message = message.replace(/USER \S+?(?=;)/, 'USER ******')
+  message = message.replace(/USER \S+/, 'USER ******')
   message = message.replace(/PASSWORD \S+?(?=;)/, 'PASSWORD ******')
   message = message.replace(/HASH \S+?(?=;)/, 'HASH ******')
   return message
 }
 
 /** Strip message code in error of user credentials */
-function anonimizeError(error: Error): Error {
+export function anonimizeError(error: Error): Error {
   if (error?.message) {
     error.message = anonimizeCommand(error.message)
   }
