@@ -45,8 +45,8 @@ How do I connect SQLite cloud with Javascript?
 How can I contribute or suggest features?  
 [https://github.com/sqlitecloud/sqlitecloud-js/issues](https://github.com/sqlitecloud/sqlitecloud-js/issues)
 
-[build-img]: https://github.com/ryansonshine/typescript-npm-package-template/actions/workflows/release.yml/badge.svg
-[build-url]: https://github.com/ryansonshine/typescript-npm-package-template/actions/workflows/release.yml
+[build-img]: https://github.com/sqlitecloud/sqlitecloud-js/actions/workflows/build-test-deploy.yml/badge.svg
+[build-url]: https://github.com/sqlitecloud/sqlitecloud-js/actions/workflows/build-test-deploy.yml
 [downloads-img]: https://img.shields.io/npm/dt/sqlitecloud-js
 [downloads-url]: https://www.npmtrends.com/sqlitecloud-js
 [npm-img]: https://img.shields.io/npm/v/sqlitecloud-js
