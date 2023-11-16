@@ -67,7 +67,7 @@ export function prepareSql(sql: string, ...params: (SQLiteCloudDataTypes | SQLit
       sqlParameter = params[index - 1] as SQLiteCloudDataTypes
     }
 
-    return sqlParameter ? escapeSqlParameter(sqlParameter) : 'NULL'
+    return sqlParameter !== null && sqlParameter !== undefined ? escapeSqlParameter(sqlParameter) : 'NULL'
   })
 
   // replace $named or :named parameters passed as an object

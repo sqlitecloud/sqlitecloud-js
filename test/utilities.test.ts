@@ -83,6 +83,12 @@ describe('prepareSql', () => {
     const sql = prepareSql('SELECT * FROM users WHERE first = $first AND last = $last', { $first: 'John', $last: 'Doe' })
     expect(sql).toBe("SELECT * FROM users WHERE first = 'John' AND last = 'Doe'")
   })
+
+  it('should treat 0 as zero and not null', () => {
+    const zero: number = 0
+    const sql = prepareSql("SELECT ? AS 'number'", zero)
+    expect(sql).toBe("SELECT 0 AS 'number'")
+  })
 })
 
 describe('parseConnectionString', () => {
