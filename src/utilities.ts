@@ -4,6 +4,10 @@
 
 import { SQLiteCloudConfig, SQLiteCloudError, SQLiteCloudDataTypes } from './types'
 
+//
+// utility methods
+//
+
 /** Takes a generic value and escapes it so it can replace ? as a binding in a prepared SQL statement */
 export function escapeSqlParameter(param: SQLiteCloudDataTypes): string {
   if (param === null || param === undefined) {
@@ -89,17 +93,18 @@ export function prepareSql(sql: string, ...params: (SQLiteCloudDataTypes | SQLit
  * as 'completeCallback'.
  */
 export function popCallback<T extends ErrorCallback = ErrorCallback>(
-  args: SQLiteCloudDataTypes[]
+  args: (SQLiteCloudDataTypes | T | ErrorCallback)[]
 ): { args: SQLiteCloudDataTypes[]; callback?: T | undefined; complete?: ErrorCallback } {
+  const remaining = args as SQLiteCloudDataTypes[]
   // at least 1 callback?
   if (args && args.length > 0 && typeof args[args.length - 1] === 'function') {
     // at least 2 callbacks?
     if (args.length > 1 && typeof args[args.length - 2] === 'function') {
-      return { args: args.slice(0, -2), callback: args[args.length - 2] as T, complete: args[args.length - 1] as T }
+      return { args: remaining.slice(0, -2), callback: args[args.length - 2] as T, complete: args[args.length - 1] as T }
     }
-    return { args: args.slice(0, -1), callback: args[args.length - 1] as T }
+    return { args: remaining.slice(0, -1), callback: args[args.length - 1] as T }
   }
-  return { args }
+  return { args: remaining }
 }
 
 /** Parse connectionString like sqlitecloud://usernam:password@host:port/database?option1=xxx&option2=xxx into its components */

@@ -39,12 +39,18 @@ describe('database', () => {
     }
   })
 
-  afterEach(() => {
+  afterEach(done => {
     if (database) {
-      database.close()
+      database.close(error => {
+        // @ts-expect-error
+        database = undefined
+        done(error)
+      })
+    } else {
+      // @ts-expect-error
+      database = undefined
+      done()
     }
-    // @ts-expect-error
-    database = undefined
   })
 
   describe('run', () => {
@@ -243,21 +249,17 @@ describe('database', () => {
       const chinook = new Database(CHINOOK_DATABASE_URL)
       try {
         chinook.exec('SET BOGUS STATEMENT TO 1;', error => {
-          try {
-            expect(error).toBeInstanceOf(SQLiteCloudError)
-            expect(error).toMatchObject({
-              errorCode: '10002',
-              externalErrorCode: '0',
-              name: 'SQLiteCloudError',
-              offsetCode: -1,
-              message: 'Unable to find command SET BOGUS STATEMENT TO 1;'
-            })
+          expect(error).toBeInstanceOf(SQLiteCloudError)
+          expect(error).toMatchObject({
+            errorCode: '10002',
+            externalErrorCode: '0',
+            name: 'SQLiteCloudError',
+            offsetCode: -1,
+            message: 'Unable to find command SET BOGUS STATEMENT TO 1;'
+          })
 
-            chinook.close()
-            done()
-          } catch (error) {
-            done(error)
-          }
+          chinook.close()
+          done()
         })
       } catch (error) {
         done(error)
@@ -266,6 +268,29 @@ describe('database', () => {
   })
 
   describe('sql (async)', () => {
+    it('should select from chinook', async () => {
+      const chinook = new Database(CHINOOK_DATABASE_URL)
+      let name = 'Breaking The Rules'
+      const results = await chinook.sql`SELECT * FROM tracks WHERE name = ${name}`
+      expect(results).toBeDefined()
+
+      const row = results[0]
+      expect(row).toBeDefined()
+      expect(row).toMatchObject({
+        AlbumId: 1,
+        Bytes: 8596840,
+        Composer: 'Angus Young, Malcolm Young, Brian Johnson',
+        GenreId: 1,
+        MediaTypeId: 1,
+        Milliseconds: 263288,
+        Name: 'Breaking The Rules',
+        TrackId: 12,
+        UnitPrice: 0.99
+      })
+
+      chinook.close()
+    })
+
     it('should select and return multiple rows', async () => {
       const results = await database.sql('SELECT * FROM people ORDER BY id')
       expect(results).toBeDefined()

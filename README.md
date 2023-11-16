@@ -20,17 +20,19 @@ npm install sqlitecloud-js
 ```ts
 import { Database } from 'sqlitecloud-js'
 
-let name = 'Ava Jones'
+let database = new Database('sqlitecloud://user:password@xxx.sqlite.cloud:8860/chinook.db')
 
-let results = await database.sql`SELECT * FROM people WHERE name = ${name}`
-// => returns [{ id: 5, name: 'Ava Jones', age: 22, hobby: 'Time traveling' }]
+let name = 'Breaking The Rules'
+
+let results = await database.sql`SELECT * FROM tracks WHERE name = ${name}`
+// => returns [{ AlbumId: 1, Name: 'Breaking The Rules', Composer: 'Angus Young... }]
 ```
 
 Use `Database.sql` for executing both your prepared statements and plain SQL queries asynchronously. This method returns an array of rows for SELECT queries and supports the standard syntax for UPDATE, INSERT, and DELETE.
 
 We aim for full compatibility with the established [sqlite3](https://www.npmjs.com/package/sqlite3) API, with the primary distinction being that our driver connects to SQLiteCloud databases. This allows you to migrate your local SQLite databases to the cloud while continuing to use your existing codebase.
 
-The package is developed entirely in TypeScript and is fully compatible with JavaScript, without requiring any native libraries. This makes it a straightforward and effective tool for managing cloud-based databases in a familiar SQLite environment.
+The package is developed entirely in TypeScript and is fully compatible with JavaScript. It doesn't require any native libraries. This makes it a straightforward and effective tool for managing cloud-based databases in a familiar SQLite environment.
 
 ## API
 

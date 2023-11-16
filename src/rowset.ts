@@ -41,7 +41,7 @@ export class SQLiteCloudRowset extends Array<SQLiteCloudRow> {
     this.#data = data
 
     // adjust missing column names, duplicate column names, etc.
-    let columnNames = this.columnsNames
+    const columnNames = this.columnsNames
     for (let i = 0; i < metadata.numberOfColumns; i++) {
       if (!columnNames[i]) {
         columnNames[i] = `column_${i}`

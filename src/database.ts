@@ -7,6 +7,9 @@
 // https://github.com/TryGhost/node-sqlite3
 // https://github.com/TryGhost/node-sqlite3/blob/master/lib/sqlite3.d.ts
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+
 import { SQLiteCloudConnection } from './connection'
 import { SQLiteCloudRowset } from './rowset'
 import { SQLiteCloudConfig, SQLiteCloudError, RowCountCallback, SQLiteCloudArrayType } from './types'
@@ -29,7 +32,8 @@ export class Database {
     const connection = new SQLiteCloudConnection(this.config)
     this.connections = [connection]
 
-    this.getConnection((error, _connection) => {
+    // get a connection for the only purpose of opening the database
+    this.getConnection(error => {
       if (error) {
         this.handleError(null, error, callback)
       } else {
@@ -133,7 +137,7 @@ export class Database {
   }
 
   /** Set a configuration option for the database */
-  public configure(_option: any, _value: any): this {
+  public configure(_option: string, _value: any): this {
     // https://github.com/TryGhost/node-sqlite3/wiki/API#configureoption-value
     return this
   }
@@ -272,7 +276,7 @@ export class Database {
           } else {
             if (rowset && rowset instanceof SQLiteCloudRowset) {
               if (callback) {
-                for (const row of rowset as SQLiteCloudRowset) {
+                for (const row of rowset) {
                   callback.call(this, null, row)
                 }
               }
@@ -355,13 +359,14 @@ export class Database {
    * and an error occurred, an error event with the error object as the only parameter
    * will be emitted on the database object.
    */
-  public loadExtension(_path: string, callback?: ErrorCallback) {
+  public loadExtension(_path: string, callback?: ErrorCallback): this {
     // TODO sqlitecloud-js / implement database loadExtension #17
     if (callback) {
       callback.call(this, new Error('Database.loadExtension - Not implemented'))
     } else {
       this.emitEvent('error', new Error('Database.loadExtension - Not implemented'))
     }
+    return this
   }
 
   /**

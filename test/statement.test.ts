@@ -14,12 +14,12 @@ describe('statement', () => {
       expect(err).toBeNull()
     })
 
-    statement.all(3, (err: Error, rowset: SQLiteCloudRowset) => {
-      expect(err).toBeNull()
-      expect(rowset).toBeDefined()
-      expect(rowset).toHaveLength(3)
-      expect(rowset).toBeInstanceOf(SQLiteCloudRowset)
-      expect(rowset).toMatchObject([
+    statement.all(3, (error, rows) => {
+      expect(error).toBeNull()
+      expect(rows).toBeDefined()
+      expect(rows).toHaveLength(3)
+      expect(rows).toBeInstanceOf(SQLiteCloudRowset)
+      expect(rows).toMatchObject([
         {
           AlbumId: 3,
           Bytes: 3990994,

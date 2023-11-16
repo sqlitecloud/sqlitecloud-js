@@ -8,6 +8,7 @@ import lz4 from 'lz4'
 import { SQLiteCloudConfig, SQLCloudRowsetMetadata, SQLiteCloudError, SQLiteCloudDataTypes, ErrorCallback, ResultsCallback } from './types'
 import { SQLiteCloudRowset } from './rowset'
 import { parseConnectionString, parseBoolean } from './utilities'
+import { OperationsQueue } from './queue'
 
 /**
  * The server communicates with clients via commands defined
@@ -157,15 +158,15 @@ export class SQLiteCloudConnection {
   }
 
   /* Opens a connection with the server and sends the initialization commands. Will throw in case of errors. */
-  public async connect(callback?: ErrorCallback) {
+  public connect(callback?: ErrorCallback): this {
     if (this.socket) {
       callback?.call(this, null)
-      return
+      return this
     }
 
     this.operations.enqueue(done => {
       // connect to tls socket, initialize connection, setup event handlers
-      let client: tls.TLSSocket = tls.connect(this.config.port as number, this.config.host, this.config.tlsOptions, () => {
+      const client: tls.TLSSocket = tls.connect(this.config.port as number, this.config.host, this.config.tlsOptions, () => {
         if (!client.authorized) {
           this.log('Connection was not authorized', client.authorizationError)
           this.close()
@@ -199,13 +200,15 @@ export class SQLiteCloudConnection {
 
     // send initialization commands (will be enqued in the operations queue)
     const commands = this.initializationCommands
-    this.sendCommands(commands, (error, _results) => {
+    this.sendCommands(commands, error => {
       callback?.call(this, error)
     })
+
+    return this
   }
 
   /** Will send a command and return the resulting rowset or result or throw an error */
-  public sendCommands<T = SQLiteCloudRowset>(commands: string, callback?: ResultsCallback) {
+  public sendCommands(commands: string, callback?: ResultsCallback): this {
     this.operations.enqueue(done => {
       // connection needs to be established?
       if (!this.socket) {
@@ -308,14 +311,18 @@ export class SQLiteCloudConnection {
         finish?.call(this, new SQLiteCloudError('Socket error', { cause: error }))
       })
     })
+
+    return this
   }
 
   /** Disconnect from server, release connection. */
-  public close() {
+  public close(): this {
     if (this.socket) {
       this.socket.destroy()
     }
+    this.operations.clear()
     this.socket = undefined
+    return this
   }
 }
 
@@ -508,7 +515,7 @@ function parseRowsetChunks(buffers: Buffer[]) {
 }
 
 /** Pop one or more space separated integers from beginning of buffer, move buffer forward */
-function popIntegers(buffer: Buffer, numberOfIntegers: number = 1): { data: number[]; fwdBuffer: Buffer } {
+function popIntegers(buffer: Buffer, numberOfIntegers = 1): { data: number[]; fwdBuffer: Buffer } {
   const data: number[] = []
   for (let i = 0; i < numberOfIntegers; i++) {
     const spaceIndex = buffer.indexOf(' ')
@@ -583,43 +590,4 @@ function popData(buffer: Buffer): { data: SQLiteCloudDataTypes | SQLiteCloudRows
 function formatCommand(command: string): string {
   const commandLength = Buffer.byteLength(command, 'utf-8')
   return `+${commandLength} ${command}`
-}
-
-//
-// OperationsQueue is used to linearize operations on the connection
-//
-
-type OperationCallback = (error?: Error) => void
-type Operation = (done: OperationCallback) => void
-
-class OperationsQueue {
-  private queue: Operation[] = []
-  private isProcessing = false
-
-  /** Add operations to the queue, process immediately if possible, else wait for previous operations to complete */
-  enqueue(operation: Operation) {
-    this.queue.push(operation)
-    if (!this.isProcessing) {
-      this.processNext()
-    }
-  }
-
-  /** Process the next operation in the queue */
-  private processNext() {
-    if (this.queue.length === 0) {
-      this.isProcessing = false
-      return
-    }
-
-    this.isProcessing = true
-    const operation = this.queue.shift()
-    operation?.(error => {
-      if (error) {
-        console.warn('OperationQueue.processNext - error in operation', error)
-      }
-
-      // process the next operation in the queue
-      this.processNext()
-    })
-  }
 }
