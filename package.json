@@ -1,6 +1,6 @@
 {
   "name": "sqlitecloud-js",
-  "version": "0.0.17-development",
+  "version": "0.0.17-beta",
   "description": "SQLiteCloud drivers for Typescript/Javascript in edge, web and node clients",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
@@ -9,17 +9,10 @@
   ],
   "scripts": {
     "test": "jest --detectOpenHandles --runInBand --coverage",
-    "test:watch": "jest --watch",
-    "build": "tsc --project tsconfig.build.json",
+    "build": "rm -rf ./lib/ && tsc --project tsconfig.build.json",
     "prettier": "prettier --write 'src/**/*'",
-    "lint": "eslint ./src/ --fix",
-    "clean": "rm -rf ./lib/",
-    "typecheck": "tsc --noEmit",
-    "prepare": "npm run build",
-    "prepublishOnly": "npm test && npm run prettier && npm run lint",
-    "preversion": "npm run lint",
-    "version": "npm run format && git add -A src",
-    "postversion": "git push && git push --tags",
+    "lint": "eslint ./src/ --fix && tsc --noEmit",
+    "typedoc": "rm -rf ./docs/ && typedoc --out docs && typedoc --plugin typedoc-plugin-markdown --out docs/markdown",
     "npmgui": "npx npm-gui@latest"
   },
   "repository": {
@@ -65,8 +58,10 @@
     "lint-staged": "^13.2.1",
     "prettier": "^2.2.1",
     "sqlite3": "^5.1.6",
+    "typedoc-plugin-markdown": "^3.17.1",
     "ts-jest": "^29.1.1",
     "ts-node": "^10.9.1",
+    "typedoc": "^0.25.3",
     "typescript": "^4.9.5"
   },
   "config": {},
