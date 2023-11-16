@@ -34,26 +34,16 @@ We aim for full compatibility with the established [sqlite3](https://www.npmjs.c
 
 The package is developed entirely in TypeScript and is fully compatible with JavaScript. It doesn't require any native libraries. This makes it a straightforward and effective tool for managing cloud-based databases in a familiar SQLite environment.
 
-## API
+## Q&A
 
-### myPackage(input, options?)
+How do I deploy my SQLite database to the cloud?  
+[https://sqlitecloud.io](https://sqlitecloud.io)
 
-#### input
+How do I use my SQLite cloud in Typescript/Javascript?  
+[https://sqlitecloud.github.io/sqlitecloud-js/](https://sqlitecloud.github.io/sqlitecloud-js/)
 
-Type: `string`
-
-Lorem ipsum.
-
-#### options
-
-Type: `object`
-
-##### postfix
-
-Type: `string`
-Default: `rainbows`
-
-Lorem ipsum.
+How do I contribute or suggest features?  
+[https://github.com/sqlitecloud/sqlitecloud-js/issues](https://github.com/sqlitecloud/sqlitecloud-js/issues)
 
 [build-img]: https://github.com/ryansonshine/typescript-npm-package-template/actions/workflows/release.yml/badge.svg
 [build-url]: https://github.com/ryansonshine/typescript-npm-package-template/actions/workflows/release.yml
