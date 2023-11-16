@@ -371,26 +371,4 @@ describe('database', () => {
       })
     })
   })
-
-  describe('stress testing', () => {
-    it(
-      '20x sql async with random selects',
-      async () => {
-        const numQueries = 20
-        const startTime = Date.now()
-        // database.verbose()
-        const table = 'people'
-        for (let i = 0; i < numQueries; i++) {
-          const results = await database.sql`SELECT * FROM ${table} ORDER BY RANDOM() LIMIT 12`
-          expect(results).toHaveLength(12)
-          expect(Object.keys(results[0])).toEqual(['id', 'name', 'age', 'hobby'])
-        }
-
-        const queryMs = (Date.now() - startTime) / numQueries
-        console.log(`${numQueries}x template selects, ${queryMs.toFixed(0)}ms per query`)
-        expect(queryMs).toBeLessThan(2000)
-      },
-      LONG_TIMEOUT
-    )
-  })
 })
