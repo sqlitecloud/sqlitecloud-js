@@ -4,19 +4,25 @@
 
 import { Database } from '../src/index'
 import { CHINOOK_DATABASE_URL, CHINOOK_DATABASE_FILE, CHINOOK_FIRST_TRACK, LONG_TIMEOUT } from './connection.test'
-import { PREPARE_TESTING_SQL, getTestingDatabase } from './database.test'
+import { PREPARE_TESTING_SQL, createTestDatabase } from './database.test'
 
 // https://github.com/TryGhost/node-sqlite3/wiki/API
 import sqlite3 from 'sqlite3'
-import fs from 'fs'
 import { join } from 'path'
 
 const INSERT_SQL = "INSERT INTO people (name, hobby, age) VALUES ('Fantozzi Ugo', 'Competitive unicorn farting', 42); "
 const TESTING_DATABASE_FILE = join(__dirname, 'assets/testing.db')
 
 function getTestingDatabaseFile(): sqlite3.Database {
-  fs.unlinkSync(TESTING_DATABASE_FILE)
-  const testingFile = new sqlite3.Database(TESTING_DATABASE_FILE)
+  // create a unique id for this test run based on current time with
+  // enough precision to avoid duplicate ids and be human readable
+  const id = new Date()
+    .toISOString()
+    .replace(/-|:|T|Z|\./g, '')
+    .slice(0, -1)
+
+  const testingFilename = TESTING_DATABASE_FILE.replace('.db', `-${id}.db`)
+  const testingFile = new sqlite3.Database(testingFilename)
   testingFile.exec(PREPARE_TESTING_SQL)
   return testingFile
 }
@@ -65,7 +71,7 @@ describe('compare.test.ts', () => {
     })
 
     it('sqlitecloud: insert with plain sql', done => {
-      const testingCloud = getTestingDatabase()
+      const testingCloud = createTestDatabase()
 
       // https://github.com/TryGhost/node-sqlite3/wiki/API#runsql--param---callback
       function onInsert(error: Error, results: any) {

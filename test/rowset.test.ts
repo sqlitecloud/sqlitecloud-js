@@ -27,6 +27,7 @@ describe('rowset', () => {
 
   it('can be accessed as an array', done => {
     connection.sendCommands('SELECT * FROM tracks LIMIT 10;', (error, rowset) => {
+      expect(rowset).toBeInstanceOf(SQLiteCloudRowset)
       expect(rowset.numberOfColumns).toBe(9)
       expect(rowset.numberOfRows).toBe(10)
       expect(Array.isArray(rowset)).toBeTruthy()
@@ -51,6 +52,7 @@ describe('rowset', () => {
 
   it('contains basic metadata', done => {
     connection.sendCommands('SELECT * FROM tracks LIMIT 10;', (error, rowset) => {
+      expect(rowset).toBeInstanceOf(SQLiteCloudRowset)
       expect(rowset.metadata.numberOfRows).toBe(10)
       expect(rowset.metadata.numberOfColumns).toBe(9)
       expect(rowset.metadata.columns).toMatchObject([
@@ -71,6 +73,7 @@ describe('rowset', () => {
   it('contains extended metadata', done => {
     const connection = new SQLiteCloudConnection(CHINOOK_DATABASE_URL + '?sqliteMode=1')
     connection.sendCommands('SELECT * FROM tracks LIMIT 10;', (error, rowset) => {
+      expect(rowset).toBeInstanceOf(SQLiteCloudRowset)
       expect(rowset.metadata.version).toBe(2)
       expect(rowset.metadata.numberOfRows).toBe(10)
       expect(rowset.metadata.numberOfColumns).toBe(9)

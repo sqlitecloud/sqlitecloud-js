@@ -6,7 +6,7 @@ import { SQLiteCloudRowset } from '../src'
 import { Database } from '../src/database'
 import { CHINOOK_DATABASE_URL } from './connection.test'
 
-describe('statement', () => {
+describe('Statement.prepare', () => {
   it('prepare without initial bindings', done => {
     const db = new Database(CHINOOK_DATABASE_URL)
     expect(db).toBeDefined()

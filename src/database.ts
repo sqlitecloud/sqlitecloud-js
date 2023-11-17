@@ -127,6 +127,16 @@ export class Database {
   // public methods
   //
 
+  /**
+   * Returns the configuration with which this database was opened.
+   * The configuration is readonly and cannot be changed as there may
+   * be multiple connections using the same configuration.
+   * @returns {SQLiteCloudConfig} A configuration object
+   */
+  public getConfiguration(): SQLiteCloudConfig {
+    return JSON.parse(JSON.stringify(this.config))
+  }
+
   /** Enable verbose mode */
   public verbose(): this {
     this.config.verbose = true

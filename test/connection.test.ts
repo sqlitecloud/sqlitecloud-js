@@ -20,8 +20,21 @@ export const LONG_TIMEOUT = 100 * 1000 // 100 seconds
 export function getChinoookConfig(): SQLiteCloudConfig {
   return parseConnectionString(CHINOOK_DATABASE_URL)
 }
+
 export function getTestingConfig(): SQLiteCloudConfig {
-  return parseConnectionString(TESTING_DATABASE_URL)
+  const testingConfig = parseConnectionString(TESTING_DATABASE_URL)
+  testingConfig.sqliteMode = true
+
+  // create a unique id for this test run based on current time with
+  // enough precision to avoid duplicate ids and be human readable
+  const id = new Date()
+    .toISOString()
+    .replace(/-|:|T|Z|\./g, '')
+    .slice(0, -1)
+
+  testingConfig.createDatabase = true
+  testingConfig.database = testingConfig.database?.replace('.db', `-${id}.db`)
+  return testingConfig
 }
 
 export const CHINOOK_FIRST_TRACK = {
@@ -37,24 +50,27 @@ export const CHINOOK_FIRST_TRACK = {
 }
 
 describe('connection', () => {
-  let connection: SQLiteCloudConnection
+  let chinook: SQLiteCloudConnection
 
-  beforeEach(done => {
+  beforeAll(() => {
     expect(CHINOOK_DATABASE_URL).toBeDefined()
     expect(TESTING_DATABASE_URL).toBeDefined()
-    connection = new SQLiteCloudConnection(CHINOOK_DATABASE_URL + '?nonlinearizable=1', error => {
-      expect(connection).toBeDefined()
+  })
+
+  beforeEach(done => {
+    chinook = new SQLiteCloudConnection(CHINOOK_DATABASE_URL + '?nonlinearizable=1', error => {
+      expect(chinook).toBeDefined()
       done()
     })
     // connection.verbose()
   })
 
   afterEach(() => {
-    if (connection) {
-      connection.close()
+    if (chinook) {
+      chinook.close()
     }
     // @ts-ignore
-    connection = undefined
+    chinook = undefined
   })
 
   describe('connect', () => {
@@ -71,7 +87,7 @@ describe('connection', () => {
         expect(error).toBeNull()
         expect(conn.connected).toBe(true)
 
-        connection.sendCommands('TEST STRING', (error, results) => {
+        chinook.sendCommands('TEST STRING', (error, results) => {
           conn.close()
           expect(conn.connected).toBe(false)
           done()
@@ -87,7 +103,7 @@ describe('connection', () => {
         expect(error).toBeNull()
         expect(conn.connected).toBe(true)
 
-        connection.sendCommands('TEST STRING', (error, results) => {
+        chinook.sendCommands('TEST STRING', (error, results) => {
           conn.close()
           expect(conn.connected).toBe(false)
           done()
@@ -119,7 +135,7 @@ describe('connection', () => {
 
   describe('send test commands', () => {
     it('should test integer', done => {
-      connection.sendCommands('TEST INTEGER', (error, results) => {
+      chinook.sendCommands('TEST INTEGER', (error, results) => {
         expect(error).toBeNull()
         expect(results).toBe(123456)
         done()
@@ -127,7 +143,7 @@ describe('connection', () => {
     })
 
     it('should test null', done => {
-      connection.sendCommands('TEST NULL', (error, results) => {
+      chinook.sendCommands('TEST NULL', (error, results) => {
         expect(error).toBeNull()
         expect(results).toBeNull()
         done()
@@ -135,7 +151,7 @@ describe('connection', () => {
     })
 
     it('should test float', done => {
-      connection.sendCommands('TEST FLOAT', (error, results) => {
+      chinook.sendCommands('TEST FLOAT', (error, results) => {
         expect(error).toBeNull()
         expect(results).toBe(3.1415926)
         done()
@@ -143,7 +159,7 @@ describe('connection', () => {
     })
 
     it('should test string', done => {
-      connection.sendCommands('TEST STRING', (error, results) => {
+      chinook.sendCommands('TEST STRING', (error, results) => {
         expect(error).toBeNull()
         expect(results).toBe('Hello World, this is a test string.')
         done()
@@ -151,7 +167,7 @@ describe('connection', () => {
     })
 
     it('should test zero string', done => {
-      connection.sendCommands('TEST ZERO_STRING', (error, results) => {
+      chinook.sendCommands('TEST ZERO_STRING', (error, results) => {
         expect(error).toBeNull()
         expect(results).toBe('Hello World, this is a zero-terminated test string.')
         done()
@@ -159,7 +175,7 @@ describe('connection', () => {
     })
 
     it('should test string0', done => {
-      connection.sendCommands('TEST STRING0', (error, results) => {
+      chinook.sendCommands('TEST STRING0', (error, results) => {
         expect(error).toBeNull()
         expect(results).toBe('')
         done()
@@ -167,7 +183,7 @@ describe('connection', () => {
     })
 
     it('should test command', done => {
-      connection.sendCommands('TEST COMMAND', (error, results) => {
+      chinook.sendCommands('TEST COMMAND', (error, results) => {
         expect(error).toBeNull()
         expect(results).toBe('PING')
         done()
@@ -175,7 +191,7 @@ describe('connection', () => {
     })
 
     it('should test json', done => {
-      connection.sendCommands('TEST JSON', (error, results) => {
+      chinook.sendCommands('TEST JSON', (error, results) => {
         expect(error).toBeNull()
         expect(results).toEqual({
           'msg-from': { class: 'soldier', name: 'Wixilav' },
@@ -193,7 +209,7 @@ describe('connection', () => {
     })
 
     it('should test blob', done => {
-      connection.sendCommands('TEST BLOB', (error, results) => {
+      chinook.sendCommands('TEST BLOB', (error, results) => {
         expect(error).toBeNull()
         expect(typeof results).toBe('object')
         expect(results).toBeInstanceOf(Buffer)
@@ -204,7 +220,7 @@ describe('connection', () => {
     })
 
     it('should test blob0', done => {
-      connection.sendCommands('TEST BLOB0', (error, results) => {
+      chinook.sendCommands('TEST BLOB0', (error, results) => {
         expect(error).toBeNull()
         expect(typeof results).toBe('object')
         expect(results).toBeInstanceOf(Buffer)
@@ -215,7 +231,7 @@ describe('connection', () => {
     })
 
     it('should test error', done => {
-      connection.sendCommands('TEST ERROR', (error, results) => {
+      chinook.sendCommands('TEST ERROR', (error, results) => {
         expect(error).toBeDefined()
         expect(error).toBeInstanceOf(SQLiteCloudError)
 
@@ -230,7 +246,7 @@ describe('connection', () => {
     })
 
     it('should test exterror', done => {
-      connection.sendCommands('TEST EXTERROR', (error, results) => {
+      chinook.sendCommands('TEST EXTERROR', (error, results) => {
         expect(error).toBeDefined()
         expect(error).toBeInstanceOf(SQLiteCloudError)
 
@@ -245,7 +261,7 @@ describe('connection', () => {
     })
 
     it('should test array', done => {
-      connection.sendCommands('TEST ARRAY', (error, results) => {
+      chinook.sendCommands('TEST ARRAY', (error, results) => {
         expect(error).toBeNull()
         expect(Array.isArray(results)).toBe(true)
 
@@ -260,7 +276,7 @@ describe('connection', () => {
     })
 
     it('should test rowset', done => {
-      connection.sendCommands('TEST ROWSET', (error, results) => {
+      chinook.sendCommands('TEST ROWSET', (error, results) => {
         expect(results.numberOfRows).toBe(41)
         expect(results.numberOfColumns).toBe(2)
         expect(results.version == 1 || results.version == 2).toBeTruthy()
@@ -272,7 +288,7 @@ describe('connection', () => {
     it(
       'should test chunked rowset',
       done => {
-        connection.sendCommands('TEST ROWSET_CHUNK', (error, results) => {
+        chinook.sendCommands('TEST ROWSET_CHUNK', (error, results) => {
           expect(results.numberOfRows).toBe(147)
           expect(results.numberOfColumns).toBe(1)
           expect(results.columnsNames).toEqual(['key'])
@@ -289,7 +305,7 @@ describe('connection', () => {
       let completed = 0
 
       for (let i = 0; i < numQueries; i++) {
-        connection.sendCommands(`select ${i} as "count", 'hello' as 'string'`, (error, results) => {
+        chinook.sendCommands(`select ${i} as "count", 'hello' as 'string'`, (error, results) => {
           expect(error).toBeNull()
           expect(results.numberOfColumns).toBe(2)
           expect(results.numberOfRows).toBe(1)
@@ -307,7 +323,7 @@ describe('connection', () => {
 
   describe('send select commands', () => {
     it('should select long formatted string', done => {
-      connection.sendCommands("USE DATABASE :memory:; select printf('%.*c', 1000, 'x') AS DDD", (error, results) => {
+      chinook.sendCommands("USE DATABASE :memory:; select printf('%.*c', 1000, 'x') AS DDD", (error, results) => {
         expect(results.numberOfColumns).toBe(1)
         expect(results.numberOfRows).toBe(1)
         expect(results.version == 1 || results.version == 2).toBeTruthy()
@@ -321,7 +337,7 @@ describe('connection', () => {
     })
 
     it('should select database', done => {
-      connection.sendCommands('USE DATABASE chinook.db;', (error, results) => {
+      chinook.sendCommands('USE DATABASE chinook.db;', (error, results) => {
         expect(results.numberOfColumns).toBeUndefined()
         expect(results.numberOfRows).toBeUndefined()
         expect(results.version).toBeUndefined()
@@ -330,7 +346,7 @@ describe('connection', () => {
     })
 
     it('should select * from tracks limit 10 (no chunks)', done => {
-      connection.sendCommands('SELECT * FROM tracks LIMIT 10;', (error, results) => {
+      chinook.sendCommands('SELECT * FROM tracks LIMIT 10;', (error, results) => {
         expect(results.numberOfColumns).toBe(9)
         expect(results.numberOfRows).toBe(10)
         done()
@@ -338,7 +354,7 @@ describe('connection', () => {
     })
 
     it('should select * from tracks (with chunks)', done => {
-      connection.sendCommands('SELECT * FROM tracks;', (error, results) => {
+      chinook.sendCommands('SELECT * FROM tracks;', (error, results) => {
         expect(results.numberOfColumns).toBe(9)
         expect(results.numberOfRows).toBe(3503)
         done()
@@ -346,7 +362,7 @@ describe('connection', () => {
     })
 
     it('should select * from albums', done => {
-      connection.sendCommands('SELECT * FROM albums;', (error, results) => {
+      chinook.sendCommands('SELECT * FROM albums;', (error, results) => {
         expect(results.numberOfColumns).toBe(3)
         expect(results.numberOfRows).toBe(347)
         expect(results.version == 1 || results.version == 2).toBeTruthy()
@@ -363,7 +379,7 @@ describe('connection', () => {
         let completed = 0
         const startTime = Date.now()
         for (let i = 0; i < numQueries; i++) {
-          connection.sendCommands('TEST STRING', (error, results) => {
+          chinook.sendCommands('TEST STRING', (error, results) => {
             expect(results).toBe('Hello World, this is a test string.')
             if (++completed >= numQueries) {
               const queryMs = (Date.now() - startTime) / numQueries
@@ -384,7 +400,7 @@ describe('connection', () => {
         let completed = 0
         const startTime = Date.now()
         for (let i = 0; i < numQueries; i++) {
-          connection.sendCommands('SELECT * FROM albums ORDER BY RANDOM() LIMIT 4;', (error, results) => {
+          chinook.sendCommands('SELECT * FROM albums ORDER BY RANDOM() LIMIT 4;', (error, results) => {
             expect(error).toBeNull()
             expect(results.numberOfColumns).toBe(3)
             expect(results.numberOfRows).toBe(4)
@@ -407,7 +423,7 @@ describe('connection', () => {
         let completed = 0
         const startTime = Date.now()
         for (let i = 0; i < numQueries; i++) {
-          connection.sendCommands(
+          chinook.sendCommands(
             'SELECT * FROM albums ORDER BY RANDOM() LIMIT 16; SELECT * FROM albums ORDER BY RANDOM() LIMIT 12; SELECT * FROM albums ORDER BY RANDOM() LIMIT 8; SELECT * FROM albums ORDER BY RANDOM() LIMIT 4;',
             (error, results) => {
               // server only returns the last rowset?

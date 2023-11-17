@@ -3,21 +3,25 @@
  */
 
 import { Database } from '../src/database'
-import { CHINOOK_DATABASE_URL } from './connection.test'
-import { getTestingDatabase } from './database.test'
+import { createTestingDatabaseAsync, getChinookDatabase, removeDatabaseAsync } from './database.test'
 
 const EXTRA_LONG_TIMEOUT = 60 * 60 * 1000 // 1 hour
 
+/** Number of times or size of stress (when repeated in sequence) */
+const SEQUENCE_TEST_SIZE = 100
+
+/** Concurrency size for multiple connection tests */
+const SIMULTANEOUS_TEST_SIZE = 500
+
 describe('stress testing', () => {
   it(
-    'should open lots of simple connections in sequence',
+    `should do ${SEQUENCE_TEST_SIZE} read connections in sequence`,
     async () => {
-      let numConnectios = 500,
-        i = 1
+      let i = 1
       try {
         const startTime = Date.now()
-        for (let i = 1; i <= numConnectios; i++) {
-          const connection = new Database(CHINOOK_DATABASE_URL)
+        for (let i = 1; i <= SEQUENCE_TEST_SIZE; i++) {
+          const connection = getChinookDatabase()
           const results = await connection.sql`SELECT ${i} as 'connection_id'`
           expect(results[0]['connection_id']).toBe(i)
           connection.close()
@@ -36,17 +40,17 @@ describe('stress testing', () => {
   )
 
   it(
-    'should open lots of read and write connections in sequence',
+    `should do ${SEQUENCE_TEST_SIZE} read and write connections in sequence`,
     async () => {
-      let numConnectios = 20,
-        i = 1
+      let i = 1
       try {
         const startTime = Date.now()
-        for (let i = 1; i <= numConnectios; i++) {
-          const connection = getTestingDatabase()
-          const results = await connection.sql`SELECT * FROM people ORDER BY RANDOM() LIMIT 12`
+        for (let i = 1; i <= SEQUENCE_TEST_SIZE; i++) {
+          // note: testing database will auto populate when created and stress raft synchrnization
+          const database = await createTestingDatabaseAsync()
+          const results = await database.sql`SELECT * FROM people ORDER BY RANDOM() LIMIT 12`
           expect(results).toHaveLength(12)
-          connection.close()
+          await removeDatabaseAsync(database)
           if (i % 25 === 0) {
             const connectionMs = (Date.now() - startTime) / i
             console.log(`${i}x open, read, write and close, ${connectionMs.toFixed(0)}ms per connection`)
@@ -62,16 +66,15 @@ describe('stress testing', () => {
   )
 
   it(
-    'should open lots of simple connections simultaneously',
+    `should do ${SIMULTANEOUS_TEST_SIZE} read connections simultaneously`,
     async () => {
       const startTime = Date.now()
-      const numConnections = 500
       const connections: Database[] = []
 
       try {
-        for (let i = 0; i < numConnections; i++) {
+        for (let i = 0; i < SIMULTANEOUS_TEST_SIZE; i++) {
           connections.push(
-            new Database(CHINOOK_DATABASE_URL, error => {
+            getChinookDatabase(error => {
               if (error) {
                 console.error(`Error on connection ${i}: ${error}`)
               }
@@ -79,18 +82,18 @@ describe('stress testing', () => {
             })
           )
         }
-        for (let i = 0; i < numConnections; i++) {
+        for (let i = 0; i < SIMULTANEOUS_TEST_SIZE; i++) {
           const connection = connections[i]
           expect(connection).not.toBeNull()
           const results = await connection.sql`SELECT ${i} as 'connection_id'`
           expect(results[0]['connection_id']).toBe(i)
         }
-        for (let i = 0; i < numConnections; i++) {
+        for (let i = 0; i < SIMULTANEOUS_TEST_SIZE; i++) {
           connections[i].close()
         }
 
-        const connectionMs = (Date.now() - startTime) / numConnections
-        console.log(`${numConnections}x open simultaneously, ${connectionMs.toFixed(0)}ms per connection`)
+        const connectionMs = (Date.now() - startTime) / SIMULTANEOUS_TEST_SIZE
+        console.log(`${SIMULTANEOUS_TEST_SIZE}x open simultaneously, ${connectionMs.toFixed(0)}ms per connection`)
         expect(connectionMs).toBeLessThan(2000)
       } catch (error) {
         console.error(`Error opening connection ${connections.length}: ${error}`)
@@ -101,16 +104,16 @@ describe('stress testing', () => {
   )
 
   it(
-    'should do lots of async database.sql selects in sequence',
+    `should do ${SEQUENCE_TEST_SIZE} async database.sql reads in sequence`,
     async () => {
       const numQueries = 20
       const startTime = Date.now()
-      const database = new Database(CHINOOK_DATABASE_URL)
+      const database = getChinookDatabase()
       const table = 'tracks'
-      for (let i = 0; i < numQueries; i++) {
+      for (let i = 0; i < SEQUENCE_TEST_SIZE; i++) {
         const results = await database.sql`SELECT * FROM ${table} ORDER BY RANDOM() LIMIT 12`
         expect(results).toHaveLength(12)
-        expect(Object.keys(results[0])).toEqual(['id', 'name', 'age', 'hobby'])
+        expect(Object.keys(results[0])).toEqual(['TrackId', 'Name', 'AlbumId', 'MediaTypeId', 'GenreId', 'Composer', 'Milliseconds', 'Bytes', 'UnitPrice'])
       }
 
       const queryMs = (Date.now() - startTime) / numQueries
