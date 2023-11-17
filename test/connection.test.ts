@@ -383,6 +383,7 @@ describe('connection', () => {
           chinook.sendCommands(
             'SELECT * FROM albums ORDER BY RANDOM() LIMIT 16; SELECT * FROM albums ORDER BY RANDOM() LIMIT 12; SELECT * FROM albums ORDER BY RANDOM() LIMIT 8; SELECT * FROM albums ORDER BY RANDOM() LIMIT 4;',
             (error, results) => {
+              expect(error).toBeNull()
               // server only returns the last rowset?
               expect(results.numberOfColumns).toBe(3)
               expect(results.numberOfRows).toBe(4)
