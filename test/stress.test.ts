@@ -8,7 +8,7 @@ import { SEQUENCE_TEST_SIZE, SIMULTANEOUS_TEST_SIZE, EXTRA_LONG_TIMEOUT } from '
 
 describe('stress testing', () => {
   it(
-    `should do ${SEQUENCE_TEST_SIZE} read connections in sequence`,
+    'should do lots of read connections in sequence',
     async () => {
       let i = 1
       try {
@@ -33,7 +33,7 @@ describe('stress testing', () => {
   )
 
   it(
-    `should do ${SEQUENCE_TEST_SIZE} read and write connections in sequence`,
+    'should do lots of read and write connections in sequence',
     async () => {
       let i = 1
       try {
@@ -59,7 +59,7 @@ describe('stress testing', () => {
   )
 
   it(
-    `should do ${SIMULTANEOUS_TEST_SIZE} read connections simultaneously`,
+    'should do lots of read connections simultaneously',
     async () => {
       const startTime = Date.now()
       const connections: Database[] = []
@@ -97,7 +97,7 @@ describe('stress testing', () => {
   )
 
   it(
-    `should do ${SEQUENCE_TEST_SIZE} async database.sql reads in sequence`,
+    'should do lots of async database.sql reads in sequence',
     async () => {
       const numQueries = 20
       const startTime = Date.now()
