@@ -5,28 +5,17 @@
 import { SQLiteCloudError } from '../src/index'
 import { SQLiteCloudConnection, anonimizeCommand } from '../src/connection'
 import { parseConnectionString } from '../src/utilities'
-import { CHINOOK_DATABASE_URL, TESTING_DATABASE_URL, LONG_TIMEOUT, getTestingConfig, getChinoookConfig } from './shared'
+import { CHINOOK_DATABASE_URL, TESTING_DATABASE_URL, LONG_TIMEOUT, getTestingConfig, getChinookConfig, getChinookConnection } from './shared'
 
 describe('connection', () => {
   let chinook: SQLiteCloudConnection
 
-  beforeAll(() => {
-    expect(CHINOOK_DATABASE_URL).toBeDefined()
-    expect(TESTING_DATABASE_URL).toBeDefined()
-  })
-
-  beforeEach(done => {
-    chinook = new SQLiteCloudConnection(CHINOOK_DATABASE_URL + '?nonlinearizable=1', error => {
-      expect(chinook).toBeDefined()
-      done()
-    })
-    // connection.verbose()
+  beforeEach(() => {
+    chinook = getChinookConnection()
   })
 
   afterEach(() => {
-    if (chinook) {
-      chinook.close()
-    }
+    chinook?.close()
     // @ts-ignore
     chinook = undefined
   })
@@ -37,11 +26,11 @@ describe('connection', () => {
     })
 
     it('should add self signed certificate for localhost connections', () => {
-      const localConfig = getChinoookConfig('sqlitecloud://admin:xxx@localhost:8850/chinook.db')
+      const localConfig = getChinookConfig('sqlitecloud://admin:xxx@localhost:8850/chinook.db')
       expect(localConfig.host).toBe('localhost')
       expect(localConfig.tlsOptions?.ca).toBeTruthy()
 
-      const remoteConfig = getChinoookConfig('sqlitecloud://admin:xxx@sqlitecloud.io:8850/chinook.db')
+      const remoteConfig = getChinookConfig('sqlitecloud://admin:xxx@sqlitecloud.io:8850/chinook.db')
       expect(remoteConfig.host).toBe('sqlitecloud.io')
       expect(remoteConfig.tlsOptions).toBeFalsy()
     })

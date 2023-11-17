@@ -162,37 +162,45 @@ export class SQLiteCloudConnection {
     }
 
     this.operations.enqueue(done => {
+      // clear all listeners and call done in the operations queue
+      const finish: ResultsCallback = (error, result) => {
+        if (this.socket) {
+          this.socket.removeAllListeners('data')
+          this.socket.removeAllListeners('error')
+          this.socket.removeAllListeners('close')
+        }
+        if (callback) {
+          callback?.call(this, error)
+          callback = undefined
+        }
+        if (error) {
+          this.close()
+        }
+        // process next operation in the queue
+        done?.call(this, error ? error : undefined)
+      }
+
       // connect to tls socket, initialize connection, setup event handlers
       const client: tls.TLSSocket = tls.connect(this.config.port as number, this.config.host, this.config.tlsOptions, () => {
         if (!client.authorized) {
           const anonimizedError = anonimizeError(client.authorizationError)
           this.log('Connection was not authorized', anonimizedError)
           this.close()
-          const error = new SQLiteCloudError('Connection was not authorized', { cause: anonimizedError })
-          callback?.call(this, error)
-          done?.call(this, error)
+          finish(new SQLiteCloudError('Connection was not authorized', { cause: anonimizedError }))
         } else {
           this.socket = client
-          callback?.call(this, null)
-          done?.call(this)
+          finish(null)
         }
       })
 
       client.on('close', () => {
-        if (this.socket) {
-          // no loggin if already disposed
-          this.log('Connection closed')
-          this.socket.destroy()
-          this.socket = undefined
-        }
+        this.log('Connection closed')
+        finish(new SQLiteCloudError('Connection was closed'))
       })
 
       client.once('error', (error: any) => {
-        error = new SQLiteCloudError('Connection error', { cause: error })
         this.log('Connection error', error)
-        this.close()
-        callback?.call(this, error)
-        done?.call(this, error)
+        finish(new SQLiteCloudError('Connection error', { cause: error }))
       })
     })
 
@@ -225,13 +233,19 @@ export class SQLiteCloudConnection {
       let socketTimeout: number
 
       // clear all listeners and call done in the operations queue
-      const finish = (error?: Error) => {
+      const finish: ResultsCallback = (error, result) => {
         clearTimeout(socketTimeout)
         if (this.socket) {
           this.socket.removeAllListeners('data')
           this.socket.removeAllListeners('error')
+          this.socket.removeAllListeners('close')
         }
-        done?.call(this, error)
+        if (callback) {
+          callback?.call(this, error, result)
+          callback = undefined
+        }
+        // process next operation in the queue
+        done?.call(this, error ? error : undefined)
       }
 
       // define the Promise that waits for the server response
@@ -263,15 +277,13 @@ export class SQLiteCloudConnection {
               if (dataType !== CMD_ROWSET_CHUNK && compressedDataType !== CMD_ROWSET_CHUNK) {
                 this.socket?.off('data', readData)
                 const { data } = popData(buffer)
-                callback?.call(this, null, data)
-                finish?.call(this)
+                finish(null, data)
               } else {
                 // @ts-expect-error
                 // check if rowset received the ending chunk
                 if (data.subarray(data.indexOf(' ') + 1, data.length).toString() === '0 0 0 ') {
                   const parsedData = parseRowsetChunks(rowsetChunks)
-                  callback?.call(this, null, parsedData)
-                  finish?.call(this)
+                  finish?.call(this, null, parsedData)
                 } else {
                   // no ending string? ask server for another chunk
                   rowsetChunks.push(buffer)
@@ -285,20 +297,24 @@ export class SQLiteCloudConnection {
             const lastChar = buffer.subarray(buffer.length - 1, buffer.length).toString('utf8')
             if (lastChar == ' ') {
               const { data } = popData(buffer)
-              callback?.call(this, null, data)
-              finish?.call(this)
+              finish(null, data)
             }
           }
         } catch (error) {
-          this.close()
-          callback?.call(this, error as Error)
-          finish?.call(this, error as Error)
+          console.assert(error instanceof Error)
+          if (error instanceof Error) {
+            finish(error)
+          }
         }
       }
 
+      this.socket?.once('close', () => {
+        finish(new SQLiteCloudError('Connection was closed', { cause: anonimizeCommand(commands) }))
+      })
+
       this.socket?.write(commands, 'utf8', () => {
         socketTimeout = setTimeout(() => {
-          finish?.call(this, new SQLiteCloudError('Request timed out', { cause: anonimizeCommand(commands) }))
+          finish(new SQLiteCloudError('Request timed out', { cause: anonimizeCommand(commands) }))
         }, this.config.timeout)
         this.socket?.on('data', readData)
       })
@@ -306,7 +322,7 @@ export class SQLiteCloudConnection {
       this.socket?.once('error', (error: any) => {
         this.log('Socket error', error)
         this.close()
-        finish?.call(this, new SQLiteCloudError('Socket error', { cause: anonimizeError(error) }))
+        finish(new SQLiteCloudError('Socket error', { cause: anonimizeError(error) }))
       })
     })
 

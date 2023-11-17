@@ -2,7 +2,6 @@
  * compare.test.ts - test driver api against sqlite3 equivalents
  */
 
-import { Database } from '../src/index'
 import { CHINOOK_DATABASE_FILE, CHINOOK_DATABASE_URL, CHINOOK_FIRST_TRACK, LONG_TIMEOUT, TESTING_SQL } from './shared'
 import { getChinookDatabase, getTestingDatabase } from './shared'
 
@@ -44,7 +43,7 @@ describe('Database.on', () => {
   })
 
   it('sqlitecloud: should emit open event', done => {
-    const chinook = new Database(CHINOOK_DATABASE_URL, error => {
+    const chinook = getChinookDatabase(error => {
       expect(chinook).toBeDefined()
       expect(error).toBeNull()
       chinook.once('open', () => {

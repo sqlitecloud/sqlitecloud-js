@@ -18,6 +18,9 @@ import { Statement } from './statement'
 import { ErrorCallback, ResultsCallback, RowCallback, RowsCallback } from './types'
 import EventEmitter from 'eventemitter3'
 
+// Uses eventemitter3 instead of node events for browser compatibility
+// https://github.com/primus/eventemitter3
+
 /**
  * Creating a Database object automatically opens a connection to the SQLite database.
  * When the connection is established the Database object emits an open event and calls
@@ -110,9 +113,6 @@ export class Database extends EventEmitter {
   /** Emits given event with optional arguments on the next tick so callbacks can complete first */
   private emitEvent(event: string, ...args: any[]): void {
     process.nextTick(() => {
-      if (this.config.verbose) {
-        console.log(`Database.emitEvent - emitted '${event}'`, ...args)
-      }
       this.emit(event, ...args)
     })
   }

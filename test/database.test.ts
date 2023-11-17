@@ -3,9 +3,7 @@
  */
 
 import { SQLiteCloudRowset, SQLiteCloudRow, SQLiteCloudError } from '../src/index'
-import { Database } from '../src/database'
-import { getTestingDatabase, getTestingDatabaseAsync, getChinookDatabase, removeDatabase, removeDatabaseAsync } from './shared'
-import { CHINOOK_DATABASE_URL, LONG_TIMEOUT } from './shared'
+import { getTestingDatabase, getTestingDatabaseAsync, getChinookDatabase, removeDatabase, removeDatabaseAsync, LONG_TIMEOUT } from './shared'
 import { RowCountCallback } from '../src/types'
 
 //
@@ -13,31 +11,35 @@ import { RowCountCallback } from '../src/types'
 //
 
 describe('Database.run', () => {
-  it('simple update', done => {
-    const updateSql = "UPDATE people SET name = 'Charlie Brown' WHERE id = 3; UPDATE people SET name = 'David Bowie' WHERE id = 4; "
+  it(
+    'simple update',
+    done => {
+      const updateSql = "UPDATE people SET name = 'Charlie Brown' WHERE id = 3; UPDATE people SET name = 'David Bowie' WHERE id = 4; "
 
-    // lambda callback would "hide" this
-    function plainCallbackNotALambda(err: Error, results: any) {
-      expect(err).toBeNull()
-      expect(results).toBeUndefined()
+      // lambda callback would "hide" this
+      function plainCallbackNotALambda(err: Error, results: any) {
+        expect(err).toBeNull()
+        expect(results).toBeUndefined()
 
-      // Database.run should return number of rows modified and lastID
-      // @ts-expect-error
-      const context = this as any
-      expect(context.lastID).toBe(20)
-      expect(context.changes).toBe(1) // should this be 2?
-      expect(context.totalChanges).toBe(22)
-      expect(context.finalized).toBe(1)
+        // Database.run should return number of rows modified and lastID
+        // @ts-expect-error
+        const context = this as any
+        expect(context.lastID).toBe(20)
+        expect(context.changes).toBe(1) // should this be 2?
+        expect(context.totalChanges).toBe(22)
+        expect(context.finalized).toBe(1)
 
-      removeDatabase(database, error => {
-        expect(error).toBeNull()
-        done()
-      })
-    }
+        removeDatabase(database, error => {
+          expect(error).toBeNull()
+          done()
+        })
+      }
 
-    const database = getTestingDatabase()
-    database.run(updateSql, plainCallbackNotALambda)
-  })
+      const database = getTestingDatabase()
+      database.run(updateSql, plainCallbackNotALambda)
+    },
+    LONG_TIMEOUT
+  )
 
   it(
     'insert with parameter value',
@@ -90,8 +92,8 @@ describe('Database.all', () => {
   it(
     'simple select',
     done => {
-      const db = new Database(CHINOOK_DATABASE_URL)
-      db.all('SELECT * FROM tracks', (err: Error, rows: SQLiteCloudRowset) => {
+      const chinook = getChinookDatabase()
+      chinook.all('SELECT * FROM tracks', (err: Error, rows: SQLiteCloudRowset) => {
         expect(err).toBeNull()
         expect(rows).toBeDefined()
         expect(rows).toHaveLength(3503)
@@ -107,7 +109,7 @@ describe('Database.all', () => {
           UnitPrice: 0.99
         })
 
-        db.close(error => {
+        chinook.close(error => {
           expect(error).toBeNull()
           done()
         })
@@ -205,27 +207,32 @@ describe('Database.exec', () => {
     })
   })
 
-  it('execute statement with errors', done => {
-    // sqlitecloud-js / fix problem with jest tests of sendCommands error conditions #24
-    const chinook = getChinookDatabase()
-    try {
-      chinook.exec('SET BOGUS STATEMENT TO 1;', error => {
-        expect(error).toBeInstanceOf(SQLiteCloudError)
-        expect(error).toMatchObject({
-          errorCode: '10002',
-          externalErrorCode: '0',
-          name: 'SQLiteCloudError',
-          offsetCode: -1,
-          message: 'Unable to find command SET BOGUS STATEMENT TO 1;.'
-        })
+  it(
+    'execute statement with errors',
+    done => {
+      // sqlitecloud-js / fix problem with jest tests of sendCommands error conditions #24
+      const chinook = getChinookDatabase()
+      try {
+        chinook.exec('SET BOGUS STATEMENT TO 1;', error => {
+          expect(error).toBeDefined()
+          expect(error).toBeInstanceOf(SQLiteCloudError)
 
-        chinook.close()
-        done()
-      })
-    } catch (error) {
-      done(error)
-    }
-  })
+          const sqliteCloudError = error as SQLiteCloudError
+          expect(sqliteCloudError.errorCode).toBe('10002')
+          expect(sqliteCloudError.externalErrorCode).toBe('0')
+          expect(sqliteCloudError.name).toBe('SQLiteCloudError')
+          expect(sqliteCloudError.offsetCode).toBe(-1)
+          expect(sqliteCloudError.message.includes('Unable to find command SET BOGUS STATEMENT TO 1;')).toBe(true)
+
+          chinook.close()
+          done()
+        })
+      } catch (error) {
+        done(error)
+      }
+    },
+    LONG_TIMEOUT
+  )
 })
 
 describe('Database.sql (async)', () => {

@@ -4,28 +4,11 @@
 
 import { SQLiteCloudRowset } from '../src/index'
 import { SQLiteCloudConnection } from '../src/connection'
-import { CHINOOK_DATABASE_URL } from './shared'
+import { CHINOOK_DATABASE_URL, getChinookConnection, getChinookConfig } from './shared'
 
 describe('rowset', () => {
-  let connection: SQLiteCloudConnection
-
-  beforeEach(done => {
-    expect(CHINOOK_DATABASE_URL).toBeDefined()
-    connection = new SQLiteCloudConnection(CHINOOK_DATABASE_URL)
-    connection.sendCommands('SET CLIENT KEY NONLINEARIZABLE TO 1;', (error, rowset) => {
-      done()
-    })
-  })
-
-  afterEach(() => {
-    if (connection) {
-      connection.close()
-      // @ts-ignore
-      connection = undefined
-    }
-  })
-
   it('can be accessed as an array', done => {
+    const connection = getChinookConnection()
     connection.sendCommands('SELECT * FROM tracks LIMIT 10;', (error, rowset) => {
       expect(rowset).toBeInstanceOf(SQLiteCloudRowset)
       expect(rowset.numberOfColumns).toBe(9)
@@ -46,11 +29,13 @@ describe('rowset', () => {
         UnitPrice: 0.99
       })
 
+      connection.close()
       done()
     })
   })
 
   it('contains basic metadata', done => {
+    const connection = getChinookConnection()
     connection.sendCommands('SELECT * FROM tracks LIMIT 10;', (error, rowset) => {
       expect(rowset).toBeInstanceOf(SQLiteCloudRowset)
       expect(rowset.metadata.numberOfRows).toBe(10)
@@ -66,12 +51,15 @@ describe('rowset', () => {
         { name: 'Bytes' },
         { name: 'UnitPrice' }
       ])
+
+      connection.close()
       done()
     })
   })
 
   it('contains extended metadata', done => {
-    const connection = new SQLiteCloudConnection(CHINOOK_DATABASE_URL + '?sqliteMode=1')
+    // custom connection with sqliteMode enabled
+    const connection = new SQLiteCloudConnection(getChinookConfig(CHINOOK_DATABASE_URL + '?sqliteMode=1'))
     connection.sendCommands('SELECT * FROM tracks LIMIT 10;', (error, rowset) => {
       expect(rowset).toBeInstanceOf(SQLiteCloudRowset)
       expect(rowset.metadata.version).toBe(2)

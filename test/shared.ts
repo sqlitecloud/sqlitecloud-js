@@ -7,8 +7,10 @@ import { readFileSync } from 'fs'
 import { Database } from '../src/database'
 import { ResultsCallback, SQLiteCloudConfig } from '../src/types'
 import { parseConnectionString } from '../src/utilities'
+import sqlite3 from 'sqlite3'
 
 import * as dotenv from 'dotenv'
+import { SQLiteCloudConnection } from '../src'
 dotenv.config()
 
 export const LONG_TIMEOUT = 100 * 1000 // 100 seconds
@@ -67,19 +69,25 @@ export const CHINOOK_FIRST_TRACK = {
   UnitPrice: 0.99
 }
 
-export function getChinoookConfig(url = CHINOOK_DATABASE_URL): SQLiteCloudConfig {
+export function getChinookConfig(url = CHINOOK_DATABASE_URL): SQLiteCloudConfig {
   const chinookConfig = parseConnectionString(url)
   if (chinookConfig.host === 'localhost' && chinookConfig.tlsOptions === undefined) {
     chinookConfig.tlsOptions = {
       ca: SELF_SIGNED_CERTIFICATE
     }
   }
+  chinookConfig.timeout = 10 * 1000 // 10 seconds
   return chinookConfig
+}
+
+export function getChinookConnection(callback?: ResultsCallback): SQLiteCloudConnection {
+  const chinookConfig = getChinookConfig()
+  return new SQLiteCloudConnection(chinookConfig, callback)
 }
 
 /** Returns a chinook.db connection, caller is responsible for closing the database */
 export function getChinookDatabase(callback?: ResultsCallback): Database {
-  const chinookConfig = getChinoookConfig()
+  const chinookConfig = getChinookConfig()
   return new Database(chinookConfig, callback)
 }
 
@@ -117,6 +125,7 @@ export function getTestingDatabase(callback?: ResultsCallback): Database {
   const testingConfig = getTestingConfig()
   testingConfig.sqliteMode = true
   const database = new Database(testingConfig)
+  // database.verbose()
   database.exec(TESTING_SQL, callback)
   return database
 }
@@ -136,12 +145,12 @@ export async function getTestingDatabaseAsync(): Promise<Database> {
 export function removeDatabase(database: Database, callback?: ResultsCallback) {
   const databaseName = database.getConfiguration().database
   console.assert(databaseName)
+
   database.exec(`UNUSE DATABASE; REMOVE DATABASE ${databaseName};`, error => {
-    if (!error) {
-      database.close()
-    }
+    expect(error).toBeNull()
+    database.close()
     if (callback) {
-      callback(error)
+      callback(null)
     }
   })
 }
@@ -149,7 +158,8 @@ export function removeDatabase(database: Database, callback?: ResultsCallback) {
 export async function removeDatabaseAsync(database: Database) {
   const databaseName = database.getConfiguration().database
   if (databaseName) {
-    await database.sql`UNUSE DATABASE; REMOVE DATABASE ${databaseName};`
+    const result = await database.sql`UNUSE DATABASE; REMOVE DATABASE ${databaseName};`
+    console.assert(result)
   }
   database.close()
 }
