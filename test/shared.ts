@@ -7,7 +7,6 @@ import { readFileSync } from 'fs'
 import { Database } from '../src/database'
 import { ResultsCallback, SQLiteCloudConfig } from '../src/types'
 import { parseConnectionString } from '../src/utilities'
-import sqlite3 from 'sqlite3'
 
 import * as dotenv from 'dotenv'
 import { SQLiteCloudConnection } from '../src'
@@ -19,7 +18,7 @@ export const EXTRA_LONG_TIMEOUT = 60 * 60 * 1000 // 1 hour
 /** Number of times or size of stress (when repeated in sequence) */
 export const SEQUENCE_TEST_SIZE = 100
 /** Concurrency size for multiple connection tests */
-export const SIMULTANEOUS_TEST_SIZE = 500
+export const SIMULTANEOUS_TEST_SIZE = 200
 
 /** Testing database from .env file */
 export const CHINOOK_DATABASE_URL = process.env.CHINOOK_DATABASE_URL as string

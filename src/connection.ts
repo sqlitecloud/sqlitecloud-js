@@ -163,7 +163,7 @@ export class SQLiteCloudConnection {
 
     this.operations.enqueue(done => {
       // clear all listeners and call done in the operations queue
-      const finish: ResultsCallback = (error, result) => {
+      const finish: ResultsCallback = error => {
         if (this.socket) {
           this.socket.removeAllListeners('data')
           this.socket.removeAllListeners('error')

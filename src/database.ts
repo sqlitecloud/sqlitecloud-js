@@ -128,7 +128,7 @@ export class Database extends EventEmitter {
    * @returns {SQLiteCloudConfig} A configuration object
    */
   public getConfiguration(): SQLiteCloudConfig {
-    return JSON.parse(JSON.stringify(this.config))
+    return JSON.parse(JSON.stringify(this.config)) as SQLiteCloudConfig
   }
 
   /** Enable verbose mode */
