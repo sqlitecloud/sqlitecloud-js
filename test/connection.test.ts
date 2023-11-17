@@ -234,6 +234,7 @@ describe('connection', () => {
 
     it('should test rowset', done => {
       chinook.sendCommands('TEST ROWSET', (error, results) => {
+        expect(error).toBeNull()
         expect(results.numberOfRows).toBe(41)
         expect(results.numberOfColumns).toBe(2)
         expect(results.version == 1 || results.version == 2).toBeTruthy()
@@ -246,6 +247,7 @@ describe('connection', () => {
       'should test chunked rowset',
       done => {
         chinook.sendCommands('TEST ROWSET_CHUNK', (error, results) => {
+          expect(error).toBeNull()
           expect(results.numberOfRows).toBe(147)
           expect(results.numberOfColumns).toBe(1)
           expect(results.columnsNames).toEqual(['key'])
@@ -281,6 +283,7 @@ describe('connection', () => {
   describe('send select commands', () => {
     it('should select long formatted string', done => {
       chinook.sendCommands("USE DATABASE :memory:; select printf('%.*c', 1000, 'x') AS DDD", (error, results) => {
+        expect(error).toBeNull()
         expect(results.numberOfColumns).toBe(1)
         expect(results.numberOfRows).toBe(1)
         expect(results.version == 1 || results.version == 2).toBeTruthy()
@@ -295,6 +298,7 @@ describe('connection', () => {
 
     it('should select database', done => {
       chinook.sendCommands('USE DATABASE chinook.db;', (error, results) => {
+        expect(error).toBeNull()
         expect(results.numberOfColumns).toBeUndefined()
         expect(results.numberOfRows).toBeUndefined()
         expect(results.version).toBeUndefined()
@@ -304,6 +308,7 @@ describe('connection', () => {
 
     it('should select * from tracks limit 10 (no chunks)', done => {
       chinook.sendCommands('SELECT * FROM tracks LIMIT 10;', (error, results) => {
+        expect(error).toBeNull()
         expect(results.numberOfColumns).toBe(9)
         expect(results.numberOfRows).toBe(10)
         done()
@@ -312,6 +317,7 @@ describe('connection', () => {
 
     it('should select * from tracks (with chunks)', done => {
       chinook.sendCommands('SELECT * FROM tracks;', (error, results) => {
+        expect(error).toBeNull()
         expect(results.numberOfColumns).toBe(9)
         expect(results.numberOfRows).toBe(3503)
         done()
@@ -320,6 +326,7 @@ describe('connection', () => {
 
     it('should select * from albums', done => {
       chinook.sendCommands('SELECT * FROM albums;', (error, results) => {
+        expect(error).toBeNull()
         expect(results.numberOfColumns).toBe(3)
         expect(results.numberOfRows).toBe(347)
         expect(results.version == 1 || results.version == 2).toBeTruthy()
