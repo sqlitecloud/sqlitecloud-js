@@ -122,3 +122,5 @@ lib/
 .DS_Store
 .env
 test/assets/testing.db
+
+tools/

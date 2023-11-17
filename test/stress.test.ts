@@ -3,15 +3,8 @@
  */
 
 import { Database } from '../src/database'
-import { createTestingDatabaseAsync, getChinookDatabase, removeDatabaseAsync } from './database.test'
-
-const EXTRA_LONG_TIMEOUT = 60 * 60 * 1000 // 1 hour
-
-/** Number of times or size of stress (when repeated in sequence) */
-const SEQUENCE_TEST_SIZE = 100
-
-/** Concurrency size for multiple connection tests */
-const SIMULTANEOUS_TEST_SIZE = 500
+import { getChinookDatabase, getTestingDatabaseAsync, removeDatabaseAsync } from './shared'
+import { SEQUENCE_TEST_SIZE, SIMULTANEOUS_TEST_SIZE, EXTRA_LONG_TIMEOUT } from './shared'
 
 describe('stress testing', () => {
   it(
@@ -47,7 +40,7 @@ describe('stress testing', () => {
         const startTime = Date.now()
         for (let i = 1; i <= SEQUENCE_TEST_SIZE; i++) {
           // note: testing database will auto populate when created and stress raft synchrnization
-          const database = await createTestingDatabaseAsync()
+          const database = await getTestingDatabaseAsync()
           const results = await database.sql`SELECT * FROM people ORDER BY RANDOM() LIMIT 12`
           expect(results).toHaveLength(12)
           await removeDatabaseAsync(database)

@@ -4,7 +4,7 @@
 
 import { SQLiteCloudRowset } from '../src'
 import { Database } from '../src/database'
-import { CHINOOK_DATABASE_URL } from './connection.test'
+import { CHINOOK_DATABASE_URL } from './shared'
 
 describe('Statement.prepare', () => {
   it('prepare without initial bindings', done => {

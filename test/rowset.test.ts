@@ -4,7 +4,7 @@
 
 import { SQLiteCloudRowset } from '../src/index'
 import { SQLiteCloudConnection } from '../src/connection'
-import { CHINOOK_DATABASE_URL } from './connection.test'
+import { CHINOOK_DATABASE_URL } from './shared'
 
 describe('rowset', () => {
   let connection: SQLiteCloudConnection

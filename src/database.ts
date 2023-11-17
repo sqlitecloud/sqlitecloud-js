@@ -16,6 +16,7 @@ import { SQLiteCloudConfig, SQLiteCloudError, RowCountCallback, SQLiteCloudArray
 import { prepareSql, popCallback } from './utilities'
 import { Statement } from './statement'
 import { ErrorCallback, ResultsCallback, RowCallback, RowsCallback } from './types'
+import EventEmitter from 'eventemitter3'
 
 /**
  * Creating a Database object automatically opens a connection to the SQLite database.
@@ -23,23 +24,15 @@ import { ErrorCallback, ResultsCallback, RowCallback, RowsCallback } from './typ
  * the optional provided callback. If the connection cannot be established an error event
  * will be emitted and the optional callback is called with the error information.
  */
-export class Database {
+export class Database extends EventEmitter {
   /** Create and initialize a database from a full configuration object, or connection string */
   constructor(config: SQLiteCloudConfig | string, callback?: ErrorCallback) {
+    super()
     this.config = typeof config === 'string' ? { connectionString: config } : config
+    this.connections = []
 
     // opens first connection to the database automatically
-    const connection = new SQLiteCloudConnection(this.config)
-    this.connections = [connection]
-
-    // get a connection for the only purpose of opening the database
-    this.getConnection(error => {
-      if (error) {
-        this.handleError(null, error, callback)
-      } else {
-        callback?.call(this, null)
-      }
-    })
+    this.getConnection(callback as ResultsCallback)
   }
 
   /** Configuration used to open database connections */
@@ -59,11 +52,11 @@ export class Database {
       callback?.call(this, null, this.connections[0])
     } else {
       const connection = new SQLiteCloudConnection(this.config)
+      this.connections.push(connection)
       connection.connect(error => {
         if (error) {
           this.handleError(connection, error, callback)
         } else {
-          this.connections.push(connection)
           callback?.call(this, null)
           this.emitEvent('open')
         }
@@ -82,16 +75,7 @@ export class Database {
     if (callback) {
       callback.call(this, error)
     } else {
-      // TODO sqlitecloud-js / implement database error handling #12
       this.emitEvent('error', error)
-    }
-  }
-
-  /** Emits given event with optional arguments */
-  private emitEvent(event: string, ...args: any[]): void {
-    // TODO sqlitecloud-js / database emit event #16
-    if (this.config.verbose) {
-      console.log(`Database.emitEvent - '${event}'`, ...args)
     }
   }
 
@@ -121,6 +105,16 @@ export class Database {
     }
 
     return undefined
+  }
+
+  /** Emits given event with optional arguments on the next tick so callbacks can complete first */
+  private emitEvent(event: string, ...args: any[]): void {
+    process.nextTick(() => {
+      if (this.config.verbose) {
+        console.log(`Database.emitEvent - emitted '${event}'`, ...args)
+      }
+      this.emit(event, ...args)
+    })
   }
 
   //

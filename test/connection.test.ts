@@ -2,52 +2,10 @@
  * connection.test.ts - test low level communication protocol
  */
 
-import { SQLiteCloudConfig, SQLiteCloudError } from '../src/index'
+import { SQLiteCloudError } from '../src/index'
 import { SQLiteCloudConnection, anonimizeCommand } from '../src/connection'
 import { parseConnectionString } from '../src/utilities'
-
-import * as dotenv from 'dotenv'
-dotenv.config()
-
-export const CHINOOK_DATABASE_URL = process.env.CHINOOK_DATABASE_URL as string
-export const TESTING_DATABASE_URL = process.env.TESTING_DATABASE_URL as string
-
-import { join } from 'path'
-export const CHINOOK_DATABASE_FILE = join(__dirname, 'assets/chinook.db')
-
-export const LONG_TIMEOUT = 100 * 1000 // 100 seconds
-
-export function getChinoookConfig(): SQLiteCloudConfig {
-  return parseConnectionString(CHINOOK_DATABASE_URL)
-}
-
-export function getTestingConfig(): SQLiteCloudConfig {
-  const testingConfig = parseConnectionString(TESTING_DATABASE_URL)
-  testingConfig.sqliteMode = true
-
-  // create a unique id for this test run based on current time with
-  // enough precision to avoid duplicate ids and be human readable
-  const id = new Date()
-    .toISOString()
-    .replace(/-|:|T|Z|\./g, '')
-    .slice(0, -1)
-
-  testingConfig.createDatabase = true
-  testingConfig.database = testingConfig.database?.replace('.db', `-${id}.db`)
-  return testingConfig
-}
-
-export const CHINOOK_FIRST_TRACK = {
-  AlbumId: 1,
-  Bytes: 11170334,
-  Composer: 'Angus Young, Malcolm Young, Brian Johnson',
-  GenreId: 1,
-  MediaTypeId: 1,
-  Milliseconds: 343719,
-  Name: 'For Those About To Rock (We Salute You)',
-  TrackId: 1,
-  UnitPrice: 0.99
-}
+import { CHINOOK_DATABASE_URL, TESTING_DATABASE_URL, LONG_TIMEOUT, getTestingConfig, getChinoookConfig } from './shared'
 
 describe('connection', () => {
   let chinook: SQLiteCloudConnection
@@ -76,6 +34,16 @@ describe('connection', () => {
   describe('connect', () => {
     it('should connect', () => {
       // ...in beforeEach
+    })
+
+    it('should add self signed certificate for localhost connections', () => {
+      const localConfig = getChinoookConfig('sqlitecloud://admin:xxx@localhost:8850/chinook.db')
+      expect(localConfig.host).toBe('localhost')
+      expect(localConfig.tlsOptions?.ca).toBeTruthy()
+
+      const remoteConfig = getChinoookConfig('sqlitecloud://admin:xxx@sqlitecloud.io:8850/chinook.db')
+      expect(remoteConfig.host).toBe('yahoo.com')
+      expect(remoteConfig.tlsOptions).toBeFalsy()
     })
 
     it('should connect with config object string', done => {
