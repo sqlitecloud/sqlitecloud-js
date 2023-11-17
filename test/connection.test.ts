@@ -42,7 +42,7 @@ describe('connection', () => {
       expect(localConfig.tlsOptions?.ca).toBeTruthy()
 
       const remoteConfig = getChinoookConfig('sqlitecloud://admin:xxx@sqlitecloud.io:8850/chinook.db')
-      expect(remoteConfig.host).toBe('yahoo.com')
+      expect(remoteConfig.host).toBe('sqlitecloud.io')
       expect(remoteConfig.tlsOptions).toBeFalsy()
     })
 

@@ -74,6 +74,22 @@ describe('Database.on', () => {
     chinookCloud.exec('BOGUS SQL MEISTER;')
   })
 
+  it('sqlite3: should emit close event', done => {
+    const chinookFile = getChinookDatabaseFile()
+    chinookFile.on('close', () => {
+      done()
+    })
+    chinookFile.close()
+  })
+
+  it('sqlitecloud: should emit close event', done => {
+    const chinookCloud = getChinookDatabase()
+    chinookCloud.once('close', () => {
+      done()
+    })
+    chinookCloud.close()
+  })
+
   // end Database.on
 })
 

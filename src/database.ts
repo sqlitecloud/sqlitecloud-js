@@ -352,6 +352,7 @@ export class Database extends EventEmitter {
       }
     }
     callback?.call(this, null)
+    this.emitEvent('close')
   }
 
   /**
