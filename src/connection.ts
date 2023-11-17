@@ -359,9 +359,9 @@ export class OperationsQueue {
     this.isProcessing = true
     const operation = this.queue.shift()
     operation?.(error => {
-      if (error) {
-        console.warn('OperationQueue.processNext - error in operation', error)
-      }
+      // if (error) {
+      //   console.warn('OperationQueue.processNext - error in operation', error)
+      // }
 
       // process the next operation in the queue
       this.processNext()
