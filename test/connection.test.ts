@@ -344,6 +344,7 @@ describe('connection', () => {
         const startTime = Date.now()
         for (let i = 0; i < numQueries; i++) {
           chinook.sendCommands('TEST STRING', (error, results) => {
+            expect(error).toBeNull()
             expect(results).toBe('Hello World, this is a test string.')
             if (++completed >= numQueries) {
               const queryMs = (Date.now() - startTime) / numQueries

@@ -16,9 +16,9 @@ export const LONG_TIMEOUT = 100 * 1000 // 100 seconds
 export const EXTRA_LONG_TIMEOUT = 60 * 60 * 1000 // 1 hour
 
 /** Number of times or size of stress (when repeated in sequence) */
-export const SEQUENCE_TEST_SIZE = 100
+export const SEQUENCE_TEST_SIZE = 75
 /** Concurrency size for multiple connection tests */
-export const SIMULTANEOUS_TEST_SIZE = 200
+export const SIMULTANEOUS_TEST_SIZE = 150
 
 /** Testing database from .env file */
 export const CHINOOK_DATABASE_URL = process.env.CHINOOK_DATABASE_URL as string

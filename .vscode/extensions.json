@@ -1,5 +1,3 @@
 {
-    "recommendations": [
-        "orta.vscode-jest"
-    ]
+  "recommendations": ["kavod-io.vscode-jest-test-adapter", "esbenp.prettier-vscode", "github.vscode-github-actions"]
 }
