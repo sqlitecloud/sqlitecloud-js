@@ -101,4 +101,23 @@ export class SQLiteCloudRowset extends Array<SQLiteCloudRow> {
     }
     return this.#data[row * this.numberOfColumns + column]
   }
+
+  /** Returns a subset of rows from this rowset */
+  slice(start?: number, end?: number): SQLiteCloudRow[] {
+    start = start && start > 0 ? start : 0
+    if (end === undefined) {
+      end = this.numberOfRows
+    } else if (end < 0) {
+      end = this.numberOfRows + end
+    }
+    if (end < start) {
+      end = start
+    } else if (end > this.numberOfRows) {
+      end = this.numberOfRows
+    }
+
+    const slicedData = this.#data.slice(start * this.numberOfColumns, end * this.numberOfColumns)
+    const slicedMetadata = { ...this.#metadata, numberOfRows: end - start }
+    return new SQLiteCloudRowset(slicedMetadata, slicedData)
+  }
 }

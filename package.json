@@ -1,6 +1,6 @@
 {
   "name": "sqlitecloud-js",
-  "version": "0.0.19-beta",
+  "version": "0.0.20-beta",
   "description": "SQLiteCloud drivers for Typescript/Javascript in edge, web and node clients",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
@@ -42,7 +42,7 @@
   "homepage": "https://github.com/sqlitecloud/sqlitecloud-js#readme",
   "dependencies": {
     "eventemitter3": "^5.0.1",
-    "lz4": "^0.6.5"
+    "lz4js": "^0.2.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.7",

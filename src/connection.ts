@@ -3,7 +3,8 @@
  */
 
 import tls from 'tls'
-import lz4 from 'lz4'
+
+const lz4 = require('lz4js')
 
 import { SQLiteCloudConfig, SQLCloudRowsetMetadata, SQLiteCloudError, SQLiteCloudDataTypes, ErrorCallback, ResultsCallback } from './types'
 import { SQLiteCloudRowset } from './rowset'

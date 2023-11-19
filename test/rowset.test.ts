@@ -34,6 +34,30 @@ describe('rowset', () => {
     })
   })
 
+  it('can be sliced like an array', done => {
+    const connection = getChinookConnection()
+    connection.sendCommands('SELECT * FROM tracks LIMIT 50;', (error, rowset) => {
+      expect(rowset).toBeInstanceOf(SQLiteCloudRowset)
+      expect(rowset.numberOfColumns).toBe(9)
+      expect(rowset.numberOfRows).toBe(50)
+      expect(Array.isArray(rowset)).toBeTruthy()
+      expect(rowset).toHaveLength(50)
+
+      const sliced = rowset.slice(10, 20)
+      expect(sliced).toHaveLength(10)
+      expect(sliced[0]).toMatchObject(rowset[10])
+
+      // slice more than actually exists!
+      const largerSlice = rowset.slice(10, 100)
+      expect(largerSlice).toHaveLength(40)
+      expect(largerSlice[0]).toMatchObject(rowset[10])
+      expect(largerSlice[39]).toMatchObject(rowset[49])
+
+      connection.close()
+      done()
+    })
+  })
+
   it('contains basic metadata', done => {
     const connection = getChinookConnection()
     connection.sendCommands('SELECT * FROM tracks LIMIT 10;', (error, rowset) => {
