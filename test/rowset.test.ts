@@ -43,15 +43,31 @@ describe('rowset', () => {
       expect(Array.isArray(rowset)).toBeTruthy()
       expect(rowset).toHaveLength(50)
 
+      // slice with correct bounds
       const sliced = rowset.slice(10, 20)
       expect(sliced).toHaveLength(10)
       expect(sliced[0]).toMatchObject(rowset[10])
 
-      // slice more than actually exists!
+      // slice with end larger than length
       const largerSlice = rowset.slice(10, 100)
       expect(largerSlice).toHaveLength(40)
       expect(largerSlice[0]).toMatchObject(rowset[10])
       expect(largerSlice[39]).toMatchObject(rowset[49])
+
+      // slice last 3 elements
+      const negativeStartSlice = rowset.slice(-3)
+      expect(negativeStartSlice).toHaveLength(3)
+      expect(negativeStartSlice[0]).toMatchObject(rowset[rowset.length - 3])
+
+      // slice first 3 elements
+      const negativeEndSlice = rowset.slice(0, -3)
+      expect(negativeEndSlice).toHaveLength(rowset.length - 3)
+      expect(negativeEndSlice[0]).toMatchObject(rowset[0])
+      expect(negativeEndSlice[negativeEndSlice.length - 1]).toMatchObject(rowset[rowset.length - 4])
+
+      // slice to empty set
+      const emptySlice = rowset.slice(20, 10)
+      expect(emptySlice).toHaveLength(0)
 
       connection.close()
       done()
