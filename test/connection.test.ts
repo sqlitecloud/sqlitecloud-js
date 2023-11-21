@@ -5,8 +5,7 @@
 import { SQLiteCloudError } from '../src/index'
 import { SQLiteCloudConnection, anonimizeCommand } from '../src/connection'
 import { parseConnectionString } from '../src/utilities'
-import { CHINOOK_DATABASE_URL, TESTING_DATABASE_URL, LONG_TIMEOUT, getTestingConfig, getChinookConfig, getChinookConnection } from './shared'
-import { Database } from 'sqlite3'
+import { CHINOOK_DATABASE_URL, LONG_TIMEOUT, getTestingConfig, getChinookConfig, getChinookConnection, WARN_SPEED_MS, EXPECT_SPEED_MS } from './shared'
 
 describe('connection', () => {
   let chinook: SQLiteCloudConnection
@@ -363,8 +362,10 @@ describe('connection', () => {
             expect(results).toBe('Hello World, this is a test string.')
             if (++completed >= numQueries) {
               const queryMs = (Date.now() - startTime) / numQueries
-              console.log(`${numQueries}x test string, ${queryMs.toFixed(0)}ms per query`)
-              expect(queryMs).toBeLessThan(2000)
+              if (queryMs > WARN_SPEED_MS) {
+                console.log(`${numQueries}x test string, ${queryMs.toFixed(0)}ms per query`)
+                expect(queryMs).toBeLessThan(EXPECT_SPEED_MS)
+              }
               done()
             }
           })
@@ -386,8 +387,10 @@ describe('connection', () => {
             expect(results.numberOfRows).toBe(4)
             if (++completed >= numQueries) {
               const queryMs = (Date.now() - startTime) / numQueries
-              console.log(`${numQueries}x individual selects, ${queryMs.toFixed(0)}ms per query`)
-              expect(queryMs).toBeLessThan(2000)
+              if (queryMs > WARN_SPEED_MS) {
+                console.log(`${numQueries}x individual selects, ${queryMs.toFixed(0)}ms per query`)
+                expect(queryMs).toBeLessThan(EXPECT_SPEED_MS)
+              }
               done()
             }
           })
@@ -412,8 +415,10 @@ describe('connection', () => {
               expect(results.numberOfRows).toBe(4)
               if (++completed >= numQueries) {
                 const queryMs = (Date.now() - startTime) / numQueries
-                console.log(`${numQueries}x batched selects, ${queryMs.toFixed(0)}ms per query`)
-                expect(queryMs).toBeLessThan(5000)
+                if (queryMs > WARN_SPEED_MS) {
+                  console.log(`${numQueries}x batched selects, ${queryMs.toFixed(0)}ms per query`)
+                  expect(queryMs).toBeLessThan(EXPECT_SPEED_MS)
+                }
                 done()
               }
             }

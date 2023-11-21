@@ -3,10 +3,16 @@
  */
 
 import { Database, SQLiteCloudRowset } from '../src'
-import { getChinookDatabase, getTestingDatabaseAsync, removeDatabaseAsync, SEQUENCE_TEST_SIZE, SIMULTANEOUS_TEST_SIZE, EXTRA_LONG_TIMEOUT } from './shared'
-
-const WARN_SPEED_MS = 500 // will warn if slower than this
-const EXPECT_SPEED_MS = 6 * 1000 // will throw error if slower than this
+import {
+  getChinookDatabase,
+  getTestingDatabaseAsync,
+  removeDatabaseAsync,
+  SEQUENCE_TEST_SIZE,
+  SIMULTANEOUS_TEST_SIZE,
+  EXTRA_LONG_TIMEOUT,
+  WARN_SPEED_MS,
+  EXPECT_SPEED_MS
+} from './shared'
 
 describe('stress testing', () => {
   it(

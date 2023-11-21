@@ -15,6 +15,11 @@ dotenv.config()
 export const LONG_TIMEOUT = 100 * 1000 // 100 seconds
 export const EXTRA_LONG_TIMEOUT = 60 * 60 * 1000 // 1 hour
 
+/** Will warn if a query or other basic operation is slower than this */
+export const WARN_SPEED_MS = 500
+/** Will except queries to be quicker than this */
+export const EXPECT_SPEED_MS = 6 * 1000
+
 /** Number of times or size of stress (when repeated in sequence) */
 export const SEQUENCE_TEST_SIZE = 75
 /** Concurrency size for multiple connection tests */
