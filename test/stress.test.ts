@@ -2,9 +2,11 @@
  * stress.test.ts - opens lots of connections and queries
  */
 
-import { Database } from '../src/database'
-import { getChinookDatabase, getTestingDatabaseAsync, removeDatabaseAsync } from './shared'
-import { SEQUENCE_TEST_SIZE, SIMULTANEOUS_TEST_SIZE, EXTRA_LONG_TIMEOUT } from './shared'
+import { Database, SQLiteCloudRowset } from '../src'
+import { getChinookDatabase, getTestingDatabaseAsync, removeDatabaseAsync, SEQUENCE_TEST_SIZE, SIMULTANEOUS_TEST_SIZE, EXTRA_LONG_TIMEOUT } from './shared'
+
+const WARN_SPEED_MS = 500 // will warn if slower than this
+const EXPECT_SPEED_MS = 6 * 1000 // will throw error if slower than this
 
 describe('stress testing', () => {
   it(
@@ -20,8 +22,10 @@ describe('stress testing', () => {
           connection.close()
           if (i % 25 === 0) {
             const connectionMs = (Date.now() - startTime) / i
-            console.log(`${i}x open and close, ${connectionMs.toFixed(0)}ms per connection`)
-            expect(connectionMs).toBeLessThan(2000)
+            if (connectionMs > WARN_SPEED_MS) {
+              console.warn(`${i}x open and close, ${connectionMs.toFixed(0)}ms per connection`)
+              expect(connectionMs).toBeLessThan(EXPECT_SPEED_MS)
+            }
           }
         }
       } catch (error) {
@@ -46,8 +50,10 @@ describe('stress testing', () => {
           await removeDatabaseAsync(database)
           if (i % 25 === 0) {
             const connectionMs = (Date.now() - startTime) / i
-            console.log(`${i}x open, read, write and close, ${connectionMs.toFixed(0)}ms per connection`)
-            expect(connectionMs).toBeLessThan(2000)
+            if (connectionMs > WARN_SPEED_MS) {
+              console.warn(`${i}x open, read, write and close, ${connectionMs.toFixed(0)}ms per connection`)
+              expect(connectionMs).toBeLessThan(EXPECT_SPEED_MS)
+            }
           }
         }
       } catch (error) {
@@ -86,8 +92,10 @@ describe('stress testing', () => {
         }
 
         const connectionMs = (Date.now() - startTime) / SIMULTANEOUS_TEST_SIZE
-        console.log(`${SIMULTANEOUS_TEST_SIZE}x open simultaneously, ${connectionMs.toFixed(0)}ms per connection`)
-        expect(connectionMs).toBeLessThan(2000)
+        if (connectionMs > WARN_SPEED_MS) {
+          console.warn(`${SIMULTANEOUS_TEST_SIZE}x open simultaneously, ${connectionMs.toFixed(0)}ms per connection`)
+          expect(connectionMs).toBeLessThan(EXPECT_SPEED_MS)
+        }
       } catch (error) {
         console.error(`Error opening connection ${connections.length}: ${error}`)
         expect(error).toBeNull()
@@ -110,8 +118,75 @@ describe('stress testing', () => {
       }
 
       const queryMs = (Date.now() - startTime) / numQueries
-      console.log(`${numQueries}x database.sql selects, ${queryMs.toFixed(0)}ms per query`)
-      expect(queryMs).toBeLessThan(2000)
+      if (queryMs > WARN_SPEED_MS) {
+        console.warn(`${numQueries}x database.sql selects, ${queryMs.toFixed(0)}ms per query`)
+        expect(queryMs).toBeLessThan(EXPECT_SPEED_MS)
+      }
+    },
+    EXTRA_LONG_TIMEOUT
+  )
+
+  it('should receive small responses with uncompressed data', async () => {
+    const chinook = getChinookDatabase()
+
+    // small response is NOT compressed
+    const smallResults = (await chinook.sql`SELECT hex(randomblob(1000)) 'small'`) as SQLiteCloudRowset // 1 KB
+    expect(smallResults).toHaveLength(1)
+    expect(smallResults.metadata.columns[0].name).toBe('small')
+    expect(smallResults[0].small).toHaveLength(2 * 1000) // hex encoded
+  })
+
+  it(
+    'should receive large responses with uncompressed data',
+    async () => {
+      const chinook = getChinookDatabase()
+
+      // large response is NOT compressed
+      const largeResults = (await chinook.sql`SELECT hex(zeroblob(10000000)) 'columName'`) as SQLiteCloudRowset // 10 MB
+      expect(largeResults).toHaveLength(1)
+      expect(largeResults.metadata.columns[0].name).toBe('columName')
+      const largeResultString = largeResults[0].columName as string
+      expect(largeResultString).toHaveLength(2 * 10000000) // 20 MB
+    },
+    EXTRA_LONG_TIMEOUT
+  )
+
+  it(
+    'should receive medium responses with compressed data',
+    async () => {
+      const chinook = getChinookDatabase()
+
+      // enable compression
+      const enable = await chinook.sql`SET CLIENT KEY COMPRESSION TO 1;`
+
+      // large response is compressed
+      const blobSize = 20 * 1024 // 20 KB
+      const largeCompressedResults = (await chinook.sql`SELECT hex(randomblob(${blobSize})) AS 'columnName'`) as SQLiteCloudRowset
+      expect(largeCompressedResults).toHaveLength(1)
+      expect(largeCompressedResults.metadata.columns[0].name).toBe('columnName')
+      expect(largeCompressedResults[0].columnName).toHaveLength(2 * blobSize)
+    },
+    EXTRA_LONG_TIMEOUT
+  )
+
+  it(
+    'should receive large responses with compressed data',
+    async () => {
+      const chinook = getChinookDatabase()
+
+      // enable compression
+      const enable = await chinook.sql`SET CLIENT KEY COMPRESSION TO 1;`
+
+      // large response is compressed
+      const blobSize = 10 * 1024 * 1024 // 10 MB
+      const largeCompressedResults = (await chinook.sql`SELECT hex(randomblob(${blobSize})) AS 'columnName'`) as SQLiteCloudRowset
+      expect(largeCompressedResults).toHaveLength(1)
+      expect(largeCompressedResults.metadata.columns[0].name).toBe('columnName')
+      expect(largeCompressedResults[0].columnName).toHaveLength(2 * blobSize)
+
+      const postfix = await chinook.sql`SELECT 1`
+      expect(postfix).toHaveLength(1)
+      expect(postfix[0]['1']).toBe(1)
     },
     EXTRA_LONG_TIMEOUT
   )

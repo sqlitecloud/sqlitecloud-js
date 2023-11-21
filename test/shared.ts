@@ -68,25 +68,28 @@ export const CHINOOK_FIRST_TRACK = {
   UnitPrice: 0.99
 }
 
-export function getChinookConfig(url = CHINOOK_DATABASE_URL): SQLiteCloudConfig {
-  const chinookConfig = parseConnectionString(url)
+export function getChinookConfig(url = CHINOOK_DATABASE_URL, extraConfig?: Partial<SQLiteCloudConfig>): SQLiteCloudConfig {
+  let chinookConfig = parseConnectionString(url)
   if (chinookConfig.host === 'localhost' && chinookConfig.tlsOptions === undefined) {
     chinookConfig.tlsOptions = {
       ca: SELF_SIGNED_CERTIFICATE
     }
   }
   chinookConfig.timeout = 10 * 1000 // 10 seconds
+  if (extraConfig) {
+    chinookConfig = { ...chinookConfig, ...extraConfig }
+  }
   return chinookConfig
 }
 
-export function getChinookConnection(callback?: ResultsCallback): SQLiteCloudConnection {
-  const chinookConfig = getChinookConfig()
+export function getChinookConnection(callback?: ResultsCallback, extraConfig?: Partial<SQLiteCloudConfig>): SQLiteCloudConnection {
+  const chinookConfig = getChinookConfig(CHINOOK_DATABASE_URL, extraConfig)
   return new SQLiteCloudConnection(chinookConfig, callback)
 }
 
 /** Returns a chinook.db connection, caller is responsible for closing the database */
-export function getChinookDatabase(callback?: ResultsCallback): Database {
-  const chinookConfig = getChinookConfig()
+export function getChinookDatabase(callback?: ResultsCallback, extraConfig?: Partial<SQLiteCloudConfig>): Database {
+  const chinookConfig = getChinookConfig(CHINOOK_DATABASE_URL, extraConfig)
   return new Database(chinookConfig, callback)
 }
 

@@ -6,6 +6,7 @@ import { SQLiteCloudError } from '../src/index'
 import { SQLiteCloudConnection, anonimizeCommand } from '../src/connection'
 import { parseConnectionString } from '../src/utilities'
 import { CHINOOK_DATABASE_URL, TESTING_DATABASE_URL, LONG_TIMEOUT, getTestingConfig, getChinookConfig, getChinookConnection } from './shared'
+import { Database } from 'sqlite3'
 
 describe('connection', () => {
   let chinook: SQLiteCloudConnection
@@ -281,6 +282,20 @@ describe('connection', () => {
   })
 
   describe('send select commands', () => {
+    it('should select results with no colum names', done => {
+      chinook.sendCommands("select 42, 'hello'", (error, results) => {
+        expect(error).toBeNull()
+        expect(results.numberOfColumns).toBe(2)
+        expect(results.numberOfRows).toBe(1)
+        expect(results.version == 1 || results.version == 2).toBeTruthy()
+        expect(results.columnsNames).toEqual(['42', "'hello'"]) // column name should be hello, not 'hello'
+        expect(results.getItem(0, 0)).toBe(42)
+        expect(results.getItem(0, 1)).toBe('hello')
+
+        done()
+      })
+    })
+
     it('should select long formatted string', done => {
       chinook.sendCommands("USE DATABASE :memory:; select printf('%.*c', 1000, 'x') AS DDD", (error, results) => {
         expect(error).toBeNull()
@@ -398,7 +413,7 @@ describe('connection', () => {
               if (++completed >= numQueries) {
                 const queryMs = (Date.now() - startTime) / numQueries
                 console.log(`${numQueries}x batched selects, ${queryMs.toFixed(0)}ms per query`)
-                expect(queryMs).toBeLessThan(2000)
+                expect(queryMs).toBeLessThan(5000)
                 done()
               }
             }

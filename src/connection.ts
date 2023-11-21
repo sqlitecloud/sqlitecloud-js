@@ -228,7 +228,7 @@ export class SQLiteCloudConnection {
 
       let buffer = Buffer.alloc(0)
       const rowsetChunks: Buffer[] = []
-      this.log(`Sending: ${commands}`)
+      this.log(`Send: ${commands}`)
 
       // define what to do if an answer does not arrive within the set timeout
       let socketTimeout: number
@@ -251,31 +251,30 @@ export class SQLiteCloudConnection {
 
       // define the Promise that waits for the server response
       const readData = (data: Uint8Array) => {
-        this.log(`Received: ${data.length > 100 ? data.toString().substring(0, 100) + '...' : data.toString()}`)
         try {
           // on first ondata event, dataType is read from data, on subsequent ondata event, is read from buffer that is the concatanations of data received on each ondata event
-          const dataType = buffer.length === 0 ? data.subarray(0, 1).toString() : buffer.subarray(0, 1).toString('utf8')
+          let dataType = buffer.length === 0 ? data.subarray(0, 1).toString() : buffer.subarray(0, 1).toString('utf8')
           buffer = Buffer.concat([buffer, data])
           const commandLength = hasCommandLength(dataType)
 
           if (commandLength) {
             const commandLength = parseCommandLength(buffer)
-
-            // in case of compressed data, extract the dataType of compressed data
-            let compressedDataType = null
-            if (dataType === CMD_COMPRESSED) {
-              // remove LEN
-              let compressedBuffer = buffer.subarray(buffer.indexOf(' ') + 1, buffer.length)
-              // remove compressed size
-              compressedBuffer = compressedBuffer.subarray(compressedBuffer.indexOf(' ') + 1, compressedBuffer.length)
-              // remove decompressed size
-              compressedBuffer = compressedBuffer.subarray(compressedBuffer.indexOf(' ') + 1, compressedBuffer.length)
-              compressedDataType = compressedBuffer.subarray(0, 1).toString('utf8')
-            }
-
             const hasReceivedEntireCommand = buffer.length - buffer.indexOf(' ') - 1 >= commandLength ? true : false
             if (hasReceivedEntireCommand) {
-              if (dataType !== CMD_ROWSET_CHUNK && compressedDataType !== CMD_ROWSET_CHUNK) {
+              if (this.config.verbose) {
+                let bufferString = buffer.toString('utf8')
+                if (bufferString.length > 1000) {
+                  bufferString = bufferString.substring(0, 100) + '...' + bufferString.substring(bufferString.length - 40)
+                }
+                this.log(`Receive: ${bufferString}`)
+              }
+
+              // need to decompress this buffer before decoding?
+              if (dataType === CMD_COMPRESSED) {
+                ;({ buffer, dataType } = decompressBuffer(buffer))
+              }
+
+              if (dataType !== CMD_ROWSET_CHUNK) {
                 this.socket?.off('data', readData)
                 const { data } = popData(buffer)
                 finish(null, data)
@@ -289,7 +288,9 @@ export class SQLiteCloudConnection {
                   // no ending string? ask server for another chunk
                   rowsetChunks.push(buffer)
                   buffer = Buffer.alloc(0)
-                  this.socket?.write(formatCommand('OK'))
+                  const okCommand = formatCommand('OK')
+                  this.log(`Send: ${okCommand}`)
+                  this.socket?.write(okCommand)
                 }
               }
             }
@@ -403,20 +404,21 @@ function parseCommandLength(data: Buffer) {
 /** Receive a compressed buffer, decompress with lz4, return buffer and datatype */
 function decompressBuffer(buffer: Buffer): { buffer: Buffer; dataType: string } {
   const spaceIndex = buffer.indexOf(' ')
-  buffer = buffer.subarray(spaceIndex + 1, buffer.length)
+  buffer = buffer.subarray(spaceIndex + 1)
 
   // extract compressed size
   const compressedSize = parseInt(buffer.subarray(0, buffer.indexOf(' ') + 1).toString('utf8'))
-  buffer = buffer.subarray(buffer.indexOf(' ') + 1, buffer.length)
+  buffer = buffer.subarray(buffer.indexOf(' ') + 1)
 
   // extract decompressed size
   const decompressedSize = parseInt(buffer.subarray(0, buffer.indexOf(' ') + 1).toString('utf8'))
-  buffer = buffer.subarray(buffer.indexOf(' ') + 1, buffer.length)
+  buffer = buffer.subarray(buffer.indexOf(' ') + 1)
 
   // extract compressed dataType
   const dataType = buffer.subarray(0, 1).toString('utf8')
   const decompressedBuffer = Buffer.alloc(decompressedSize)
-  const decompressionResult = lz4.decodeBlock(buffer.subarray(buffer.length - compressedSize, buffer.length), decompressedBuffer)
+  const compressedBuffer = buffer.subarray(buffer.length - compressedSize)
+  const decompressionResult = lz4.decompressBlock(compressedBuffer, decompressedBuffer, 0, compressedSize, 0)
   buffer = Buffer.concat([buffer.subarray(0, buffer.length - compressedSize), decompressedBuffer])
   if (decompressionResult <= 0 || decompressionResult !== decompressedSize) {
     throw new Error(`lz4 decompression error at offset ${decompressionResult}`)
@@ -548,7 +550,11 @@ function parseRowsetChunks(buffers: Buffer[]) {
   const data = []
 
   for (let i = 0; i < buffers.length; i++) {
-    let buffer = buffers[i]
+    let buffer: Buffer = buffers[i]
+
+    // validate and skip data type
+    const dataType = buffer.subarray(0, 1).toString()
+    console.assert(dataType === CMD_ROWSET_CHUNK)
     buffer = buffer.subarray(buffer.indexOf(' ') + 1)
 
     // chunk header, eg: 0:VERS NROWS NCOLS
@@ -595,11 +601,8 @@ function popData(buffer: Buffer): { data: SQLiteCloudDataTypes | SQLiteCloudRows
   // first character is the data type
   console.assert(buffer && buffer instanceof Buffer)
   let dataType: string = buffer.subarray(0, 1).toString('utf8')
-
-  // need to decompress this buffer before decoding?
-  if (dataType === CMD_COMPRESSED) {
-    ;({ buffer, dataType } = decompressBuffer(buffer))
-  }
+  console.assert(dataType !== CMD_COMPRESSED, "Compressed data shouldn't be decompressed before parsing")
+  console.assert(dataType !== CMD_ROWSET_CHUNK, 'Chunked data should be parsed by parseRowsetChunks')
 
   let spaceIndex = buffer.indexOf(' ')
   if (spaceIndex === -1) {
@@ -635,9 +638,6 @@ function popData(buffer: Buffer): { data: SQLiteCloudDataTypes | SQLiteCloudRows
       return popResults(parseArray(buffer, spaceIndex))
     case CMD_ROWSET:
       return popResults(parseRowset(buffer, spaceIndex))
-    case CMD_ROWSET_CHUNK:
-      console.assert(false)
-      break
     case CMD_ERROR:
       parseError(buffer, spaceIndex) // throws custom error
       break
