@@ -1,6 +1,6 @@
 {
   "name": "sqlitecloud-js",
-  "version": "0.0.20-beta",
+  "version": "0.0.21-beta",
   "description": "SQLiteCloud drivers for Typescript/Javascript in edge, web and node clients",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
@@ -8,7 +8,7 @@
     "lib/**/*"
   ],
   "scripts": {
-    "test": "jest --detectOpenHandles --runInBand --coverage",
+    "test": "jest --coverage",
     "build": "rm -rf ./lib/ && tsc --project tsconfig.build.json",
     "prettier": "prettier --write 'src/**/*'",
     "lint": "eslint ./src/ --fix && tsc --noEmit",
