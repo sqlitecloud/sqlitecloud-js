@@ -5,7 +5,16 @@
 import { SQLiteCloudError } from '../src/index'
 import { SQLiteCloudConnection, anonimizeCommand } from '../src/connection'
 import { parseConnectionString } from '../src/utilities'
-import { CHINOOK_DATABASE_URL, LONG_TIMEOUT, getTestingConfig, getChinookConfig, getChinookConnection, WARN_SPEED_MS, EXPECT_SPEED_MS } from './shared'
+import {
+  CHINOOK_DATABASE_URL,
+  LONG_TIMEOUT,
+  getTestingConfig,
+  getChinookConfig,
+  getChinookConnection,
+  WARN_SPEED_MS,
+  EXPECT_SPEED_MS,
+  EXTRA_LONG_TIMEOUT
+} from './shared'
 
 describe('connection', () => {
   let chinook: SQLiteCloudConnection
@@ -254,7 +263,7 @@ describe('connection', () => {
           done()
         })
       },
-      30 * 1000 // long timeout
+      EXTRA_LONG_TIMEOUT
     )
   })
 
