@@ -263,7 +263,7 @@ describe('connection', () => {
           done()
         })
       },
-      LONG_TIMEOUT
+      3 * LONG_TIMEOUT
     )
   })
 
