@@ -12,7 +12,7 @@ import * as dotenv from 'dotenv'
 import { SQLiteCloudConnection } from '../src'
 dotenv.config()
 
-export const LONG_TIMEOUT = 100 * 1000 // 100 seconds
+export const LONG_TIMEOUT = 1 * 60 * 1000 // 1 minute
 export const EXTRA_LONG_TIMEOUT = 15 * 60 * 1000 // 15 minutes
 
 /** Will warn if a query or other basic operation is slower than this */
