@@ -376,7 +376,8 @@ export class OperationsQueue {
 
     this.isProcessing = true
     const operation = this.queue.shift()
-    operation?.(error => {
+    operation?.(() => {
+      // could receive (error) => { ...
       // if (error) {
       //   console.warn('OperationQueue.processNext - error in operation', error)
       // }
@@ -418,7 +419,10 @@ function decompressBuffer(buffer: Buffer): { buffer: Buffer; dataType: string } 
   const dataType = buffer.subarray(0, 1).toString('utf8')
   const decompressedBuffer = Buffer.alloc(decompressedSize)
   const compressedBuffer = buffer.subarray(buffer.length - compressedSize)
-  const decompressionResult = lz4.decompressBlock(compressedBuffer, decompressedBuffer, 0, compressedSize, 0)
+
+  // lz4js library is javascript and doesn't have types so we silence the type check
+  // eslint-disable-next-line
+  const decompressionResult: number = lz4.decompressBlock(compressedBuffer, decompressedBuffer, 0, compressedSize, 0)
   buffer = Buffer.concat([buffer.subarray(0, buffer.length - compressedSize), decompressedBuffer])
   if (decompressionResult <= 0 || decompressionResult !== decompressedSize) {
     throw new Error(`lz4 decompression error at offset ${decompressionResult}`)
@@ -600,7 +604,7 @@ function popData(buffer: Buffer): { data: SQLiteCloudDataTypes | SQLiteCloudRows
 
   // first character is the data type
   console.assert(buffer && buffer instanceof Buffer)
-  let dataType: string = buffer.subarray(0, 1).toString('utf8')
+  const dataType: string = buffer.subarray(0, 1).toString('utf8')
   console.assert(dataType !== CMD_COMPRESSED, "Compressed data shouldn't be decompressed before parsing")
   console.assert(dataType !== CMD_ROWSET_CHUNK, 'Chunked data should be parsed by parseRowsetChunks')
 
