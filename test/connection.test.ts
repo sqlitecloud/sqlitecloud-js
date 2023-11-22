@@ -255,6 +255,7 @@ describe('connection', () => {
     it(
       'should test chunked rowset',
       done => {
+        chinook.verbose()
         chinook.sendCommands('TEST ROWSET_CHUNK', (error, results) => {
           expect(error).toBeNull()
           expect(results.numberOfRows).toBe(147)
