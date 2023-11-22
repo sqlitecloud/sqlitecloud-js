@@ -259,6 +259,13 @@ describe('Database.sql (async)', () => {
     chinook.close()
   })
 
+  it('should work with regular function parameters', async () => {
+    const database = await getTestingDatabase()
+    const results = await database.sql('SELECT * FROM people WHERE name = ?', 'Emma Johnson')
+    expect(results).toHaveLength(1)
+    database.close()
+  })
+
   it('should select and return multiple rows', async () => {
     const database = await getTestingDatabase()
     const results = await database.sql('SELECT * FROM people ORDER BY id')

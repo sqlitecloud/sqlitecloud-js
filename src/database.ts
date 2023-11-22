@@ -410,7 +410,7 @@ export class Database extends EventEmitter {
     } else {
       if (typeof sql === 'string') {
         if (values?.length > 0) {
-          preparedSql = prepareSql(preparedSql, ...values)
+          preparedSql = prepareSql(sql, ...values)
         } else {
           preparedSql = sql
         }
