@@ -255,16 +255,21 @@ describe('connection', () => {
     it(
       'should test chunked rowset',
       done => {
-        chinook.verbose()
-        chinook.sendCommands('TEST ROWSET_CHUNK', (error, results) => {
+        // this operation sends 150 packets, so we need to increase the timeout
+        const database = getChinookConnection(undefined, { timeout: 120 * 1000 })
+
+        database.verbose()
+        database.sendCommands('TEST ROWSET_CHUNK', (error, results) => {
           expect(error).toBeNull()
           expect(results.numberOfRows).toBe(147)
           expect(results.numberOfColumns).toBe(1)
           expect(results.columnsNames).toEqual(['key'])
+
+          database.close()
           done()
         })
       },
-      3 * LONG_TIMEOUT
+      LONG_TIMEOUT
     )
   })
 
@@ -287,6 +292,20 @@ describe('connection', () => {
           }
         })
       }
+    })
+
+    it('should apply short timeout', done => {
+      const database = getChinookConnection(undefined, { timeout: 200 })
+      database.verbose()
+
+      // this operation sends 150 packets and cannot complete in 200ms
+      database.sendCommands('TEST ROWSET_CHUNK', (error, results) => {
+        expect(error).toBeInstanceOf(SQLiteCloudError)
+        expect((error as any).message).toBe('Request timed out')
+
+        database.close()
+        done()
+      })
     })
   })
 
