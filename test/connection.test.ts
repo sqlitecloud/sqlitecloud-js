@@ -293,10 +293,8 @@ describe('connection', () => {
     })
 
     it('should apply short timeout', done => {
-      const database = getChinookConnection(undefined, { timeout: 200 })
-      database.verbose()
-
       // this operation sends 150 packets and cannot complete in 200ms
+      const database = getChinookConnection(undefined, { timeout: 200 })
       database.sendCommands('TEST ROWSET_CHUNK', (error, results) => {
         expect(error).toBeInstanceOf(SQLiteCloudError)
         expect((error as any).message).toBe('Request timed out')
