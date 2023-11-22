@@ -256,9 +256,7 @@ describe('connection', () => {
       'should test chunked rowset',
       done => {
         // this operation sends 150 packets, so we need to increase the timeout
-        const database = getChinookConnection(undefined, { timeout: 120 * 1000 })
-
-        database.verbose()
+        const database = getChinookConnection(undefined, { timeout: 60 * 1000 })
         database.sendCommands('TEST ROWSET_CHUNK', (error, results) => {
           expect(error).toBeNull()
           expect(results.numberOfRows).toBe(147)
