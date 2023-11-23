@@ -145,6 +145,26 @@ export async function getTestingDatabaseAsync(): Promise<Database> {
   return database
 }
 
+/** Drop databases that are no longer in use */
+export async function clearTestingDatabasesAsync() {
+  const chinook = getChinookDatabase()
+
+  let numDeleted = 0
+  let databases = await chinook.sql`LIST DATABASES;`
+  const testingPattern = /^testing-\d{16}\.db$/
+  for (let i = 0; i < databases.length; i++) {
+    const databaseName = databases[i]['name']
+    if (testingPattern.test(databaseName)) {
+      const result = await chinook.sql`REMOVE DATABASE ${databaseName};`
+      console.assert(result)
+      numDeleted++
+    }
+  }
+  if (numDeleted > 0) {
+    console.log(`Deleted ${numDeleted} testing databases`)
+  }
+}
+
 //
 // more utilities
 //

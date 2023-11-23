@@ -13,11 +13,15 @@ import {
   getChinookConnection,
   WARN_SPEED_MS,
   EXPECT_SPEED_MS,
-  EXTRA_LONG_TIMEOUT
+  clearTestingDatabasesAsync
 } from './shared'
 
 describe('connection', () => {
   let chinook: SQLiteCloudConnection
+
+  beforeAll(async () => {
+    await clearTestingDatabasesAsync()
+  })
 
   beforeEach(() => {
     chinook = getChinookConnection()
