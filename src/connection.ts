@@ -228,6 +228,7 @@ export class SQLiteCloudConnection {
 
       let buffer = Buffer.alloc(0)
       const rowsetChunks: Buffer[] = []
+      const startedOn = new Date()
       this.log(`Send: ${commands}`)
 
       // define what to do if an answer does not arrive within the set timeout
@@ -266,7 +267,8 @@ export class SQLiteCloudConnection {
                 if (bufferString.length > 1000) {
                   bufferString = bufferString.substring(0, 100) + '...' + bufferString.substring(bufferString.length - 40)
                 }
-                this.log(`Receive: ${bufferString}`)
+                const elapsedMs = new Date().getTime() - startedOn.getTime()
+                this.log(`Receive: ${bufferString} - ${elapsedMs}ms`)
               }
 
               // need to decompress this buffer before decoding?
