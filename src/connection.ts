@@ -317,7 +317,7 @@ export class SQLiteCloudConnection {
       this.socket?.write(commands, 'utf8', () => {
         socketTimeout = setTimeout(() => {
           const timeoutError = new SQLiteCloudError('Request timed out', { cause: anonimizeCommand(commands) })
-          this.log(`Request timed out, config.timeout is ${this.config.timeout}ms`, timeoutError)
+          this.log(`Request timed out, config.timeout is ${this.config.timeout as number}ms`, timeoutError)
           finish(timeoutError)
         }, this.config.timeout)
         this.socket?.on('data', readData)

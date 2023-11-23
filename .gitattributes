@@ -1,2 +1,2 @@
-# Set the repository to show as TypeScript rather than JS in GitHub
+# Package is 100% Typescript, Javascript only for examples
 *.js linguist-detectable=false
