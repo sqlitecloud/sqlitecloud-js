@@ -6,9 +6,6 @@
 [![Issues][issues-img]][issues-url]
 [![codecov](https://codecov.io/gh/sqlitecloud/sqlitecloud-js/graph/badge.svg?token=ZOKE9WFH62)](https://codecov.io/gh/sqlitecloud/sqlitecloud-js)
 
-> This is the future home of [SQLiteCloud](https://sqlitecloud.io) drivers for Javascript and Typescript v2  
-> Currently under development, please [open an issue](https://github.com/sqlitecloud/sqlitecloud-js/issues) for any problems, suggestions.
-
 ## Install
 
 ```bash
