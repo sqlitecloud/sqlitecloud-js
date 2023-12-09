@@ -14,6 +14,7 @@ describe('Database.run', () => {
   it(
     'simple update',
     done => {
+      //      const updateSql = "UPDATE people SET name = 'Charlie Brown' WHERE id = 3; UPDATE people SET name = 'David Bowie' WHERE id = 4; "
       const updateSql = "UPDATE people SET name = 'Charlie Brown' WHERE id = 3; UPDATE people SET name = 'David Bowie' WHERE id = 4; "
 
       // lambda callback would "hide" this
@@ -29,6 +30,7 @@ describe('Database.run', () => {
         expect(context.totalChanges).toBe(22)
         expect(context.finalized).toBe(1)
 
+        done()
         removeDatabase(database, error => {
           expect(error).toBeNull()
           done()
@@ -75,6 +77,7 @@ describe('Database.run', () => {
         expect(context.totalChanges).toBe(22)
         expect(context.finalized).toBe(1)
 
+        done()
         removeDatabase(database, error => {
           expect(error).toBeNull()
           done()
