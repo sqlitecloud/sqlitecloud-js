@@ -12,17 +12,17 @@ import {
   getChinookConfig,
   getChinookConnection,
   WARN_SPEED_MS,
-  EXPECT_SPEED_MS,
-  clearTestingDatabasesAsync
+  EXPECT_SPEED_MS
+  // clearTestingDatabasesAsync
 } from './shared'
 
 describe('connection', () => {
   let chinook: SQLiteCloudConnection
-
+  /*
   beforeAll(async () => {
-    await clearTestingDatabasesAsync()
+    
   })
-
+*/
   beforeEach(() => {
     chinook = getChinookConnection()
   })
@@ -37,6 +37,12 @@ describe('connection', () => {
     it('should connect', () => {
       // ...in beforeEach
     })
+
+    /*
+    it('should run manually once in a while to clear orphaned databases', async () => {
+      await clearTestingDatabasesAsync()
+    })
+    */
 
     it('should add self signed certificate for localhost connections', () => {
       const localConfig = getChinookConfig('sqlitecloud://admin:xxx@localhost:8850/chinook.db')
