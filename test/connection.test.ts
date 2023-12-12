@@ -53,16 +53,26 @@ describe('connection', () => {
       const conn = new SQLiteCloudConnection(configObj)
       expect(conn).toBeDefined()
 
-      conn.connect(error => {
-        expect(error).toBeNull()
-        expect(conn.connected).toBe(true)
-
+      // already connected?
+      if (conn.connected) {
         chinook.sendCommands('TEST STRING', (error, results) => {
           conn.close()
           expect(conn.connected).toBe(false)
           done()
         })
-      })
+      } else {
+        // not connected, so connect...
+        conn.connect(error => {
+          expect(error).toBeNull()
+          expect(conn.connected).toBe(true)
+
+          chinook.sendCommands('TEST STRING', (error, results) => {
+            conn.close()
+            expect(conn.connected).toBe(false)
+            done()
+          })
+        })
+      }
     })
 
     it('should connect with connection string', done => {
