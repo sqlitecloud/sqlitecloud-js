@@ -13,6 +13,7 @@ import {
   getChinookConnection,
   WARN_SPEED_MS,
   EXPECT_SPEED_MS,
+  SELF_SIGNED_CERTIFICATE,
   clearTestingDatabasesAsync
 } from './shared'
 
@@ -49,33 +50,28 @@ describe('connection', () => {
     })
 
     it('should connect with config object string', done => {
-      const configObj = parseConnectionString(CHINOOK_DATABASE_URL)
+      const configObj = getChinookConfig()
       const conn = new SQLiteCloudConnection(configObj)
       expect(conn).toBeDefined()
 
-      // already connected?
-      if (conn.connected) {
+      conn.connect(error => {
+        expect(error).toBeNull()
+        expect(conn.connected).toBe(true)
+
         chinook.sendCommands('TEST STRING', (error, results) => {
           conn.close()
           expect(conn.connected).toBe(false)
           done()
         })
-      } else {
-        // not connected, so connect...
-        conn.connect(error => {
-          expect(error).toBeNull()
-          expect(conn.connected).toBe(true)
-
-          chinook.sendCommands('TEST STRING', (error, results) => {
-            conn.close()
-            expect(conn.connected).toBe(false)
-            done()
-          })
-        })
-      }
+      })
     })
 
     it('should connect with connection string', done => {
+      if (CHINOOK_DATABASE_URL.indexOf('localhost') > 0) {
+        // skip this test when running locally since it requires a self-signed certificate
+        done()
+      }
+
       const conn = new SQLiteCloudConnection(CHINOOK_DATABASE_URL)
       expect(conn).toBeDefined()
 
