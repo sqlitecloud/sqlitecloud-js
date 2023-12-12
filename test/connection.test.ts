@@ -13,7 +13,6 @@ import {
   getChinookConnection,
   WARN_SPEED_MS,
   EXPECT_SPEED_MS,
-  SELF_SIGNED_CERTIFICATE,
   clearTestingDatabasesAsync
 } from './shared'
 
@@ -304,7 +303,7 @@ describe('connection', () => {
 
     it('should apply short timeout', done => {
       // this operation sends 150 packets and cannot complete in 200ms
-      const database = getChinookConnection(undefined, { timeout: 200 })
+      const database = getChinookConnection(undefined, { timeout: 2 })
       database.sendCommands('TEST ROWSET_CHUNK', (error, results) => {
         expect(error).toBeInstanceOf(SQLiteCloudError)
         expect((error as any).message).toBe('Request timed out')

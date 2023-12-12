@@ -118,10 +118,22 @@ export function getTestingConfig(url = TESTING_DATABASE_URL): SQLiteCloudConfig 
 
   // create a unique id for this test run based on current time with
   // enough precision to avoid duplicate ids and be human readable
-  const id = new Date()
-    .toISOString()
-    .replace(/-|:|T|Z|\./g, '')
-    .slice(0, -1)
+  function generateRandomId(length: number): string {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+    let randomId = ''
+    for (let i = 0; i < length; i++) {
+      const randomIndex = Math.floor(Math.random() * characters.length)
+      randomId += characters.charAt(randomIndex)
+    }
+    return randomId
+  }
+  const id =
+    new Date()
+      .toISOString()
+      .replace(/-|:|T|Z|\./g, '')
+      .slice(0, -1) +
+    '-' +
+    generateRandomId(4)
 
   testingConfig.createDatabase = true
   testingConfig.database = testingConfig.database?.replace('.db', `-${id}.db`)
@@ -185,8 +197,10 @@ export function removeDatabase(database: Database, callback?: ResultsCallback) {
 export async function removeDatabaseAsync(database: Database) {
   const databaseName = database.getConfiguration().database
   if (databaseName) {
-    const result = await database.sql`UNUSE DATABASE; REMOVE DATABASE ${databaseName};`
-    console.assert(result)
+    const result1 = await database.sql`UNUSE DATABASE;`
+    console.assert(result1)
+    const result2 = await database.sql`REMOVE DATABASE ${databaseName};`
+    console.assert(result2)
   }
   database.close()
 }
