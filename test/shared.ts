@@ -153,6 +153,7 @@ export async function getTestingDatabaseAsync(): Promise<Database> {
   const testingConfig = getTestingConfig()
   testingConfig.sqliteMode = true
   const database = new Database(testingConfig)
+  // database.verbose()
   await database.sql(TESTING_SQL)
   return database
 }

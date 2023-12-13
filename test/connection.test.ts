@@ -56,10 +56,7 @@ describe('connection', () => {
 
     it('should connect with config object string', done => {
       const configObj = getChinookConfig()
-      const conn = new SQLiteCloudConnection(configObj)
-      expect(conn).toBeDefined()
-
-      conn.connect(error => {
+      const conn = new SQLiteCloudConnection(configObj, error => {
         expect(error).toBeNull()
         expect(conn.connected).toBe(true)
 
@@ -69,6 +66,7 @@ describe('connection', () => {
           done()
         })
       })
+      expect(conn).toBeDefined()
     })
 
     it('should connect with connection string', done => {
@@ -77,10 +75,7 @@ describe('connection', () => {
         done()
       }
 
-      const conn = new SQLiteCloudConnection(CHINOOK_DATABASE_URL)
-      expect(conn).toBeDefined()
-
-      conn.connect(error => {
+      const conn = new SQLiteCloudConnection(CHINOOK_DATABASE_URL, error => {
         expect(error).toBeNull()
         expect(conn.connected).toBe(true)
 
@@ -90,6 +85,7 @@ describe('connection', () => {
           done()
         })
       })
+      expect(conn).toBeDefined()
     })
 
     it('should throw when connection string lacks credentials', done => {
@@ -308,15 +304,25 @@ describe('connection', () => {
     })
 
     it('should apply short timeout', done => {
-      // this operation sends 150 packets and cannot complete in 200ms
-      const database = getChinookConnection(undefined, { timeout: 2 })
-      database.sendCommands('TEST ROWSET_CHUNK', (error, results) => {
-        expect(error).toBeInstanceOf(SQLiteCloudError)
-        expect((error as any).message).toBe('Request timed out')
-
-        database.close()
-        done()
-      })
+      // this operation sends 150 packets and cannot complete in 20ms
+      const database = getChinookConnection(
+        error => {
+          if (error) {
+            expect(error).toBeInstanceOf(SQLiteCloudError)
+            expect((error as any).message).toBe('Request timed out')
+            done()
+            database.close()
+          } else {
+            database.sendCommands('TEST ROWSET_CHUNK', (error, results) => {
+              expect(error).toBeInstanceOf(SQLiteCloudError)
+              expect((error as any).message).toBe('Request timed out')
+              done()
+              database.close()
+            })
+          }
+        },
+        { timeout: 20 }
+      )
     })
   })
 

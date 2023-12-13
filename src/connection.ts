@@ -38,7 +38,12 @@ export const DEFAULT_TIMEOUT = 300 * 1000
 /** Default tls connection port */
 export const DEFAULT_PORT = 9960
 
-/** SQLiteCloud low-level connection, will do messaging, handle socket, authentication, etc. */
+/**
+ * SQLiteCloud low-level connection, will do messaging, handle socket, authentication, etc.
+ * A connection socket is established when the connection is created and closed when the connection is closed.
+ * All operations are serialized by waiting for any pending operations to complete. Once a connection is closed,
+ * it cannot be reopened and you must create a new connection.
+ */
 export class SQLiteCloudConnection {
   /** Parse and validate provided connectionString or configuration */
   constructor(config: SQLiteCloudConfig | string, callback?: ErrorCallback) {
@@ -47,7 +52,6 @@ export class SQLiteCloudConnection {
     } else {
       this.config = this.validateConfiguration(config)
     }
-
     this.connect(callback)
   }
 
@@ -146,23 +150,12 @@ export class SQLiteCloudConnection {
     return commands
   }
 
-  //
-  // public methods
-  //
-
-  /** Enable verbose logging for debug purposes */
-  public verbose(): void {
-    this.config.verbose = true
-  }
-
   /* Opens a connection with the server and sends the initialization commands. Will throw in case of errors. */
-  public connect(callback?: ErrorCallback): this {
-    if (this.socket) {
-      callback?.call(this, null)
-      return this
-    }
-
+  private connect(callback?: ErrorCallback): this {
     this.operations.enqueue(done => {
+      // connection established while we were waiting in line?
+      console.assert(this.socket === undefined, 'Connection already established')
+
       // clear all listeners and call done in the operations queue
       const finish: ResultsCallback = error => {
         if (this.socket) {
@@ -170,15 +163,10 @@ export class SQLiteCloudConnection {
           this.socket.removeAllListeners('error')
           this.socket.removeAllListeners('close')
         }
-        if (callback) {
-          callback?.call(this, error)
-          callback = undefined
-        }
         if (error) {
           this.close()
         }
-        // process next operation in the queue
-        done?.call(this, error ? error : undefined)
+        done(error)
       }
 
       // connect to tls socket, initialize connection, setup event handlers
@@ -190,12 +178,25 @@ export class SQLiteCloudConnection {
           finish(new SQLiteCloudError('Connection was not authorized', { cause: anonimizedError }))
         } else {
           this.socket = client
-          finish(null)
+
+          // send initialization commands
+          const commands = this.initializationCommands
+          this.processCommands(commands, error => {
+            if (error) {
+              this.close()
+            }
+            if (callback) {
+              callback?.call(this, error)
+              callback = undefined
+            }
+            finish(error)
+          })
         }
       })
 
       client.on('close', () => {
         this.log('Connection closed')
+        this.socket = undefined
         finish(new SQLiteCloudError('Connection was closed'))
       })
 
@@ -204,131 +205,141 @@ export class SQLiteCloudConnection {
         finish(new SQLiteCloudError('Connection error', { cause: error }))
       })
     })
+    return this
+  }
 
-    // send initialization commands (will be enqued in the operations queue)
-    const commands = this.initializationCommands
-    this.sendCommands(commands, error => {
-      callback?.call(this, error)
+  /** Will send a command immediately (no queueing), return the rowset/result or throw an error */
+  private processCommands(commands: string, callback?: ResultsCallback): this {
+    // connection needs to be established?
+    if (!this.socket) {
+      callback?.call(this, new SQLiteCloudError('Connection not established', { errorCode: 'ERR_CONNECTION_NOT_ESTABLISHED' }))
+      return this
+    }
+
+    // compose commands following SCPC protocol
+    commands = formatCommand(commands)
+
+    let buffer = Buffer.alloc(0)
+    const rowsetChunks: Buffer[] = []
+    const startedOn = new Date()
+    this.log(`Send: ${commands}`)
+
+    // define what to do if an answer does not arrive within the set timeout
+    let socketTimeout: number
+
+    // clear all listeners and call done in the operations queue
+    const finish: ResultsCallback = (error, result) => {
+      clearTimeout(socketTimeout)
+      if (this.socket) {
+        this.socket.removeAllListeners('data')
+        this.socket.removeAllListeners('error')
+        this.socket.removeAllListeners('close')
+      }
+      if (callback) {
+        callback?.call(this, error, result)
+        callback = undefined
+      }
+    }
+
+    // define the Promise that waits for the server response
+    const readData = (data: Uint8Array) => {
+      try {
+        // on first ondata event, dataType is read from data, on subsequent ondata event, is read from buffer that is the concatanations of data received on each ondata event
+        let dataType = buffer.length === 0 ? data.subarray(0, 1).toString() : buffer.subarray(0, 1).toString('utf8')
+        buffer = Buffer.concat([buffer, data])
+        const commandLength = hasCommandLength(dataType)
+
+        if (commandLength) {
+          const commandLength = parseCommandLength(buffer)
+          const hasReceivedEntireCommand = buffer.length - buffer.indexOf(' ') - 1 >= commandLength ? true : false
+          if (hasReceivedEntireCommand) {
+            if (this.config.verbose) {
+              let bufferString = buffer.toString('utf8')
+              if (bufferString.length > 1000) {
+                bufferString = bufferString.substring(0, 100) + '...' + bufferString.substring(bufferString.length - 40)
+              }
+              const elapsedMs = new Date().getTime() - startedOn.getTime()
+              this.log(`Receive: ${bufferString} - ${elapsedMs}ms`)
+            }
+
+            // need to decompress this buffer before decoding?
+            if (dataType === CMD_COMPRESSED) {
+              ;({ buffer, dataType } = decompressBuffer(buffer))
+            }
+
+            if (dataType !== CMD_ROWSET_CHUNK) {
+              this.socket?.off('data', readData)
+              const { data } = popData(buffer)
+              finish(null, data)
+            } else {
+              // @ts-expect-error
+              // check if rowset received the ending chunk
+              if (data.subarray(data.indexOf(' ') + 1, data.length).toString() === '0 0 0 ') {
+                const parsedData = parseRowsetChunks(rowsetChunks)
+                finish?.call(this, null, parsedData)
+              } else {
+                // no ending string? ask server for another chunk
+                rowsetChunks.push(buffer)
+                buffer = Buffer.alloc(0)
+                const okCommand = formatCommand('OK')
+                this.log(`Send: ${okCommand}`)
+                this.socket?.write(okCommand)
+              }
+            }
+          }
+        } else {
+          // command with no explicit len so make sure that the final character is a space
+          const lastChar = buffer.subarray(buffer.length - 1, buffer.length).toString('utf8')
+          if (lastChar == ' ') {
+            const { data } = popData(buffer)
+            finish(null, data)
+          }
+        }
+      } catch (error) {
+        console.assert(error instanceof Error)
+        if (error instanceof Error) {
+          finish(error)
+        }
+      }
+    }
+
+    this.socket?.once('close', () => {
+      finish(new SQLiteCloudError('Connection was closed', { cause: anonimizeCommand(commands) }))
+    })
+
+    this.socket?.write(commands, 'utf8', () => {
+      socketTimeout = setTimeout(() => {
+        const timeoutError = new SQLiteCloudError('Request timed out', { cause: anonimizeCommand(commands) })
+        this.log(`Request timed out, config.timeout is ${this.config.timeout as number}ms`, timeoutError)
+        finish(timeoutError)
+      }, this.config.timeout)
+      this.socket?.on('data', readData)
+    })
+
+    this.socket?.once('error', (error: any) => {
+      this.log('Socket error', error)
+      this.close()
+      finish(new SQLiteCloudError('Socket error', { cause: anonimizeError(error) }))
     })
 
     return this
   }
 
-  /** Will send a command and return the resulting rowset or result or throw an error */
+  //
+  // public methods
+  //
+
+  /** Enable verbose logging for debug purposes */
+  public verbose(): void {
+    this.config.verbose = true
+  }
+
+  /** Will enquee a command to be executed and callback with the resulting rowset/result/error */
   public sendCommands(commands: string, callback?: ResultsCallback): this {
     this.operations.enqueue(done => {
-      // connection needs to be established?
-      if (!this.socket) {
-        callback?.call(this, new SQLiteCloudError('Connection not established', { errorCode: 'ERR_CONNECTION_NOT_ESTABLISHED' }))
-        return
-      }
-
-      // compose commands following SCPC protocol
-      commands = formatCommand(commands)
-
-      let buffer = Buffer.alloc(0)
-      const rowsetChunks: Buffer[] = []
-      const startedOn = new Date()
-      this.log(`Send: ${commands}`)
-
-      // define what to do if an answer does not arrive within the set timeout
-      let socketTimeout: number
-
-      // clear all listeners and call done in the operations queue
-      const finish: ResultsCallback = (error, result) => {
-        clearTimeout(socketTimeout)
-        if (this.socket) {
-          this.socket.removeAllListeners('data')
-          this.socket.removeAllListeners('error')
-          this.socket.removeAllListeners('close')
-        }
-        if (callback) {
-          callback?.call(this, error, result)
-          callback = undefined
-        }
-        // process next operation in the queue
-        done?.call(this, error ? error : undefined)
-      }
-
-      // define the Promise that waits for the server response
-      const readData = (data: Uint8Array) => {
-        try {
-          // on first ondata event, dataType is read from data, on subsequent ondata event, is read from buffer that is the concatanations of data received on each ondata event
-          let dataType = buffer.length === 0 ? data.subarray(0, 1).toString() : buffer.subarray(0, 1).toString('utf8')
-          buffer = Buffer.concat([buffer, data])
-          const commandLength = hasCommandLength(dataType)
-
-          if (commandLength) {
-            const commandLength = parseCommandLength(buffer)
-            const hasReceivedEntireCommand = buffer.length - buffer.indexOf(' ') - 1 >= commandLength ? true : false
-            if (hasReceivedEntireCommand) {
-              if (this.config.verbose) {
-                let bufferString = buffer.toString('utf8')
-                if (bufferString.length > 1000) {
-                  bufferString = bufferString.substring(0, 100) + '...' + bufferString.substring(bufferString.length - 40)
-                }
-                const elapsedMs = new Date().getTime() - startedOn.getTime()
-                this.log(`Receive: ${bufferString} - ${elapsedMs}ms`)
-              }
-
-              // need to decompress this buffer before decoding?
-              if (dataType === CMD_COMPRESSED) {
-                ;({ buffer, dataType } = decompressBuffer(buffer))
-              }
-
-              if (dataType !== CMD_ROWSET_CHUNK) {
-                this.socket?.off('data', readData)
-                const { data } = popData(buffer)
-                finish(null, data)
-              } else {
-                // @ts-expect-error
-                // check if rowset received the ending chunk
-                if (data.subarray(data.indexOf(' ') + 1, data.length).toString() === '0 0 0 ') {
-                  const parsedData = parseRowsetChunks(rowsetChunks)
-                  finish?.call(this, null, parsedData)
-                } else {
-                  // no ending string? ask server for another chunk
-                  rowsetChunks.push(buffer)
-                  buffer = Buffer.alloc(0)
-                  const okCommand = formatCommand('OK')
-                  this.log(`Send: ${okCommand}`)
-                  this.socket?.write(okCommand)
-                }
-              }
-            }
-          } else {
-            // command with no explicit len so make sure that the final character is a space
-            const lastChar = buffer.subarray(buffer.length - 1, buffer.length).toString('utf8')
-            if (lastChar == ' ') {
-              const { data } = popData(buffer)
-              finish(null, data)
-            }
-          }
-        } catch (error) {
-          console.assert(error instanceof Error)
-          if (error instanceof Error) {
-            finish(error)
-          }
-        }
-      }
-
-      this.socket?.once('close', () => {
-        finish(new SQLiteCloudError('Connection was closed', { cause: anonimizeCommand(commands) }))
-      })
-
-      this.socket?.write(commands, 'utf8', () => {
-        socketTimeout = setTimeout(() => {
-          const timeoutError = new SQLiteCloudError('Request timed out', { cause: anonimizeCommand(commands) })
-          this.log(`Request timed out, config.timeout is ${this.config.timeout as number}ms`, timeoutError)
-          finish(timeoutError)
-        }, this.config.timeout)
-        this.socket?.on('data', readData)
-      })
-
-      this.socket?.once('error', (error: any) => {
-        this.log('Socket error', error)
-        this.close()
-        finish(new SQLiteCloudError('Socket error', { cause: anonimizeError(error) }))
+      this.processCommands(commands, (error, result) => {
+        callback?.call(this, error, result)
+        done(error)
       })
     })
 
@@ -350,7 +361,7 @@ export class SQLiteCloudConnection {
 // OperationsQueue - used to linearize operations on the connection
 //
 
-type OperationCallback = (error?: Error) => void
+type OperationCallback = (error: Error | null) => void
 type Operation = (done: OperationCallback) => void
 
 export class OperationsQueue {

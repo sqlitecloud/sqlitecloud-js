@@ -32,8 +32,6 @@ export class Database extends EventEmitter {
   constructor(config: SQLiteCloudConfig | string, callback?: ErrorCallback) {
     super()
     this.config = typeof config === 'string' ? { connectionString: config } : config
-    this.connections = []
-
     // opens first connection to the database automatically
     this.getConnection(callback as ResultsCallback)
   }
@@ -42,7 +40,7 @@ export class Database extends EventEmitter {
   private config: SQLiteCloudConfig
 
   /** Database connections */
-  private connections: SQLiteCloudConnection[]
+  private connections: SQLiteCloudConnection[] = []
 
   //
   // private methods
@@ -54,16 +52,17 @@ export class Database extends EventEmitter {
     if (this.connections?.length > 0) {
       callback?.call(this, null, this.connections[0])
     } else {
-      const connection = new SQLiteCloudConnection(this.config)
-      this.connections.push(connection)
-      connection.connect(error => {
-        if (error) {
-          this.handleError(connection, error, callback)
-        } else {
-          callback?.call(this, null)
-          this.emitEvent('open')
-        }
-      })
+      this.connections.push(
+        new SQLiteCloudConnection(this.config, error => {
+          if (error) {
+            this.handleError(this.connections[0], error, callback)
+          } else {
+            console.assert
+            callback?.call(this, null, this.connections[0])
+            this.emitEvent('open')
+          }
+        })
+      )
     }
   }
 
