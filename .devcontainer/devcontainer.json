@@ -1,0 +1,29 @@
+// For format details, see
+// https://aka.ms/devcontainer.json.
+// For config options, see:
+// https://github.com/devcontainers/templates/tree/main/src/typescript-node
+{
+  "name": "studio-dev",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-18-bullseye",
+  "postCreateCommand": "npm install",
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-vscode-remote.remote-containers", "ms-vscode.vscode-typescript-next", "esbenp.prettier-vscode", "Orta.vscode-jest"]
+    }
+  },
+  "portsAttributes": {
+    "80": {
+      "label": "Application",
+      "onAutoForward": "openBrowserOnce"
+    },
+    "3000": {
+      "label": "Application",
+      "onAutoForward": "openBrowserOnce"
+    },
+    "6006": {
+      "label": "Storybook",
+      "onAutoForward": "openBrowserOnce"
+    }
+  },
+  "forwardPorts": [80, 3000, 6006]
+}
