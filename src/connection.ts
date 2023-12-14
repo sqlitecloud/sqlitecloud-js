@@ -9,7 +9,6 @@ const lz4 = require('lz4js')
 import { SQLiteCloudConfig, SQLCloudRowsetMetadata, SQLiteCloudError, SQLiteCloudDataTypes, ErrorCallback, ResultsCallback } from './types'
 import { SQLiteCloudRowset } from './rowset'
 import { parseConnectionString, parseBoolean } from './utilities'
-import { Socket } from 'net'
 
 /**
  * The server communicates with clients via commands defined
@@ -163,9 +162,9 @@ export class SQLiteCloudConnection {
           this.socket.removeAllListeners('data')
           this.socket.removeAllListeners('error')
           this.socket.removeAllListeners('close')
-        }
-        if (error) {
-          this.close()
+          if (error) {
+            this.close()
+          }
         }
         done(error)
       }
@@ -190,7 +189,7 @@ export class SQLiteCloudConnection {
           console.assert(this.socket, 'Connection already closed')
           const commands = this.initializationCommands
           this.processCommands(commands, error => {
-            if (error) {
+            if (error && this.socket) {
               this.close()
             }
             if (callback) {
@@ -357,7 +356,7 @@ export class SQLiteCloudConnection {
 
   /** Disconnect from server, release connection. */
   public close(): this {
-    console.assert(this.socket !== undefined, 'SQLiteCloudConnection.close - connection already closed')
+    console.assert(this.socket !== null, 'SQLiteCloudConnection.close - connection already closed')
     if (this.socket) {
       this.socket.destroy()
       this.socket = null
