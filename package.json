@@ -1,6 +1,6 @@
 {
   "name": "sqlitecloud-js",
-  "version": "0.0.23",
+  "version": "0.0.24",
   "description": "SQLiteCloud drivers for Typescript/Javascript in edge, web and node clients",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
