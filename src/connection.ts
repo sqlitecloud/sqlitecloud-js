@@ -2,13 +2,14 @@
  * connection.ts - handles low level communication with sqlitecloud server
  */
 
-import tls from 'tls'
+import tls, { TLSSocket } from 'tls'
 
 const lz4 = require('lz4js')
 
 import { SQLiteCloudConfig, SQLCloudRowsetMetadata, SQLiteCloudError, SQLiteCloudDataTypes, ErrorCallback, ResultsCallback } from './types'
 import { SQLiteCloudRowset } from './rowset'
 import { parseConnectionString, parseBoolean } from './utilities'
+import { Socket } from 'net'
 
 /**
  * The server communicates with clients via commands defined
@@ -59,7 +60,7 @@ export class SQLiteCloudConnection {
   private config: SQLiteCloudConfig
 
   /** Currently opened tls socket used to communicated with SQLiteCloud server */
-  private socket?: tls.TLSSocket
+  private socket?: tls.TLSSocket | null
 
   /** Operations are serialized by waiting an any pending promises */
   private operations = new OperationsQueue()
@@ -70,7 +71,7 @@ export class SQLiteCloudConnection {
 
   /** True if connection is open */
   public get connected(): boolean {
-    return this.socket !== undefined
+    return !!this.socket
   }
 
   //
@@ -154,7 +155,7 @@ export class SQLiteCloudConnection {
   private connect(callback?: ErrorCallback): this {
     this.operations.enqueue(done => {
       // connection established while we were waiting in line?
-      console.assert(this.socket === undefined, 'Connection already established')
+      console.assert(!this.connected, 'Connection already established')
 
       // clear all listeners and call done in the operations queue
       const finish: ResultsCallback = error => {
@@ -170,16 +171,23 @@ export class SQLiteCloudConnection {
       }
 
       // connect to tls socket, initialize connection, setup event handlers
-      const client: tls.TLSSocket = tls.connect(this.config.port as number, this.config.host, this.config.tlsOptions, () => {
-        if (!client.authorized) {
-          const anonimizedError = anonimizeError(client.authorizationError)
+      this.socket = tls.connect(this.config.port as number, this.config.host, this.config.tlsOptions, () => {
+        if (!this.socket?.authorized) {
+          const anonimizedError = anonimizeError((this.socket as TLSSocket).authorizationError)
           this.log('Connection was not authorized', anonimizedError)
           this.close()
           finish(new SQLiteCloudError('Connection was not authorized', { cause: anonimizedError }))
         } else {
-          this.socket = client
+          // the connection was closed before it was even opened,
+          // eg. client closed the connection before the server accepted it
+          if (this.socket === null) {
+            this.log('Connection was closed before it was opened')
+            finish(new SQLiteCloudError('Connection was closed before it was done opening'))
+            return
+          }
 
           // send initialization commands
+          console.assert(this.socket, 'Connection already closed')
           const commands = this.initializationCommands
           this.processCommands(commands, error => {
             if (error) {
@@ -194,17 +202,18 @@ export class SQLiteCloudConnection {
         }
       })
 
-      client.on('close', () => {
+      this.socket.on('close', () => {
         this.log('Connection closed')
-        this.socket = undefined
+        this.socket = null
         finish(new SQLiteCloudError('Connection was closed'))
       })
 
-      client.once('error', (error: any) => {
+      this.socket.once('error', (error: any) => {
         this.log('Connection error', error)
         finish(new SQLiteCloudError('Connection error', { cause: error }))
       })
     })
+
     return this
   }
 
@@ -348,8 +357,10 @@ export class SQLiteCloudConnection {
 
   /** Disconnect from server, release connection. */
   public close(): this {
+    console.assert(this.socket !== undefined, 'SQLiteCloudConnection.close - connection already closed')
     if (this.socket) {
       this.socket.destroy()
+      this.socket = null
     }
     this.operations.clear()
     this.socket = undefined

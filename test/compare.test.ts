@@ -8,6 +8,7 @@ import { getChinookDatabase, getTestingDatabase } from './shared'
 // https://github.com/TryGhost/node-sqlite3/wiki/API
 import sqlite3 from 'sqlite3'
 import { join } from 'path'
+import { error } from 'console'
 
 const INSERT_SQL = "INSERT INTO people (name, hobby, age) VALUES ('Fantozzi Ugo', 'Competitive unicorn farting', 42); "
 const TESTING_DATABASE_FILE = join(__dirname, 'assets/testing.db')
@@ -81,12 +82,28 @@ describe('Database.on', () => {
     chinookFile.close()
   })
 
-  it('sqlitecloud: should emit close event', done => {
+  it('sqlitecloud: should close before it finishes opening', done => {
     const chinookCloud = getChinookDatabase()
     chinookCloud.once('close', () => {
       done()
     })
+
+    // we are closing the connection before it's really had a chance to open...
     chinookCloud.close()
+  })
+
+  it('sqlitecloud: should emit close event', done => {
+    const chinookCloud = getChinookDatabase((error, database) => {
+      // we first wait for the database to open, then close it
+      expect(error).toBeNull()
+
+      chinookCloud.once('close', () => {
+        done()
+      })
+
+      // we are closing the connection asynchonously
+      chinookCloud.close()
+    })
   })
 
   // end Database.on

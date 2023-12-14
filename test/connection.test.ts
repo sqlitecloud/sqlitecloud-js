@@ -4,25 +4,20 @@
 
 import { SQLiteCloudError } from '../src/index'
 import { SQLiteCloudConnection, anonimizeCommand } from '../src/connection'
-import { parseConnectionString } from '../src/utilities'
 import {
   CHINOOK_DATABASE_URL,
   LONG_TIMEOUT,
   getTestingConfig,
   getChinookConfig,
   getChinookConnection,
+  // clearTestingDatabasesAsync,
   WARN_SPEED_MS,
   EXPECT_SPEED_MS
-  // clearTestingDatabasesAsync
 } from './shared'
 
 describe('connection', () => {
   let chinook: SQLiteCloudConnection
-  /*
-  beforeAll(async () => {
-    
-  })
-*/
+
   beforeEach(() => {
     chinook = getChinookConnection()
   })
@@ -37,13 +32,15 @@ describe('connection', () => {
     it('should connect', () => {
       // ...in beforeEach
     })
-
     /*
-    it('should run manually once in a while to clear orphaned databases', async () => {
-      await clearTestingDatabasesAsync()
-    })
-    */
-
+    it(
+      'should drop all old testing databases',
+      async () => {
+        await clearTestingDatabasesAsync()
+      },
+      LONG_TIMEOUT
+    )
+*/
     it('should add self signed certificate for localhost connections', () => {
       const localConfig = getChinookConfig('sqlitecloud://admin:xxx@localhost:8850/chinook.db')
       expect(localConfig.host).toBe('localhost')
