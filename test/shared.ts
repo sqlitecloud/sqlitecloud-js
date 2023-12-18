@@ -195,13 +195,15 @@ export function removeDatabase(database: Database, callback?: ResultsCallback) {
   })
 }
 
-export async function removeDatabaseAsync(database: Database) {
-  const databaseName = database.getConfiguration().database
-  if (databaseName) {
-    const result1 = await database.sql`UNUSE DATABASE;`
-    console.assert(result1)
-    const result2 = await database.sql`REMOVE DATABASE ${databaseName};`
-    console.assert(result2)
+export async function removeDatabaseAsync(database?: Database) {
+  if (database) {
+    const databaseName = database.getConfiguration().database
+    if (databaseName) {
+      const result1 = await database.sql`UNUSE DATABASE;`
+      console.assert(result1)
+      const result2 = await database.sql`REMOVE DATABASE ${databaseName};`
+      console.assert(result2)
+    }
+    database.close()
   }
-  database.close()
 }
