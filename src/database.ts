@@ -29,9 +29,21 @@ import EventEmitter from 'eventemitter3'
  */
 export class Database extends EventEmitter {
   /** Create and initialize a database from a full configuration object, or connection string */
-  constructor(config: SQLiteCloudConfig | string, callback?: ErrorCallback) {
+  constructor(config: SQLiteCloudConfig | string, callback?: ErrorCallback)
+  constructor(config: SQLiteCloudConfig | string, mode?: number, callback?: ErrorCallback)
+  constructor(config: SQLiteCloudConfig | string, mode?: number | ErrorCallback, callback?: ErrorCallback) {
     super()
     this.config = typeof config === 'string' ? { connectionString: config } : config
+
+    // mode is optional and so is callback
+    // https://github.com/TryGhost/node-sqlite3/wiki/API#new-sqlite3databasefilename--mode--callback
+    if (typeof mode === 'function') {
+      callback = mode
+      mode = undefined
+    }
+
+    // mode is ignored for now
+
     // opens first connection to the database automatically
     this.getConnection(callback as ResultsCallback)
   }
