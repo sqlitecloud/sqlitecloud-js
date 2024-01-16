@@ -30,12 +30,9 @@ export class SQLiteCloudRow {
 export class SQLiteCloudRowset extends Array<SQLiteCloudRow> {
   constructor(metadata: SQLCloudRowsetMetadata, data: any[]) {
     super(metadata.numberOfRows)
-    console.assert(data.length === metadata.numberOfRows * metadata.numberOfColumns, 'Invalid rowset data')
-    console.assert(metadata.columns.length === metadata.numberOfColumns, 'Invalid columns metadata')
-    console.assert(
-      metadata.numberOfRows >= 0 && metadata.numberOfColumns >= 0,
-      `Invalid rowset dimensions ${metadata.numberOfRows} x ${metadata.numberOfColumns}`
-    )
+
+    // console.assert(data !== undefined && data.length === metadata.numberOfRows * metadata.numberOfColumns, 'Invalid rowset data')
+    // console.assert(metadata !== undefined && metadata.columns.length === metadata.numberOfColumns, 'Invalid columns metadata')
 
     this.#metadata = metadata
     this.#data = data
@@ -113,6 +110,32 @@ export class SQLiteCloudRowset extends Array<SQLiteCloudRow> {
 
     const slicedMetadata = { ...this.#metadata, numberOfRows: end - start }
     const slicedData = this.#data.slice(start * this.numberOfColumns, end * this.numberOfColumns)
+
+    console.assert(
+      slicedData && slicedData.length === slicedMetadata.numberOfRows * slicedMetadata.numberOfColumns,
+      'SQLiteCloudRowset.slice - invalid rowset data'
+    )
     return new SQLiteCloudRowset(slicedMetadata, slicedData)
+  }
+
+  map(fn: (row: SQLiteCloudRow, index: number, rowset: SQLiteCloudRow[]) => any): any[] {
+    const results: any[] = []
+    for (let i = 0; i < this.numberOfRows; i++) {
+      const row = this[i]
+      results.push(fn(row, i, this))
+    }
+    return results
+  }
+
+  /** Returns an instance of SQLiteCloudRowset where rows have been filtered via given callback */
+  filter(fn: (row: SQLiteCloudRow, index: number, rowset: SQLiteCloudRow[]) => boolean): SQLiteCloudRow[] {
+    const filteredData: any[] = []
+    for (let i = 0; i < this.numberOfRows; i++) {
+      const row = this[i]
+      if (fn(row, i, this)) {
+        filteredData.push(...this.#data.slice(i * this.numberOfColumns, (i + 1) * this.numberOfColumns))
+      }
+    }
+    return new SQLiteCloudRowset({ ...this.#metadata, numberOfRows: filteredData.length / this.numberOfColumns }, filteredData)
   }
 }

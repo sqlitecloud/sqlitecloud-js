@@ -567,6 +567,7 @@ function parseRowset(buffer: Buffer, spaceIndex: number): SQLiteCloudRowset {
     buffer = fwdBuffer
   }
 
+  console.assert(data && data.length === metadata.numberOfRows * metadata.numberOfColumns, 'SQLiteCloudConnection.parseRowset - invalid rowset data')
   return new SQLiteCloudRowset(metadata, data)
 }
 
@@ -606,6 +607,7 @@ function parseRowsetChunks(buffers: Buffer[]) {
     }
   }
 
+  console.assert(data && data.length === metadata.numberOfRows * metadata.numberOfColumns, 'SQLiteCloudConnection.parseRowsetChunks - invalid rowset data')
   return new SQLiteCloudRowset(metadata, data)
 }
 

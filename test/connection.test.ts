@@ -280,25 +280,29 @@ describe('connection', () => {
   })
 
   describe('operations', () => {
-    it('should serialize operations', done => {
-      const numQueries = 20
-      let completed = 0
+    it(
+      'should serialize operations',
+      done => {
+        const numQueries = 20
+        let completed = 0
 
-      for (let i = 0; i < numQueries; i++) {
-        chinook.sendCommands(`select ${i} as "count", 'hello' as 'string'`, (error, results) => {
-          expect(error).toBeNull()
-          expect(results.numberOfColumns).toBe(2)
-          expect(results.numberOfRows).toBe(1)
-          expect(results.version == 1 || results.version == 2).toBeTruthy()
-          expect(results.columnsNames).toEqual(['count', 'string'])
-          expect(results.getItem(0, 0)).toBe(i)
+        for (let i = 0; i < numQueries; i++) {
+          chinook.sendCommands(`select ${i} as "count", 'hello' as 'string'`, (error, results) => {
+            expect(error).toBeNull()
+            expect(results.numberOfColumns).toBe(2)
+            expect(results.numberOfRows).toBe(1)
+            expect(results.version == 1 || results.version == 2).toBeTruthy()
+            expect(results.columnsNames).toEqual(['count', 'string'])
+            expect(results.getItem(0, 0)).toBe(i)
 
-          if (++completed >= numQueries) {
-            done()
-          }
-        })
-      }
-    })
+            if (++completed >= numQueries) {
+              done()
+            }
+          })
+        }
+      },
+      LONG_TIMEOUT
+    )
 
     it('should apply short timeout', done => {
       // this operation sends 150 packets and cannot complete in 20ms

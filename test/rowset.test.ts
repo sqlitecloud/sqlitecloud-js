@@ -2,7 +2,7 @@
  * rowset.test.ts - test rowset container
  */
 
-import { SQLiteCloudRowset } from '../src/index'
+import { SQLiteCloudRowset, SQLiteCloudRow } from '../src/index'
 import { SQLiteCloudConnection } from '../src/connection'
 import { CHINOOK_DATABASE_URL, getChinookConnection, getChinookConfig } from './shared'
 
@@ -28,6 +28,58 @@ describe('rowset', () => {
         TrackId: 1,
         UnitPrice: 0.99
       })
+
+      connection.close()
+      done()
+    })
+  })
+
+  it('implements .map', done => {
+    const connection = getChinookConnection()
+    connection.sendCommands('SELECT * FROM tracks LIMIT 10;', (error, rowset) => {
+      expect(rowset).toBeInstanceOf(SQLiteCloudRowset)
+      expect(rowset.numberOfColumns).toBe(9)
+      expect(rowset.numberOfRows).toBe(10)
+      expect(Array.isArray(rowset)).toBeTruthy()
+      expect(rowset).toHaveLength(10)
+
+      rowset.map((row: SQLiteCloudRow) => {
+        expect(row).toBeInstanceOf(SQLiteCloudRow)
+        expect(Object.keys(row)).toHaveLength(9)
+      })
+
+      connection.close()
+      done()
+    })
+  })
+
+  it('implements .filter', done => {
+    const connection = getChinookConnection()
+    connection.sendCommands('SELECT * FROM tracks LIMIT 10;', (error, rowset) => {
+      expect(rowset).toBeInstanceOf(SQLiteCloudRowset)
+      expect(rowset.numberOfColumns).toBe(9)
+      expect(rowset.numberOfRows).toBe(10)
+      expect(Array.isArray(rowset)).toBeTruthy()
+      expect(rowset).toHaveLength(10)
+
+      const filtered = rowset.filter((row: SQLiteCloudRow) => row.AlbumId === 1)
+      expect(filtered).toBeInstanceOf(SQLiteCloudRowset)
+      expect(filtered.numberOfColumns).toBe(9)
+      expect(filtered.numberOfRows).toBe(6)
+
+      connection.close()
+      done()
+    })
+  })
+
+  it('implements .reduce', done => {
+    const connection = getChinookConnection()
+    connection.sendCommands('SELECT * FROM invoices;', (error, rowset) => {
+      expect(rowset).toBeInstanceOf(SQLiteCloudRowset)
+
+      // doing "SELECT sum(Total) FROM invoices" the wrong way (not using SQL) to test reduce...
+      const total = rowset.reduce((acc: number, row: SQLiteCloudRow) => acc + (row?.Total ? (row.Total as number) : 0), 0)
+      expect(Math.floor(total)).toBe(2328)
 
       connection.close()
       done()
