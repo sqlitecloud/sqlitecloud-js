@@ -328,6 +328,15 @@ describe('connection', () => {
   })
 
   describe('send select commands', () => {
+    it('should LIST METADATA', done => {
+      chinook.sendCommands('LIST METADATA;', (error, results) => {
+        expect(error).toBeNull()
+        expect(results.numberOfColumns).toBe(8)
+        expect(results.numberOfRows).toBe(64)
+        done()
+      })
+    })
+
     it('should select results with no colum names', done => {
       chinook.sendCommands("select 42, 'hello'", (error, results) => {
         expect(error).toBeNull()
