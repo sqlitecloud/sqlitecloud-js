@@ -129,3 +129,147 @@ export enum SQLiteCloudArrayType {
 
   ARRAY_TYPE_SQLITE_STATUS = 50 // used in sqlite_status
 }
+
+/** SQLite column types*/
+export enum SQLiteManagerType {
+  TEXT,
+  INTEGER,
+  REAL,
+  BLOB,
+  VARCHAR,
+  SMALLINT,
+  FLOAT,
+  DOUBLE,
+  BOOLEAN,
+  CURRENCY,
+  DATE,
+  TIME,
+  TIMESTAMP,
+  BINARY
+}
+
+/** SQLite column defaults */
+export enum SQLiteManagerDefault {
+  NULL,
+  CURRENT_TIME,
+  CURRENT_DATE,
+  CURRENT_TIMESTAMP
+}
+
+/** SQLite column collates */
+export enum SQLiteManagerCollate {
+  BINARY,
+  NOCASE,
+  RTRIM
+}
+
+/** SQLite column foreign key options */
+export enum SQLiteManagerForeignKeyOptions {
+  NONE,
+  DEFERRABLE,
+  DEFERRABLE_INITIALLY_DEFERRED,
+  DEFERRABLE_INITIALLY_IMMEDIATE,
+  NOT_DEFERRABLE,
+  NOT_DEFERRABLE_INITIALLY_DEFERRED,
+  NOT_DEFERRABLE_INITIALLY_IMMEDIATE
+}
+
+/** SQLite column foreign key on delete or on update cases */
+export enum SQLiteManagerForeignKeyOn {
+  NO_ACTION,
+  RESTRICT,
+  SET_NULL,
+  SET_DEFAULT,
+  CASCADE
+}
+
+/** SQLite foreign key */
+class SQLiteManagerForeignKey {
+  enabled = false
+  table = ''
+  column = ''
+  options: SQLiteManagerForeignKeyOptions = SQLiteManagerForeignKeyOptions.NONE
+  onDelete: SQLiteManagerForeignKeyOn = SQLiteManagerForeignKeyOn.NO_ACTION
+  onUpdate: SQLiteManagerForeignKeyOn = SQLiteManagerForeignKeyOn.NO_ACTION
+
+  constructor(
+    enabled: boolean,
+    table: string,
+    column: string,
+    options?: SQLiteManagerForeignKeyOptions,
+    onDelete?: SQLiteManagerForeignKeyOn,
+    onUpdate?: SQLiteManagerForeignKeyOn
+  ) {
+    if (enabled) {
+      this.enable(table, column, options, onDelete, onUpdate)
+    } else {
+      this.disable()
+    }
+  }
+
+  /** By disabling foreign key you delete references */
+  disable() {
+    this.enabled = false
+    this.table = ''
+    this.column = ''
+    this.options = SQLiteManagerForeignKeyOptions.NONE
+    this.onDelete = SQLiteManagerForeignKeyOn.NO_ACTION
+    this.onUpdate = SQLiteManagerForeignKeyOn.NO_ACTION
+  }
+
+  enable(table: string, column: string, options?: SQLiteManagerForeignKeyOptions, onDelete?: SQLiteManagerForeignKeyOn, onUpdate?: SQLiteManagerForeignKeyOn) {
+    this.enabled = true
+    this.table = table
+    this.column = column
+
+    if (options) {
+      this.options = options
+    }
+
+    if (onDelete) {
+      this.onDelete = onDelete
+    }
+
+    if (onUpdate) {
+      this.onUpdate = onUpdate
+    }
+  }
+}
+
+/** SQLite column constraints */
+export interface SQLiteManagerConstraints {
+  PRIMARY_KEY?: boolean
+  AUTOINCREMENT?: boolean
+  NOT_NULL?: boolean
+  UNIQUE?: boolean
+  Check?: string
+
+  /** You should pass: SQLiteManagerDefault.NULL, SQLiteManagerDefault.CURRENT_TIME, etc. */
+  Default?: SQLiteManagerDefault | string
+
+  /** You should pass: SQLiteManagerCollate.BINARY, SQLiteManagerCollate.NOCASE, etc. */
+  Collate?: SQLiteManagerCollate | string
+
+  ForeignKey?: SQLiteManagerForeignKey
+}
+
+/** SQLite column interface */
+export interface SQLiteManagerColumn {
+  /** Column name */
+  name: string
+
+  /** Data type */
+  type: SQLiteManagerType
+
+  /** Constraints */
+  constraints?: SQLiteManagerConstraints
+}
+
+/** SQLite table interface */
+export interface SQLiteManagerTable {
+  /** Name of the table */
+  name: string
+
+  /** Columns */
+  columns?: SQLiteManagerColumn[]
+}

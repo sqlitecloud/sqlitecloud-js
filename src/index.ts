@@ -10,3 +10,15 @@ export { SQLiteCloudRowset, SQLiteCloudRow } from './rowset'
 export { SQLiteCloudConnection } from './connection'
 
 export { escapeSqlParameter, prepareSql } from './utilities'
+
+export { SQLiteManager } from './manager'
+export {
+  SQLiteManagerType,
+  SQLiteManagerColumn,
+  SQLiteManagerTable,
+  SQLiteManagerConstraints,
+  SQLiteManagerForeignKeyOn,
+  SQLiteManagerForeignKeyOptions,
+  SQLiteManagerCollate,
+  SQLiteManagerDefault
+} from './types'

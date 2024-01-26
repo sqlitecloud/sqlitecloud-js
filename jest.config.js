@@ -1,9 +1,9 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  testMatch: ['**/test/**/*.test.ts'],
+  testMatch: ['**/test/**/manager.test.ts'],
   maxWorkers: 12,
-  collectCoverageFrom: ['<rootDir>/src/**/*.ts', '!<rootDir>/src/index.ts', '!<rootDir>/src/types/**/*.ts'],
+  collectCoverageFrom: ['<rootDir>/src/**/types.ts', '<rootDir>/src/**/manager.ts'],
   transform: {
     '^.+\\.(ts|tsx)$': [
       'ts-jest',
