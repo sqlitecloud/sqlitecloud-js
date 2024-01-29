@@ -130,25 +130,16 @@ export enum SQLiteCloudArrayType {
   ARRAY_TYPE_SQLITE_STATUS = 50 // used in sqlite_status
 }
 
-/** SQLite column types*/
+/** SQLite Datatypes*/
 export enum SQLiteManagerType {
-  TEXT,
+  NULL,
   INTEGER,
   REAL,
-  BLOB,
-  VARCHAR,
-  SMALLINT,
-  FLOAT,
-  DOUBLE,
-  BOOLEAN,
-  CURRENCY,
-  DATE,
-  TIME,
-  TIMESTAMP,
-  BINARY
+  TEXT,
+  BLOB
 }
 
-/** SQLite column defaults */
+/** SQLite Default clause */
 export enum SQLiteManagerDefault {
   NULL,
   CURRENT_TIME,
@@ -156,7 +147,7 @@ export enum SQLiteManagerDefault {
   CURRENT_TIMESTAMP
 }
 
-/** SQLite column collates */
+/** SQLite Collate clause */
 export enum SQLiteManagerCollate {
   BINARY,
   NOCASE,
@@ -174,7 +165,7 @@ export enum SQLiteManagerForeignKeyOptions {
   NOT_DEFERRABLE_INITIALLY_IMMEDIATE
 }
 
-/** SQLite column foreign key on delete or on update cases */
+/** SQLite ON DELETE and ON UPDATE Actions */
 export enum SQLiteManagerForeignKeyOn {
   NO_ACTION,
   RESTRICT,
@@ -191,6 +182,7 @@ class SQLiteManagerForeignKey {
   options: SQLiteManagerForeignKeyOptions = SQLiteManagerForeignKeyOptions.NONE
   onDelete: SQLiteManagerForeignKeyOn = SQLiteManagerForeignKeyOn.NO_ACTION
   onUpdate: SQLiteManagerForeignKeyOn = SQLiteManagerForeignKeyOn.NO_ACTION
+  match = ''
 
   constructor(
     enabled: boolean,
@@ -198,10 +190,11 @@ class SQLiteManagerForeignKey {
     column: string,
     options?: SQLiteManagerForeignKeyOptions,
     onDelete?: SQLiteManagerForeignKeyOn,
-    onUpdate?: SQLiteManagerForeignKeyOn
+    onUpdate?: SQLiteManagerForeignKeyOn,
+    match?: string
   ) {
     if (enabled) {
-      this.enable(table, column, options, onDelete, onUpdate)
+      this.enable(table, column, options, onDelete, onUpdate, match)
     } else {
       this.disable()
     }
@@ -215,9 +208,17 @@ class SQLiteManagerForeignKey {
     this.options = SQLiteManagerForeignKeyOptions.NONE
     this.onDelete = SQLiteManagerForeignKeyOn.NO_ACTION
     this.onUpdate = SQLiteManagerForeignKeyOn.NO_ACTION
+    this.match = ''
   }
 
-  enable(table: string, column: string, options?: SQLiteManagerForeignKeyOptions, onDelete?: SQLiteManagerForeignKeyOn, onUpdate?: SQLiteManagerForeignKeyOn) {
+  enable(
+    table: string,
+    column: string,
+    options?: SQLiteManagerForeignKeyOptions,
+    onDelete?: SQLiteManagerForeignKeyOn,
+    onUpdate?: SQLiteManagerForeignKeyOn,
+    match?: string
+  ) {
     this.enabled = true
     this.table = table
     this.column = column
@@ -232,6 +233,10 @@ class SQLiteManagerForeignKey {
 
     if (onUpdate) {
       this.onUpdate = onUpdate
+    }
+
+    if (match) {
+      this.match = match
     }
   }
 }

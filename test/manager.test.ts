@@ -13,7 +13,7 @@ describe('Create a table', () => {
       'CREATE TABLE "' + testTable.name + '" ("' + testTable.columns[0].name + '" ' + SQLiteManagerType[testTable.columns[0].type]
     )
 
-    manager.addColumn(testTable.columns[1])
+    manager.addColumn(JSON.parse(JSON.stringify(testTable.columns[1])))
     expect(manager.deleteColumn(testTable.columns[0].name)).not.toContain(testTable.columns[0].name)
 
     const risRen: string = manager.renameColumn(testTable.columns[1].name, testTable.columns[2].name)
@@ -26,7 +26,7 @@ describe('Create a table', () => {
     expect(risCh).toContain(SQLiteManagerType[SQLiteManagerType.TEXT])
     expect(risCh).not.toContain(SQLiteManagerType[SQLiteManagerType.INTEGER])
 
-    const risCnstr: string = manager.changeColumnConstraints(testTable.columns[2].name, testTable.columns[2].type, testTable.columns[2].constraints)
+    const risCnstr: string = manager.changeColumnConstraints(testTable.columns[2].name, testTable.columns[2].constraints)
 
     expect(risCnstr).toContain('NOT NULL UNIQUE')
   })

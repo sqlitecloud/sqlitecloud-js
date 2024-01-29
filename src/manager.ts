@@ -109,61 +109,62 @@ export class SQLiteManager {
     return query
   }
 
-  mixTables(tables: SQLiteManagerTable, newTables: Partial<SQLiteManagerTable>): SQLiteManagerTable {
-    return { ...tables, ...newTables }
-  }
-
   addColumn(column: SQLiteManagerColumn): string {
-    this.table = this.mixTables(this.table, { name: this.table.name, columns: [Object.create(column)] })
+    if (this.table.columns) {
+      this.table.columns.push(column)
+    } else {
+      this.table.columns = [column]
+    }
+
     return this.queryBuilder()
   }
 
-  deleteColumn(columnName: string): string {
-    if (this.table.columns) {
-      const i = this.table.columns.findIndex(column => column.name === columnName)
-      if (i > -1) {
-        this.table.columns.splice(i, 1)
-      }
+  deleteColumn(name: string): string {
+    const i = this.findColumn(name)
+
+    if (typeof i != 'undefined' && this.table.columns) {
+      this.table.columns.splice(i, 1)
     }
-    //this.tables[index].columns = this.tables[index].columns.filter(column => column.name !== columnName) it's slower
 
     return this.queryBuilder()
   }
 
   renameColumn(oldColumnName: string, newColumnName: string): string {
-    if (this.table.columns) {
-      const i = this.table.columns.findIndex(column => column.name === oldColumnName)
-      if (i > -1) {
-        this.table.columns[i].name = newColumnName
-      }
+    const i = this.findColumn(oldColumnName)
+
+    if (typeof i != 'undefined' && this.table.columns) {
+      this.table.columns[i].name = newColumnName
     }
 
     return this.queryBuilder()
   }
 
-  changeColumnType(columnName: string, type: SQLiteManagerType): string {
-    if (this.table.columns) {
-      const i = this.table.columns.findIndex(column => column.name === columnName)
-      if (i > -1) {
-        this.table.columns[i].type = type
-      }
+  changeColumnType(name: string, type: SQLiteManagerType): string {
+    const i = this.findColumn(name)
+
+    if (typeof i != 'undefined' && this.table.columns) {
+      this.table.columns[i].type = type
     }
 
     return this.queryBuilder()
   }
 
-  changeColumnConstraints(name: string, type: SQLiteManagerType, constraints: SQLiteManagerConstraints): string {
-    /* if (typeof this.table.columns != 'undefined') {
-      const i = this.table.columns.findIndex(column => column.name === columnName)
-      if (i > -1) {
-        this.table.columns[i].constraints = constraints
-      }
-    } */
+  changeColumnConstraints(name: string, constraints: SQLiteManagerConstraints): string {
+    const i = this.findColumn(name)
 
-    this.table = this.mixTables(this.table, {
-      columns: [{ name: name, type: type, constraints: constraints }]
-    })
+    if (typeof i != 'undefined' && this.table.columns) {
+      this.table.columns[i].constraints = constraints
+    }
 
     return this.queryBuilder()
+  }
+
+  private findColumn(name: string): number | undefined {
+    if (this.table.columns) {
+      const i = this.table.columns.findIndex(column => column.name === name)
+      if (i > -1) {
+        return i
+      }
+    }
   }
 }

@@ -17,7 +17,7 @@ export const testTable = {
     },
     {
       name: 'column2',
-      type: types.SQLiteManagerType.TEXT,
+      type: types.SQLiteManagerType.REAL,
       constraints: {
         NOT_NULL: true,
         UNIQUE: true
