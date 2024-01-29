@@ -94,6 +94,10 @@ export class SQLiteManager {
               if (column.constraints.ForeignKey.onUpdate) {
                 query += ' ON UPDATE ' + SQLiteManagerForeignKeyOn[column.constraints.ForeignKey.onUpdate]
               }
+
+              if (column.constraints.ForeignKey.match) {
+                query += ' MATCH ' + column.constraints.ForeignKey.match
+              }
             }
           }
         }
