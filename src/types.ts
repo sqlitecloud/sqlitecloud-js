@@ -278,3 +278,11 @@ export interface SQLiteManagerTable {
   /** Columns */
   columns?: SQLiteManagerColumn[]
 }
+
+/** SQLite Alter Table */
+export enum AT {
+  ADD_COLUMN,
+  DROP_COLUMN,
+  RENAME_COLUMN,
+  RENAME_TABLE
+}
