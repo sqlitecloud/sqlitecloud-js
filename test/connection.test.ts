@@ -2,6 +2,7 @@
  * connection.test.ts - test low level communication protocol
  */
 
+import { SQLiteCloudTlsConnection } from '../src/index'
 import { SQLiteCloudError } from '../src/index'
 import { SQLiteCloudConnection, anonimizeCommand } from '../src/connection'
 import {
@@ -53,7 +54,7 @@ describe('connection', () => {
 
     it('should connect with config object string', done => {
       const configObj = getChinookConfig()
-      const conn = new SQLiteCloudConnection(configObj, error => {
+      const conn = new SQLiteCloudTlsConnection(configObj, error => {
         expect(error).toBeNull()
         expect(conn.connected).toBe(true)
 
@@ -72,7 +73,7 @@ describe('connection', () => {
         done()
       }
 
-      const conn = new SQLiteCloudConnection(CHINOOK_DATABASE_URL, error => {
+      const conn = new SQLiteCloudTlsConnection(CHINOOK_DATABASE_URL, error => {
         expect(error).toBeNull()
         expect(conn.connected).toBe(true)
 
@@ -92,7 +93,7 @@ describe('connection', () => {
       delete testingConfig.password
 
       try {
-        const conn = new SQLiteCloudConnection(testingConfig)
+        const conn = new SQLiteCloudTlsConnection(testingConfig)
       } catch (error) {
         expect(error).toBeDefined()
         expect(error).toBeInstanceOf(SQLiteCloudError)

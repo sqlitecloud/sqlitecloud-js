@@ -11,6 +11,7 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
 import { SQLiteCloudConnection } from './connection'
+import { SQLiteCloudTlsConnection } from './connection-tls'
 import { SQLiteCloudRowset } from './rowset'
 import { SQLiteCloudConfig, SQLiteCloudError, RowCountCallback, SQLiteCloudArrayType } from './types'
 import { prepareSql, popCallback } from './utilities'
@@ -65,7 +66,7 @@ export class Database extends EventEmitter {
       callback?.call(this, null, this.connections[0])
     } else {
       this.connections.push(
-        new SQLiteCloudConnection(this.config, error => {
+        new SQLiteCloudTlsConnection(this.config, error => {
           if (error) {
             this.handleError(this.connections[0], error, callback)
           } else {
