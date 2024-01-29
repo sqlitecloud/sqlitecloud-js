@@ -8,18 +8,28 @@ import { SQLCloudRowsetMetadata, SQLiteCloudDataTypes, SQLiteCloudError } from '
 export class SQLiteCloudRow {
   constructor(rowset: SQLiteCloudRowset, columnsNames: string[], data: SQLiteCloudDataTypes[]) {
     this.#rowset = rowset
+    this.#data = data
     for (let i = 0; i < columnsNames.length; i++) {
       this[columnsNames[i]] = data[i]
     }
   }
 
-  // @ts-expect-error
-  private #rowset: SQLiteCloudRowset
+  // rowset is private
+  #rowset: SQLiteCloudRowset
+
+  // data is private
+  #data: SQLiteCloudDataTypes[]
 
   /** Returns the rowset that this row belongs to */
   // @ts-expect-error
   public getRowset(): SQLiteCloudRowset {
     return this.#rowset
+  }
+
+  /** Returns rowset data as a plain array of values */
+  // @ts-expect-error
+  public getData(): SQLiteCloudDataTypes[] {
+    return this.#data
   }
 
   /** Column values are accessed by column name */
