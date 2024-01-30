@@ -45,7 +45,7 @@ export class SQLiteManager {
     }
   }
 
-  queryBuilder(op?: AT, column?: SQLiteManagerColumn, newColumn?: string): string {
+  queryBuilder(op?: AT | string, column?: SQLiteManagerColumn, newColumn?: string): string {
     let query = ''
 
     if (this.table.columns) {
@@ -62,6 +62,7 @@ export class SQLiteManager {
         query += ');'
       } else {
         if (typeof op != 'undefined' && column) {
+          let rand: string
           switch (op) {
             case AT.RENAME_TABLE:
               this.query += 'ALTER TABLE "' + this.table.name + '" RENAME TO "' + column.name + '";\n'
@@ -74,6 +75,19 @@ export class SQLiteManager {
               break
             case AT.RENAME_COLUMN:
               if (newColumn) this.query += 'ALTER TABLE "' + this.table.name + '" RENAME COLUMN "' + column.name + '" TO "' + newColumn + '";\n'
+              break
+            default:
+              rand = Math.floor(Math.random() * 1000000000000).toString()
+              this.query += '\n\nPRAGMA foreign_keys = OFF;\n'
+              this.query += 'BEGIN TRANSACTION;\n'
+              this.query += 'ALTER TABLE "' + this.table.name + '" RENAME TO sqlitemanager_temp_table_' + rand + ';\n'
+              this.create = true
+              this.query += this.queryBuilder()
+              this.create = false
+              this.query += '\nDROP TABLE sqlitemanager_temp_table_' + rand + ';\n'
+              this.query += 'COMMIT;\n'
+              this.query += 'PRAGMA foreign_keys = ON;\n'
+
               break
           }
         }
@@ -183,7 +197,7 @@ export class SQLiteManager {
       this.table.columns[i].type = type
     }
 
-    return this.queryBuilder()
+    return this.queryBuilder('', {} as SQLiteManagerColumn)
   }
 
   changeColumnConstraints(name: string, constraints: SQLiteManagerConstraints): string {
@@ -193,7 +207,7 @@ export class SQLiteManager {
       this.table.columns[i].constraints = constraints
     }
 
-    return this.queryBuilder()
+    return this.queryBuilder('', {} as SQLiteManagerColumn)
   }
 
   private findColumn(name: string): number | undefined {

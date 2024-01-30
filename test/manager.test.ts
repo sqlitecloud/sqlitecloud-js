@@ -55,13 +55,18 @@ describe('Create a table', () => {
 
     expect(renTable).toContain('ALTER TABLE "' + testTable.name + '" RENAME TO "' + testTable2.name + '";')
 
-    /* const risCh: string = manager.changeColumnType(testTable.columns[2].name, SQLiteManagerType.TEXT)
+    const risCh: string = manager.changeColumnType(testTable.columns[2].name, SQLiteManagerType.TEXT)
 
-    expect(risCh).toContain(SQLiteManagerType[SQLiteManagerType.TEXT])
-    expect(risCh).not.toContain(SQLiteManagerType[SQLiteManagerType.INTEGER])
+    expect(risCh).toContain('PRAGMA foreign_keys = OFF;')
+    expect(risCh).toContain('BEGIN TRANSACTION;')
+    expect(risCh).toContain('ALTER TABLE "' + testTable.name + '" RENAME TO sqlitemanager_temp_table_')
+    expect(risCh).toContain('CREATE TABLE "' + testTable.name + '" ("')
+    expect(risCh).toContain('"' + testTable.columns[2].name + '" TEXT')
+    expect(risCh).toContain('DROP TABLE sqlitemanager_temp_table_')
+    expect(risCh).toContain('COMMIT;')
+    expect(risCh).toContain('PRAGMA foreign_keys = ON;')
 
-    const risCnstr: string = manager.changeColumnConstraints(testTable.columns[2].name, testTable.columns[2].constraints)
-
-    expect(risCnstr).toContain('NOT NULL UNIQUE') */
+    const risCnstr: string = manager.changeColumnConstraints(testTable.columns[2].name, testTable2.columns[2].constraints)
+    expect(risCnstr).toContain('"' + testTable.columns[2].name + '" TEXT UNIQUE')
   })
 })
