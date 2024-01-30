@@ -2,7 +2,6 @@
  * connection-tls.test.ts - test low level communication protocol with tls sockets and raw commands
  */
 
-import { SQLiteCloudTlsConnection } from '../src/index'
 import { SQLiteCloudError } from '../src/index'
 import { SQLiteCloudConnection, anonimizeCommand } from '../src/connection'
 import {
@@ -54,7 +53,7 @@ describe('connection-tls', () => {
 
     it('should connect with config object string', done => {
       const configObj = getChinookConfig()
-      const conn = new SQLiteCloudTlsConnection(configObj, error => {
+      const conn = new SQLiteCloudConnection(configObj, error => {
         expect(error).toBeNull()
         expect(conn.connected).toBe(true)
 
@@ -73,7 +72,7 @@ describe('connection-tls', () => {
         done()
       }
 
-      const conn = new SQLiteCloudTlsConnection(CHINOOK_DATABASE_URL, error => {
+      const conn = new SQLiteCloudConnection(CHINOOK_DATABASE_URL, error => {
         expect(error).toBeNull()
         expect(conn.connected).toBe(true)
 
@@ -93,7 +92,7 @@ describe('connection-tls', () => {
       delete testingConfig.password
 
       try {
-        const conn = new SQLiteCloudTlsConnection(testingConfig)
+        const conn = new SQLiteCloudConnection(testingConfig)
       } catch (error) {
         expect(error).toBeDefined()
         expect(error).toBeInstanceOf(SQLiteCloudError)
