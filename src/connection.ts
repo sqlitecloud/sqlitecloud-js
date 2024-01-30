@@ -16,7 +16,7 @@ export const DEFAULT_PORT = 9960
  * Base class for SQLiteCloudConnection handles basics and defines methods.
  * Actual connection management and communication with the server in concrete classes.
  */
-export abstract class SQLiteCloudConnection {
+export class SQLiteCloudConnection {
   /** Parse and validate provided connectionString or configuration */
   constructor(config: SQLiteCloudConfig | string, callback?: ErrorCallback) {
     if (typeof config === 'string') {
@@ -24,11 +24,16 @@ export abstract class SQLiteCloudConnection {
     } else {
       this.config = this.validateConfiguration(config)
     }
+
+    // connect transport layer to server
     this.connect(callback)
   }
 
   /** Configuration passed by client or extracted from connection string */
   protected config: SQLiteCloudConfig
+
+  /** Transport used to communicate with server */
+  protected transport?: ConnectionTransport
 
   /** Operations are serialized by waiting an any pending promises */
   protected operations = new OperationsQueue()
@@ -38,7 +43,32 @@ export abstract class SQLiteCloudConnection {
   //
 
   /** True if connection is open */
-  public abstract get connected(): boolean
+  public get connected(): boolean {
+    return this.transport?.connected || false
+  }
+
+  protected connect(callback?: ErrorCallback): this {
+    this.operations.enqueue(done => {
+      if (false) {
+        const transport = require('./transport-ws')
+        this.transport = new transport.WebSocketTransport()
+      } else {
+        const transport = require('./transport-tls')
+        this.transport = new transport.TlsSocketTransport()
+      }
+
+      // ask transport layer to connect
+      this.transport?.connect(this.config, error => {
+        if (error) {
+          this.close()
+        }
+        callback?.call(this, error)
+        done(error)
+      })
+    })
+
+    return this
+  }
 
   //
   // private methods
@@ -80,49 +110,6 @@ export abstract class SQLiteCloudConnection {
     }
   }
 
-  /** Initialization commands sent to database when connection is established */
-  protected get initializationCommands(): string {
-    // first user authentication, then all other commands
-    const config = this.config
-    let commands = `AUTH USER ${config.username || ''} ${config.passwordHashed ? 'HASH' : 'PASSWORD'} ${config.password || ''}; `
-
-    if (config.database) {
-      if (config.createDatabase && !config.dbMemory) {
-        commands += `CREATE DATABASE ${config.database} IF NOT EXISTS; `
-      }
-      commands += `USE DATABASE ${config.database}; `
-    }
-    if (config.sqliteMode) {
-      commands += 'SET CLIENT KEY SQLITE TO 1; '
-    }
-    if (config.compression) {
-      commands += 'SET CLIENT KEY COMPRESSION TO 1; '
-    }
-    if (config.nonlinearizable) {
-      commands += 'SET CLIENT KEY NONLINEARIZABLE TO 1; '
-    }
-    if (config.noBlob) {
-      commands += 'SET CLIENT KEY NOBLOB TO 1; '
-    }
-    if (config.maxData) {
-      commands += `SET CLIENT KEY MAXDATA TO ${config.maxData}; `
-    }
-    if (config.maxRows) {
-      commands += `SET CLIENT KEY MAXROWS TO ${config.maxRows}; `
-    }
-    if (config.maxRowset) {
-      commands += `SET CLIENT KEY MAXROWSET TO ${config.maxRowset}; `
-    }
-
-    return commands
-  }
-
-  /* Opens a connection with the server and sends the initialization commands. Will throw in case of errors. */
-  protected abstract connect(callback?: ErrorCallback): this
-
-  /** Will send a command immediately (no queueing), return the rowset/result or throw an error */
-  protected abstract processCommands(commands: string, callback?: ResultsCallback): this
-
   //
   // public methods
   //
@@ -135,17 +122,28 @@ export abstract class SQLiteCloudConnection {
   /** Will enquee a command to be executed and callback with the resulting rowset/result/error */
   public sendCommands(commands: string, callback?: ResultsCallback): this {
     this.operations.enqueue(done => {
-      this.processCommands(commands, (error, result) => {
-        callback?.call(this, error, result)
+      if (this.transport) {
+        this.transport.processCommands(commands, (error, result) => {
+          callback?.call(this, error, result)
+          done(error)
+        })
+      } else {
+        const error = new SQLiteCloudError('Connection not established', { errorCode: 'ERR_CONNECTION_NOT_ESTABLISHED' })
+        callback?.call(this, error)
         done(error)
-      })
+      }
     })
 
     return this
   }
 
   /** Disconnect from server, release connection. */
-  public abstract close(): this
+  public close(): this {
+    this.operations.clear()
+    this.transport?.close()
+    this.transport = undefined
+    return this
+  }
 }
 
 //
@@ -213,4 +211,56 @@ export function anonimizeError(error: Error): Error {
     error.message = anonimizeCommand(error.message)
   }
   return error
+}
+
+/** Initialization commands sent to database when connection is established */
+export function getInitializationCommands(config: SQLiteCloudConfig): string {
+  // first user authentication, then all other commands
+  let commands = `AUTH USER ${config.username || ''} ${config.passwordHashed ? 'HASH' : 'PASSWORD'} ${config.password || ''}; `
+
+  if (config.database) {
+    if (config.createDatabase && !config.dbMemory) {
+      commands += `CREATE DATABASE ${config.database} IF NOT EXISTS; `
+    }
+    commands += `USE DATABASE ${config.database}; `
+  }
+  if (config.sqliteMode) {
+    commands += 'SET CLIENT KEY SQLITE TO 1; '
+  }
+  if (config.compression) {
+    commands += 'SET CLIENT KEY COMPRESSION TO 1; '
+  }
+  if (config.nonlinearizable) {
+    commands += 'SET CLIENT KEY NONLINEARIZABLE TO 1; '
+  }
+  if (config.noBlob) {
+    commands += 'SET CLIENT KEY NOBLOB TO 1; '
+  }
+  if (config.maxData) {
+    commands += `SET CLIENT KEY MAXDATA TO ${config.maxData}; `
+  }
+  if (config.maxRows) {
+    commands += `SET CLIENT KEY MAXROWS TO ${config.maxRows}; `
+  }
+  if (config.maxRowset) {
+    commands += `SET CLIENT KEY MAXROWSET TO ${config.maxRowset}; `
+  }
+
+  return commands
+}
+
+//
+// ConnectionTransport
+//
+
+/** ConnectionTransport implements the underlying transport layer for the connection */
+export interface ConnectionTransport {
+  /** True if connection is currently open */
+  get connected(): boolean
+  /* Opens a connection with the server and sends the initialization commands. Will throw in case of errors. */
+  connect(config: SQLiteCloudConfig, callback?: ErrorCallback): this
+  /** Send a command, return the rowset/result or throw an error */
+  processCommands(commands: string, callback?: ResultsCallback): this
+  /** Disconnect from server, release transport. */
+  close(): this
 }

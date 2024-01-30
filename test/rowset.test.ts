@@ -3,7 +3,7 @@
  */
 
 import { SQLiteCloudRowset, SQLiteCloudRow } from '../src/index'
-import { SQLiteCloudTlsConnection } from '../src/'
+import { SQLiteCloudConnection } from '../src/'
 import { CHINOOK_DATABASE_URL, getChinookTlsConnection, getChinookConfig } from './shared'
 
 describe('rowset', () => {
@@ -151,7 +151,7 @@ describe('rowset', () => {
 
   it('contains extended metadata', done => {
     // custom connection with sqliteMode enabled
-    const connection = new SQLiteCloudTlsConnection(getChinookConfig(CHINOOK_DATABASE_URL + '?sqliteMode=1'))
+    const connection = new SQLiteCloudConnection(getChinookConfig(CHINOOK_DATABASE_URL + '?sqliteMode=1'))
     connection.sendCommands('SELECT * FROM tracks LIMIT 10;', (error, rowset) => {
       expect(rowset).toBeInstanceOf(SQLiteCloudRowset)
       expect(rowset.metadata.version).toBe(2)

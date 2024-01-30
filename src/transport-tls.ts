@@ -1,15 +1,14 @@
 /**
- * connection.ts - handles low level communication with sqlitecloud server
+ * transport-tls.ts - handles low level communication with sqlitecloud server via tls socket and binary protocol
  */
-
-import tls, { TLSSocket } from 'tls'
-
-const lz4 = require('lz4js')
 
 import { SQLiteCloudConfig, SQLCloudRowsetMetadata, SQLiteCloudError, SQLiteCloudDataTypes, ErrorCallback, ResultsCallback } from './types'
 import { SQLiteCloudRowset } from './rowset'
-import { SQLiteCloudConnection, DEFAULT_TIMEOUT, DEFAULT_PORT } from './connection'
+import { ConnectionTransport, getInitializationCommands } from './connection'
 import { anonimizeError, anonimizeCommand } from './connection'
+
+import tls, { TLSSocket } from 'tls'
+const lz4 = require('lz4js')
 
 /**
  * The server communicates with clients via commands defined
@@ -40,96 +39,84 @@ const CMD_ARRAY = '='
  * All operations are serialized by waiting for any pending operations to complete. Once a connection is closed,
  * it cannot be reopened and you must create a new connection.
  */
-export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
-  /** Parse and validate provided connectionString or configuration */
-  constructor(config: SQLiteCloudConfig | string, callback?: ErrorCallback) {
-    super(config, callback)
-  }
-
+export class TlsSocketTransport implements ConnectionTransport {
+  /** Configuration passed to connect */
+  private config?: SQLiteCloudConfig
   /** Currently opened tls socket used to communicated with SQLiteCloud server */
   private socket?: tls.TLSSocket | null
 
-  //
-  // public properties
-  //
-
   /** True if connection is open */
-  public get connected(): boolean {
+  get connected(): boolean {
     return !!this.socket
   }
 
-  //
-  // private methods
-  //
-
   /* Opens a connection with the server and sends the initialization commands. Will throw in case of errors. */
-  protected connect(callback?: ErrorCallback): this {
-    this.operations.enqueue(done => {
-      // connection established while we were waiting in line?
-      console.assert(!this.connected, 'Connection already established')
+  connect(config: SQLiteCloudConfig, callback?: ErrorCallback): this {
+    // connection established while we were waiting in line?
+    console.assert(!this.connected, 'Connection already established')
 
-      // clear all listeners and call done in the operations queue
-      const finish: ResultsCallback = error => {
-        if (this.socket) {
-          this.socket.removeAllListeners('data')
-          this.socket.removeAllListeners('error')
-          this.socket.removeAllListeners('close')
-          if (error) {
+    // clear all listeners and call done in the operations queue
+    const finish: ResultsCallback = error => {
+      if (this.socket) {
+        this.socket.removeAllListeners('data')
+        this.socket.removeAllListeners('error')
+        this.socket.removeAllListeners('close')
+        if (error) {
+          this.close()
+        }
+      }
+    }
+
+    this.config = config
+
+    // connect to tls socket, initialize connection, setup event handlers
+    this.socket = tls.connect(this.config.port as number, this.config.host, this.config.tlsOptions, () => {
+      if (!this.socket?.authorized) {
+        const anonimizedError = anonimizeError((this.socket as TLSSocket).authorizationError)
+        console.debug('Connection was not authorized', anonimizedError)
+        this.close()
+        finish(new SQLiteCloudError('Connection was not authorized', { cause: anonimizedError }))
+      } else {
+        // the connection was closed before it was even opened,
+        // eg. client closed the connection before the server accepted it
+        if (this.socket === null) {
+          console.debug('Connection was closed before it was opened')
+          finish(new SQLiteCloudError('Connection was closed before it was done opening'))
+          return
+        }
+
+        // send initialization commands
+        console.assert(this.socket, 'Connection already closed')
+        const commands = getInitializationCommands(config)
+        this.processCommands(commands, error => {
+          if (error && this.socket) {
             this.close()
           }
-        }
-        done(error)
-      }
-
-      // connect to tls socket, initialize connection, setup event handlers
-      this.socket = tls.connect(this.config.port as number, this.config.host, this.config.tlsOptions, () => {
-        if (!this.socket?.authorized) {
-          const anonimizedError = anonimizeError((this.socket as TLSSocket).authorizationError)
-          this.log('Connection was not authorized', anonimizedError)
-          this.close()
-          finish(new SQLiteCloudError('Connection was not authorized', { cause: anonimizedError }))
-        } else {
-          // the connection was closed before it was even opened,
-          // eg. client closed the connection before the server accepted it
-          if (this.socket === null) {
-            this.log('Connection was closed before it was opened')
-            finish(new SQLiteCloudError('Connection was closed before it was done opening'))
-            return
+          if (callback) {
+            callback?.call(this, error)
+            callback = undefined
           }
+          finish(error)
+        })
+      }
+    })
 
-          // send initialization commands
-          console.assert(this.socket, 'Connection already closed')
-          const commands = this.initializationCommands
-          this.processCommands(commands, error => {
-            if (error && this.socket) {
-              this.close()
-            }
-            if (callback) {
-              callback?.call(this, error)
-              callback = undefined
-            }
-            finish(error)
-          })
-        }
-      })
+    this.socket.on('close', () => {
+      console.debug('Connection closed')
+      this.socket = null
+      finish(new SQLiteCloudError('Connection was closed'))
+    })
 
-      this.socket.on('close', () => {
-        this.log('Connection closed')
-        this.socket = null
-        finish(new SQLiteCloudError('Connection was closed'))
-      })
-
-      this.socket.once('error', (error: any) => {
-        this.log('Connection error', error)
-        finish(new SQLiteCloudError('Connection error', { cause: error }))
-      })
+    this.socket.once('error', (error: any) => {
+      console.debug('Connection error', error)
+      finish(new SQLiteCloudError('Connection error', { cause: error }))
     })
 
     return this
   }
 
   /** Will send a command immediately (no queueing), return the rowset/result or throw an error */
-  protected processCommands(commands: string, callback?: ResultsCallback): this {
+  processCommands(commands: string, callback?: ResultsCallback): this {
     // connection needs to be established?
     if (!this.socket) {
       callback?.call(this, new SQLiteCloudError('Connection not established', { errorCode: 'ERR_CONNECTION_NOT_ESTABLISHED' }))
@@ -142,7 +129,7 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
     let buffer = Buffer.alloc(0)
     const rowsetChunks: Buffer[] = []
     const startedOn = new Date()
-    this.log(`Send: ${commands}`)
+    console.debug(`Send: ${commands}`)
 
     // define what to do if an answer does not arrive within the set timeout
     let socketTimeout: number
@@ -173,13 +160,13 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
           const commandLength = parseCommandLength(buffer)
           const hasReceivedEntireCommand = buffer.length - buffer.indexOf(' ') - 1 >= commandLength ? true : false
           if (hasReceivedEntireCommand) {
-            if (this.config.verbose) {
+            if (this.config?.verbose) {
               let bufferString = buffer.toString('utf8')
               if (bufferString.length > 1000) {
                 bufferString = bufferString.substring(0, 100) + '...' + bufferString.substring(bufferString.length - 40)
               }
               const elapsedMs = new Date().getTime() - startedOn.getTime()
-              this.log(`Receive: ${bufferString} - ${elapsedMs}ms`)
+              console.debug(`Receive: ${bufferString} - ${elapsedMs}ms`)
             }
 
             // need to decompress this buffer before decoding?
@@ -202,7 +189,7 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
                 rowsetChunks.push(buffer)
                 buffer = Buffer.alloc(0)
                 const okCommand = formatCommand('OK')
-                this.log(`Send: ${okCommand}`)
+                console.debug(`Send: ${okCommand}`)
                 this.socket?.write(okCommand)
               }
             }
@@ -230,14 +217,14 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
     this.socket?.write(commands, 'utf8', () => {
       socketTimeout = setTimeout(() => {
         const timeoutError = new SQLiteCloudError('Request timed out', { cause: anonimizeCommand(commands) })
-        this.log(`Request timed out, config.timeout is ${this.config.timeout as number}ms`, timeoutError)
+        this.log(`Request timed out, config.timeout is ${this.config?.timeout as number}ms`, timeoutError)
         finish(timeoutError)
-      }, this.config.timeout)
+      }, this.config?.timeout)
       this.socket?.on('data', readData)
     })
 
     this.socket?.once('error', (error: any) => {
-      this.log('Socket error', error)
+      console.debug('Socket error', error)
       this.close()
       finish(new SQLiteCloudError('Socket error', { cause: anonimizeError(error) }))
     })
@@ -245,35 +232,13 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
     return this
   }
 
-  //
-  // public methods
-  //
-
-  /** Enable verbose logging for debug purposes */
-  public verbose(): void {
-    this.config.verbose = true
-  }
-
-  /** Will enquee a command to be executed and callback with the resulting rowset/result/error */
-  public sendCommands(commands: string, callback?: ResultsCallback): this {
-    this.operations.enqueue(done => {
-      this.processCommands(commands, (error, result) => {
-        callback?.call(this, error, result)
-        done(error)
-      })
-    })
-
-    return this
-  }
-
   /** Disconnect from server, release connection. */
-  public close(): this {
-    console.assert(this.socket !== null, 'SQLiteCloudConnection.close - connection already closed')
+  close(): this {
+    console.assert(this.socket !== null, 'TlsSocketTransport.close - connection already closed')
     if (this.socket) {
       this.socket.destroy()
       this.socket = null
     }
-    this.operations.clear()
     this.socket = undefined
     return this
   }
