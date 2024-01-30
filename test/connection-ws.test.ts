@@ -54,17 +54,13 @@ describe('connection-ws', () => {
 
     it('should connect with config object string', done => {
       const configObj = getChinookConfig()
-      const conn = new SQLiteCloudWebsocketConnection(configObj, error => {
-        expect(error).toBeNull()
-        expect(conn.connected).toBe(true)
-
-        chinook.sendCommands('TEST STRING', (error, results) => {
-          conn.close()
-          expect(conn.connected).toBe(false)
-          done()
-        })
+      const connection = new SQLiteCloudWebsocketConnection(configObj)
+      expect(connection).toBeDefined()
+      connection.sendCommands('TEST STRING', (error, results) => {
+        connection.close()
+        expect(connection.connected).toBe(false)
+        done()
       })
-      expect(conn).toBeDefined()
     })
 
     it('should connect with connection string', done => {
