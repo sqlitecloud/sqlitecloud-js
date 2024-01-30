@@ -62,7 +62,7 @@ export class SQLiteManager {
         query += ');'
       } else {
         if (typeof op != 'undefined' && column) {
-          let rand: string
+          let oldname: string
           switch (op) {
             case AT.RENAME_TABLE:
               this.query += 'ALTER TABLE "' + this.table.name + '" RENAME TO "' + column.name + '";\n'
@@ -77,14 +77,27 @@ export class SQLiteManager {
               if (newColumn) this.query += 'ALTER TABLE "' + this.table.name + '" RENAME COLUMN "' + column.name + '" TO "' + newColumn + '";\n'
               break
             default:
-              rand = Math.floor(Math.random() * 1000000000000).toString()
               this.query += '\n\nPRAGMA foreign_keys = OFF;\n'
               this.query += 'BEGIN TRANSACTION;\n'
-              this.query += 'ALTER TABLE "' + this.table.name + '" RENAME TO sqlitemanager_temp_table_' + rand + ';\n'
+              this.query += 'SELECT type, sql FROM sqlite_schema WHERE tbl_name=' + this.table.name + ';\n'
               this.create = true
+              oldname = this.table.name
+              this.table.name = 'new_' + this.table.name
               this.query += this.queryBuilder()
               this.create = false
-              this.query += '\nDROP TABLE sqlitemanager_temp_table_' + rand + ';\n'
+              this.query += '\nINSERT INTO "' + this.table.name + '" SELECT * FROM "' + oldname + '";\n'
+              this.query += 'DROP TABLE "' + oldname + '";\n'
+              this.query += 'ALTER TABLE "' + this.table.name + '" RENAME TO "' + oldname + '";\n'
+              this.table.name = oldname
+              /*          
+TODO  
+Use CREATE INDEX, CREATE TRIGGER, and CREATE VIEW to reconstruct indexes, triggers, and views associated with table X. Perhaps use the old format of the triggers, indexes, and views saved from step 3 above as a guide, making changes as appropriate for the alteration.
+
+If any views refer to table X in a way that is affected by the schema change, then drop those views using DROP VIEW and recreate them with whatever changes are necessary to accommodate the schema change using CREATE VIEW.
+
+If foreign key constraints were originally enabled then run PRAGMA foreign_key_check to verify that the schema change did not break any foreign key constraints.
+
+*/
               this.query += 'COMMIT;\n'
               this.query += 'PRAGMA foreign_keys = ON;\n'
 

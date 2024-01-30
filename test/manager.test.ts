@@ -59,10 +59,10 @@ describe('Create a table', () => {
 
     expect(risCh).toContain('PRAGMA foreign_keys = OFF;')
     expect(risCh).toContain('BEGIN TRANSACTION;')
-    expect(risCh).toContain('ALTER TABLE "' + testTable.name + '" RENAME TO sqlitemanager_temp_table_')
-    expect(risCh).toContain('CREATE TABLE "' + testTable.name + '" ("')
+    expect(risCh).toContain('ALTER TABLE "new_' + testTable.name + '" RENAME TO "' + testTable.name + '";')
+    expect(risCh).toContain('CREATE TABLE "new_' + testTable.name + '" ("')
     expect(risCh).toContain('"' + testTable.columns[2].name + '" TEXT')
-    expect(risCh).toContain('DROP TABLE sqlitemanager_temp_table_')
+    expect(risCh).toContain('DROP TABLE "' + testTable.name)
     expect(risCh).toContain('COMMIT;')
     expect(risCh).toContain('PRAGMA foreign_keys = ON;')
 
