@@ -9,7 +9,7 @@ import { ResultsCallback, SQLiteCloudConfig } from '../src/types'
 import { parseConnectionString } from '../src/utilities'
 
 import * as dotenv from 'dotenv'
-import { SQLiteCloudConnection, SQLiteCloudTlsConnection } from '../src'
+import { SQLiteCloudConnection, SQLiteCloudTlsConnection, SQLiteCloudWebsocketConnection } from '../src'
 dotenv.config()
 
 export const LONG_TIMEOUT = 1 * 60 * 1000 // 1 minute
@@ -87,7 +87,14 @@ export function getChinookConfig(url = CHINOOK_DATABASE_URL, extraConfig?: Parti
   return chinookConfig
 }
 
-export function getChinookConnection(callback?: ResultsCallback, extraConfig?: Partial<SQLiteCloudConfig>): SQLiteCloudConnection {
+/** Returns connection to chinook via websocket gateway */
+export function getChinookWebsocketConnection(callback?: ResultsCallback, extraConfig?: Partial<SQLiteCloudConfig>): SQLiteCloudConnection {
+  const chinookConfig = getChinookConfig(CHINOOK_DATABASE_URL, extraConfig)
+  const chinookConnection = new SQLiteCloudWebsocketConnection(chinookConfig, callback)
+  return chinookConnection
+}
+
+export function getChinookTlsConnection(callback?: ResultsCallback, extraConfig?: Partial<SQLiteCloudConfig>): SQLiteCloudConnection {
   const chinookConfig = getChinookConfig(CHINOOK_DATABASE_URL, extraConfig)
   return new SQLiteCloudTlsConnection(chinookConfig, callback)
 }

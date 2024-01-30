@@ -1,8 +1,8 @@
 /**
- * connection.test.ts - test low level communication protocol
+ * connection-ws.test.ts - test connection via socket.io based gateway
  */
 
-import { SQLiteCloudTlsConnection } from '../src/index'
+import { SQLiteCloudWebsocketConnection } from '../src/index'
 import { SQLiteCloudError } from '../src/index'
 import { SQLiteCloudConnection, anonimizeCommand } from '../src/connection'
 import {
@@ -10,17 +10,17 @@ import {
   LONG_TIMEOUT,
   getTestingConfig,
   getChinookConfig,
-  getChinookConnection,
+  getChinookWebsocketConnection,
   // clearTestingDatabasesAsync,
   WARN_SPEED_MS,
   EXPECT_SPEED_MS
 } from './shared'
 
-describe('connection', () => {
+describe('connection-ws', () => {
   let chinook: SQLiteCloudConnection
 
   beforeEach(() => {
-    chinook = getChinookConnection()
+    chinook = getChinookWebsocketConnection()
   })
 
   afterEach(() => {
@@ -54,7 +54,7 @@ describe('connection', () => {
 
     it('should connect with config object string', done => {
       const configObj = getChinookConfig()
-      const conn = new SQLiteCloudTlsConnection(configObj, error => {
+      const conn = new SQLiteCloudWebsocketConnection(configObj, error => {
         expect(error).toBeNull()
         expect(conn.connected).toBe(true)
 
@@ -73,7 +73,7 @@ describe('connection', () => {
         done()
       }
 
-      const conn = new SQLiteCloudTlsConnection(CHINOOK_DATABASE_URL, error => {
+      const conn = new SQLiteCloudWebsocketConnection(CHINOOK_DATABASE_URL, error => {
         expect(error).toBeNull()
         expect(conn.connected).toBe(true)
 
@@ -93,7 +93,7 @@ describe('connection', () => {
       delete testingConfig.password
 
       try {
-        const conn = new SQLiteCloudTlsConnection(testingConfig)
+        const conn = new SQLiteCloudWebsocketConnection(testingConfig)
       } catch (error) {
         expect(error).toBeDefined()
         expect(error).toBeInstanceOf(SQLiteCloudError)
@@ -265,7 +265,7 @@ describe('connection', () => {
       'should test chunked rowset',
       done => {
         // this operation sends 150 packets, so we need to increase the timeout
-        const database = getChinookConnection(undefined, { timeout: 60 * 1000 })
+        const database = getChinookWebsocketConnection(undefined, { timeout: 60 * 1000 })
         database.sendCommands('TEST ROWSET_CHUNK', (error, results) => {
           expect(error).toBeNull()
           expect(results.numberOfRows).toBe(147)
@@ -307,7 +307,7 @@ describe('connection', () => {
 
     it('should apply short timeout', done => {
       // this operation sends 150 packets and cannot complete in 20ms
-      const database = getChinookConnection(
+      const database = getChinookWebsocketConnection(
         error => {
           if (error) {
             expect(error).toBeInstanceOf(SQLiteCloudError)

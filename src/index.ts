@@ -10,5 +10,6 @@ export { SQLiteCloudRowset, SQLiteCloudRow } from './rowset'
 
 export { SQLiteCloudConnection } from './connection'
 export { SQLiteCloudTlsConnection } from './connection-tls'
+export { SQLiteCloudWebsocketConnection } from './connection-ws'
 
 export { escapeSqlParameter, prepareSql } from './utilities'

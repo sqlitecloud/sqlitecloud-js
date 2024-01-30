@@ -3,11 +3,11 @@
  */
 
 import { SQLiteCloudRowset, SQLiteCloudRow } from '../src/index'
-import { getChinookConnection } from './shared'
+import { getChinookTlsConnection } from './shared'
 
 describe('row', () => {
   it('can be accessed as a dictionary', done => {
-    const connection = getChinookConnection()
+    const connection = getChinookTlsConnection()
     connection.sendCommands('SELECT * FROM tracks LIMIT 10;', (error, rowset) => {
       expect(rowset).toBeInstanceOf(SQLiteCloudRowset)
 
@@ -31,7 +31,7 @@ describe('row', () => {
   })
 
   it('can be accessed as an array', done => {
-    const connection = getChinookConnection()
+    const connection = getChinookTlsConnection()
     connection.sendCommands('SELECT * FROM tracks LIMIT 10;', (error, rowset) => {
       expect(rowset).toBeInstanceOf(SQLiteCloudRowset)
 
