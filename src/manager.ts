@@ -82,7 +82,11 @@ export class SQLiteManager {
               this.query += 'SELECT type, sql FROM sqlite_schema WHERE tbl_name=' + this.table.name + ';\n'
               this.create = true
               oldname = this.table.name
-              this.table.name = 'new_' + this.table.name
+              if (typeof this.findColumn('new_' + this.table.name) == 'undefined') {
+                this.table.name = 'new_' + this.table.name
+              } else {
+                throw new Error('Column new_' + this.table.name + 'already exists')
+              }
               this.query += this.queryBuilder()
               this.create = false
               this.query += '\nINSERT INTO "' + this.table.name + '" SELECT * FROM "' + oldname + '";\n'
@@ -95,9 +99,8 @@ Use CREATE INDEX, CREATE TRIGGER, and CREATE VIEW to reconstruct indexes, trigge
 
 If any views refer to table X in a way that is affected by the schema change, then drop those views using DROP VIEW and recreate them with whatever changes are necessary to accommodate the schema change using CREATE VIEW.
 
-If foreign key constraints were originally enabled then run PRAGMA foreign_key_check to verify that the schema change did not break any foreign key constraints.
-
 */
+              this.query += 'PRAGMA foreign_key_check("' + this.table.name + '");\n'
               this.query += 'COMMIT;\n'
               this.query += 'PRAGMA foreign_keys = ON;\n'
 
@@ -175,7 +178,11 @@ If foreign key constraints were originally enabled then run PRAGMA foreign_key_c
 
   addColumn(column: SQLiteManagerColumn): string {
     if (this.table.columns) {
-      this.table.columns.push(column)
+      if (typeof this.findColumn(column.name) == 'undefined') {
+        this.table.columns.push(column)
+      } else {
+        throw new Error('Column already exists')
+      }
     } else {
       this.table.columns = [column]
     }
@@ -197,7 +204,11 @@ If foreign key constraints were originally enabled then run PRAGMA foreign_key_c
     const i = this.findColumn(oldColumnName)
 
     if (typeof i != 'undefined' && this.table.columns) {
-      this.table.columns[i].name = newColumnName
+      if (typeof this.findColumn(newColumnName) == 'undefined') {
+        this.table.columns[i].name = newColumnName
+      } else {
+        throw new Error('Column already exists')
+      }
     }
 
     return this.queryBuilder(AT.RENAME_COLUMN, { name: oldColumnName } as SQLiteManagerColumn, newColumnName)

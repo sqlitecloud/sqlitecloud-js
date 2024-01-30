@@ -57,7 +57,7 @@ export const testTable2 = {
     },
     {
       name: 'test2',
-      type: types.SQLiteManagerType.INTEGER,
+      type: types.SQLiteManagerType.BLOB,
       constraints: {
         NOT_NULL: true,
         UNIQUE: true
@@ -73,7 +73,7 @@ export const testTable2 = {
     },
     {
       name: 'test4',
-      type: types.SQLiteManagerType.BLOB,
+      type: types.SQLiteManagerType.INTEGER,
       constraints: {
         NOT_NULL: true,
         UNIQUE: true,
