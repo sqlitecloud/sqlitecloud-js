@@ -2,9 +2,18 @@
  * connection.ts - handles low level communication with sqlitecloud server
  */
 
-import { SQLiteCloudConfig, SQLCloudRowsetMetadata, SQLiteCloudError, SQLiteCloudDataTypes, ErrorCallback, ResultsCallback } from './types'
-import { SQLiteCloudRowset } from './rowset'
+import { SQLiteCloudConfig, SQLiteCloudError, ErrorCallback, ResultsCallback } from './types'
 import { parseConnectionString, parseBoolean } from './utilities'
+
+/** tls.TLSSocket is required to connect using TlsSocketTransport but is only supported in node.js environments  */
+let tlsSupported = false
+import('tls')
+  .then(() => {
+    tlsSupported = true
+  })
+  .catch(() => {
+    tlsSupported = false
+  })
 
 /** Default timeout value for queries */
 export const DEFAULT_TIMEOUT = 300 * 1000
@@ -49,22 +58,36 @@ export class SQLiteCloudConnection {
 
   protected connect(callback?: ErrorCallback): this {
     this.operations.enqueue(done => {
-      if (false) {
-        const transport = require('./transport-ws')
-        this.transport = new transport.WebSocketTransport()
+      // connect using websocket if tls is not supported or if explicitly requested
+      if (!tlsSupported || this.config?.websocketOptions?.useWebsocket || this.config?.websocketOptions?.gatewayUrl) {
+        // socket.io transport works in both node.js and browser environments and connects via SQLite Cloud Gateway
+        import('./transport-ws')
+          .then(transport => {
+            this.transport = new transport.WebSocketTransport()
+            this.transport.connect(this.config, error => {
+              if (error) this.close()
+              callback?.call(this, error)
+              done(error)
+            })
+          })
+          .catch(error => {
+            done(error)
+          })
       } else {
-        const transport = require('./transport-tls')
-        this.transport = new transport.TlsSocketTransport()
+        // tls sockets work only in node.js environments
+        import('./transport-tls')
+          .then(transport => {
+            this.transport = new transport.TlsSocketTransport()
+            this.transport.connect(this.config, error => {
+              if (error) this.close()
+              callback?.call(this, error)
+              done(error)
+            })
+          })
+          .catch(error => {
+            done(error)
+          })
       }
-
-      // ask transport layer to connect
-      this.transport?.connect(this.config, error => {
-        if (error) {
-          this.close()
-        }
-        callback?.call(this, error)
-        done(error)
-      })
     })
 
     return this
@@ -263,4 +286,31 @@ export interface ConnectionTransport {
   processCommands(commands: string, callback?: ResultsCallback): this
   /** Disconnect from server, release transport. */
   close(): this
+}
+
+//
+// utilities
+//
+
+async function loadTlsModuleIfSupported() {
+  // Check if running in Node.js
+  if (typeof process !== 'undefined' && process.versions && process.versions.node) {
+    try {
+      // Dynamically import the 'tls' module
+      const tls = await import('tls')
+
+      // Check if TLSSocket is available
+      if (tls && tls.TLSSocket) {
+        console.log('tls.TLSSocket is supported. Module loaded.')
+        // Module is supported, you can use it here
+        // For example, return it or perform further operations
+        return tls
+      }
+    } catch (error) {
+      console.error('tls module is not supported in this environment.')
+    }
+  } else {
+    console.log('Not running in a Node.js environment.')
+  }
+  return null
 }

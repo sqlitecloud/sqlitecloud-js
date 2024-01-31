@@ -2,7 +2,6 @@
  * connection-ws.test.ts - test connection via socket.io based gateway
  */
 
-import { SQLiteCloudWebsocketConnection } from '../src/index'
 import { SQLiteCloudError } from '../src/index'
 import { SQLiteCloudConnection, anonimizeCommand } from '../src/connection'
 import {
