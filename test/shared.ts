@@ -94,10 +94,8 @@ export function getChinookWebsocketConnection(callback?: ResultsCallback, extraC
   let chinookConfig = getChinookConfig(CHINOOK_DATABASE_URL, extraConfig)
   chinookConfig = {
     ...chinookConfig,
-    websocketOptions: {
-      useWebsocket: true,
-      gatewayUrl: GATEWAY_URL
-    }
+    useWebsocket: true,
+    gatewayUrl: GATEWAY_URL
   }
   const chinookConnection = new SQLiteCloudConnection(chinookConfig, callback)
   return chinookConnection

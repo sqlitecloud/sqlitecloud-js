@@ -3,21 +3,10 @@
  */
 
 import { SQLiteCloudConfig, SQLiteCloudError, ErrorCallback, ResultsCallback } from './types'
-import { parseConnectionString, parseBoolean } from './utilities'
-
-/** tls.TLSSocket is required to connect using TlsSocketTransport but is only supported in node.js environments  */
-let tlsSupported = false
-import('tls')
-  .then(() => {
-    tlsSupported = true
-  })
-  .catch(() => {
-    tlsSupported = false
-  })
+import { parseConnectionString, parseBoolean, isBrowser, isNode } from './utilities'
 
 /** Default timeout value for queries */
 export const DEFAULT_TIMEOUT = 300 * 1000
-
 /** Default tls connection port */
 export const DEFAULT_PORT = 9960
 
@@ -60,7 +49,7 @@ export class SQLiteCloudConnection {
   protected connect(callback?: ErrorCallback): this {
     this.operations.enqueue(done => {
       // connect using websocket if tls is not supported or if explicitly requested
-      if (!tlsSupported || this.config?.websocketOptions?.useWebsocket || this.config?.websocketOptions?.gatewayUrl) {
+      if (isBrowser || this.config?.useWebsocket || this.config?.gatewayUrl) {
         // socket.io transport works in both node.js and browser environments and connects via SQLite Cloud Gateway
         import('./transport-ws')
           .then(transport => {
@@ -127,6 +116,7 @@ export class SQLiteCloudConnection {
     config.sqliteMode = parseBoolean(config.sqliteMode)
 
     if (!config.username || !config.password || !config.host) {
+      console.error(`SQLiteCloudConnection.validateConfiguration - missing arguments`, config)
       throw new SQLiteCloudError('The user, password and host arguments must be specified.', { errorCode: 'ERR_MISSING_ARGS' })
     }
 

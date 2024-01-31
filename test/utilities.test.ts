@@ -107,6 +107,29 @@ describe('parseConnectionString', () => {
     })
   })
 
+  it('should parse connection string without database or options', () => {
+    const connectionString = 'sqlitecloud://user:password@host:1234'
+    const config = parseConnectionString(connectionString)
+
+    expect(config).toEqual({
+      username: 'user',
+      password: 'password',
+      host: 'host',
+      port: 1234
+    })
+  })
+
+  it('should parse connection string without port', () => {
+    const connectionString = 'sqlitecloud://user:password@host'
+    const config = parseConnectionString(connectionString)
+
+    expect(config).toEqual({
+      username: 'user',
+      password: 'password',
+      host: 'host'
+    })
+  })
+
   it('should throw SQLiteCloudError if the connection string is invalid', () => {
     const connectionString = 'not a valid url'
 

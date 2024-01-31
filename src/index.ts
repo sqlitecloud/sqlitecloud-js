@@ -8,3 +8,4 @@ export { SQLiteCloudConfig, SQLCloudRowsetMetadata, SQLiteCloudError, ErrorCallb
 export { SQLiteCloudRowset, SQLiteCloudRow } from './rowset'
 export { SQLiteCloudConnection } from './connection'
 export { escapeSqlParameter, prepareSql } from './utilities'
+export { WebSocketTransport } from './transport-ws'

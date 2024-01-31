@@ -35,7 +35,7 @@ describe('connection-ws', () => {
 
     it('should connect with config object string', done => {
       const configObj = getChinookConfig()
-      configObj.websocketOptions = { useWebsocket: true }
+      configObj.useWebsocket = true
       const connection = new SQLiteCloudConnection(configObj)
       expect(connection).toBeDefined()
       connection.sendCommands('TEST STRING', (error, results) => {
@@ -49,7 +49,7 @@ describe('connection-ws', () => {
       const configObj = getChinookConfig()
       configObj.connectionString?.replace(configObj.password as string, 'wrongpassword')
       configObj.password = 'wrongpassword'
-      configObj.websocketOptions = { useWebsocket: true }
+      configObj.useWebsocket = true 
 
       // should attemp connection and return error
       const connection = new SQLiteCloudConnection(configObj)
