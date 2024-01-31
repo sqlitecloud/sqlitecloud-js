@@ -56,6 +56,7 @@ export class SQLiteCloudConnection {
     return this.transport?.connected || false
   }
 
+  /** Connect will establish a tls or websocket transport to the server based on configuration and environment */
   protected connect(callback?: ErrorCallback): this {
     this.operations.enqueue(done => {
       // connect using websocket if tls is not supported or if explicitly requested
@@ -65,8 +66,11 @@ export class SQLiteCloudConnection {
           .then(transport => {
             this.transport = new transport.WebSocketTransport()
             this.transport.connect(this.config, error => {
-              if (error) this.close()
-              callback?.call(this, error)
+              if (error) {
+                console.error(`SQLiteCloudConnection.connect - error while connecting WebSocketTransport: ${error.toString()}`, this.config, error)
+                this.close()
+              }
+              callback?.call(this, error || null)
               done(error)
             })
           })
@@ -79,8 +83,11 @@ export class SQLiteCloudConnection {
           .then(transport => {
             this.transport = new transport.TlsSocketTransport()
             this.transport.connect(this.config, error => {
-              if (error) this.close()
-              callback?.call(this, error)
+              if (error) {
+                console.error(`SQLiteCloudConnection.connect - error while connecting TlsSocketTransport: ${error.toString()}`, this.config, error)
+                this.close()
+              }
+              callback?.call(this, error || null)
               done(error)
             })
           })
@@ -102,7 +109,8 @@ export class SQLiteCloudConnection {
     if (config.connectionString) {
       config = {
         ...config,
-        ...parseConnectionString(config.connectionString)
+        ...parseConnectionString(config.connectionString),
+        connectionString: config.connectionString // keep original connection string
       }
     }
 
@@ -120,6 +128,10 @@ export class SQLiteCloudConnection {
 
     if (!config.username || !config.password || !config.host) {
       throw new SQLiteCloudError('The user, password and host arguments must be specified.', { errorCode: 'ERR_MISSING_ARGS' })
+    }
+
+    if (!config.connectionString) {
+      config.connectionString = `sqlitecloud://${config.username}:${config.password}@${config.host}:${config.port}/${config.database}`
     }
 
     return config
@@ -286,31 +298,4 @@ export interface ConnectionTransport {
   processCommands(commands: string, callback?: ResultsCallback): this
   /** Disconnect from server, release transport. */
   close(): this
-}
-
-//
-// utilities
-//
-
-async function loadTlsModuleIfSupported() {
-  // Check if running in Node.js
-  if (typeof process !== 'undefined' && process.versions && process.versions.node) {
-    try {
-      // Dynamically import the 'tls' module
-      const tls = await import('tls')
-
-      // Check if TLSSocket is available
-      if (tls && tls.TLSSocket) {
-        console.log('tls.TLSSocket is supported. Module loaded.')
-        // Module is supported, you can use it here
-        // For example, return it or perform further operations
-        return tls
-      }
-    } catch (error) {
-      console.error('tls module is not supported in this environment.')
-    }
-  } else {
-    console.log('Not running in a Node.js environment.')
-  }
-  return null
 }

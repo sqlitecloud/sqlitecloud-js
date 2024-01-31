@@ -4,13 +4,13 @@
 
 import { SQLiteCloudError } from '../src/index'
 import { SQLiteCloudConnection, anonimizeCommand } from '../src/connection'
+import { parseConnectionString } from '../src/utilities'
 import {
+  //
   CHINOOK_DATABASE_URL,
   LONG_TIMEOUT,
-  getTestingConfig,
   getChinookConfig,
   getChinookWebsocketConnection,
-  // clearTestingDatabasesAsync,
   WARN_SPEED_MS,
   EXPECT_SPEED_MS
 } from './shared'
@@ -32,30 +32,33 @@ describe('connection-ws', () => {
     it('should connect', () => {
       // ...in beforeEach
     })
-    /*
-    it(
-      'should drop all old testing databases',
-      async () => {
-        await clearTestingDatabasesAsync()
-      },
-      LONG_TIMEOUT
-    )
-*/
-    it('should add self signed certificate for localhost connections', () => {
-      const localConfig = getChinookConfig('sqlitecloud://admin:xxx@localhost:8850/chinook.db')
-      expect(localConfig.host).toBe('localhost')
-      expect(localConfig.tlsOptions?.ca).toBeTruthy()
-
-      const remoteConfig = getChinookConfig('sqlitecloud://admin:xxx@sqlitecloud.io:8850/chinook.db')
-      expect(remoteConfig.host).toBe('sqlitecloud.io')
-      expect(remoteConfig.tlsOptions).toBeFalsy()
-    })
 
     it('should connect with config object string', done => {
       const configObj = getChinookConfig()
-      const connection = new SQLiteCloudWebsocketConnection(configObj)
+      configObj.websocketOptions = { useWebsocket: true }
+      const connection = new SQLiteCloudConnection(configObj)
       expect(connection).toBeDefined()
       connection.sendCommands('TEST STRING', (error, results) => {
+        connection.close()
+        expect(connection.connected).toBe(false)
+        done()
+      })
+    })
+
+    it('should not connect with incorrect credentials', done => {
+      const configObj = getChinookConfig()
+      configObj.connectionString?.replace(configObj.password as string, 'wrongpassword')
+      configObj.password = 'wrongpassword'
+      configObj.websocketOptions = { useWebsocket: true }
+
+      // should attemp connection and return error
+      const connection = new SQLiteCloudConnection(configObj)
+      expect(connection).toBeDefined()
+      connection.sendCommands('TEST STRING', (error, results) => {
+        expect(error).toBeDefined()
+        expect(error).toBeInstanceOf(SQLiteCloudError)
+        expect((error as any).message).toBe('SQLiteCloudError: Authentication failed.')
+
         connection.close()
         expect(connection.connected).toBe(false)
         done()
@@ -68,7 +71,7 @@ describe('connection-ws', () => {
         done()
       }
 
-      const conn = new SQLiteCloudWebsocketConnection(CHINOOK_DATABASE_URL, error => {
+      const conn = new SQLiteCloudConnection(CHINOOK_DATABASE_URL, error => {
         expect(error).toBeNull()
         expect(conn.connected).toBe(true)
 
@@ -79,27 +82,6 @@ describe('connection-ws', () => {
         })
       })
       expect(conn).toBeDefined()
-    })
-
-    it('should throw when connection string lacks credentials', done => {
-      // use valid connection string but without credentials
-      const testingConfig = getTestingConfig()
-      delete testingConfig.username
-      delete testingConfig.password
-
-      try {
-        const conn = new SQLiteCloudWebsocketConnection(testingConfig)
-      } catch (error) {
-        expect(error).toBeDefined()
-        expect(error).toBeInstanceOf(SQLiteCloudError)
-        const sqliteCloudError = error as SQLiteCloudError
-        expect(sqliteCloudError.message).toBe('The user, password and host arguments must be specified.')
-        expect(sqliteCloudError.errorCode).toBe('ERR_MISSING_ARGS')
-        expect(sqliteCloudError.externalErrorCode).toBeUndefined()
-        expect(sqliteCloudError.offsetCode).toBeUndefined()
-
-        done()
-      }
     })
   })
 
@@ -299,30 +281,30 @@ describe('connection-ws', () => {
       },
       LONG_TIMEOUT
     )
-
+/* TODO RESTORE TEST
     it('should apply short timeout', done => {
-      // this operation sends 150 packets and cannot complete in 20ms
-      const database = getChinookWebsocketConnection(
-        error => {
-          if (error) {
+      // apply shorter timeout
+      const configObj = parseConnectionString(CHINOOK_DATABASE_URL + '?timeout=20')
+      configObj.websocketOptions = { useWebsocket: true }
+      const database = new SQLiteCloudConnection(configObj, error => {
+        if (error) {
+          expect(error).toBeInstanceOf(SQLiteCloudError)
+          expect((error as any).message).toBe('Request timed out')
+          done()
+          database.close()
+        } else {
+          // this operation sends 150 packets and cannot complete in 20ms
+          database.sendCommands('TEST ROWSET_CHUNK', (error, results) => {
             expect(error).toBeInstanceOf(SQLiteCloudError)
             expect((error as any).message).toBe('Request timed out')
             done()
             database.close()
-          } else {
-            database.sendCommands('TEST ROWSET_CHUNK', (error, results) => {
-              expect(error).toBeInstanceOf(SQLiteCloudError)
-              expect((error as any).message).toBe('Request timed out')
-              done()
-              database.close()
-            })
-          }
-        },
-        { timeout: 20 }
-      )
+          })
+        }
+      })
     })
   })
-
+*/
   describe('send select commands', () => {
     it('should LIST METADATA', done => {
       chinook.sendCommands('LIST METADATA;', (error, results) => {

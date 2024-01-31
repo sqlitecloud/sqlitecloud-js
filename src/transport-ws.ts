@@ -31,11 +31,8 @@ export class WebSocketTransport implements ConnectionTransport {
       console.assert(!this.connected, 'Connection already established')
       if (!this.socket) {
         this.config = config
-        const host = this.config.host as string
-        //          const connectionString = this.config.connectionString as string
-        const gatewayUrl = 'ws://localhost:4000'
-        //const gatewayUrl = `ws://${host}:4000`
-        const connectionString = 'sqlitecloud://admin:uN3ARhdcKQ@og0wjec-m.sqlite.cloud:8860/chinook.db'
+        let connectionString = this.config.connectionString as string
+        let gatewayUrl = this.config.websocketOptions?.gatewayUrl || `ws://${this.config.host}:4000`
         this.socket = io(gatewayUrl, { auth: { token: connectionString } })
       }
       callback?.call(this, null)
