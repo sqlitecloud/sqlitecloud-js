@@ -9,13 +9,13 @@
 ## Install
 
 ```bash
-npm install sqlitecloud
+npm install sqlitecloud-js
 ```
 
 ## Usage
 
 ```ts
-import { Database } from 'sqlitecloud'
+import { Database } from 'sqlitecloud-js'
 
 let database = new Database('sqlitecloud://user:password@xxx.sqlite.cloud:8860/chinook.db')
 
@@ -44,9 +44,9 @@ How can I contribute or suggest features?
 
 [build-img]: https://github.com/sqlitecloud/sqlitecloud-js/actions/workflows/build-test-deploy.yml/badge.svg
 [build-url]: https://github.com/sqlitecloud/sqlitecloud-js/actions/workflows/build-test-deploy.yml
-[downloads-img]: https://img.shields.io/npm/dt/sqlitecloud
-[downloads-url]: https://www.npmtrends.com/sqlitecloud
-[npm-img]: https://img.shields.io/npm/v/sqlitecloud
-[npm-url]: https://www.npmjs.com/package/sqlitecloud
+[downloads-img]: https://img.shields.io/npm/dt/sqlitecloud-js
+[downloads-url]: https://www.npmtrends.com/sqlitecloud-js
+[npm-img]: https://img.shields.io/npm/v/sqlitecloud-js
+[npm-url]: https://www.npmjs.com/package/sqlitecloud-js
 [issues-img]: https://img.shields.io/github/issues/sqlitecloud/sqlitecloud-js
 [issues-url]: https://github.com/sqlitecloud/sqlitecloud-js/issues
