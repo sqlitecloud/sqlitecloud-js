@@ -123,9 +123,9 @@ export class Database extends EventEmitter {
 
   /** Emits given event with optional arguments on the next tick so callbacks can complete first */
   private emitEvent(event: string, ...args: any[]): void {
-    process.nextTick(() => {
+    setTimeout(() => {
       this.emit(event, ...args)
-    })
+    }, 0)
   }
 
   //
