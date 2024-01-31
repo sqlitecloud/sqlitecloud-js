@@ -28,8 +28,10 @@ export const SIMULTANEOUS_TEST_SIZE = 150
 /** Testing database from .env file */
 export const CHINOOK_DATABASE_URL = process.env.CHINOOK_DATABASE_URL as string
 export const TESTING_DATABASE_URL = process.env.TESTING_DATABASE_URL as string
+export const GATEWAY_URL = process.env.GATEWAY_URL as string
 expect(CHINOOK_DATABASE_URL).toBeDefined()
 expect(TESTING_DATABASE_URL).toBeDefined()
+expect(GATEWAY_URL).toBeDefined()
 
 export const SELF_SIGNED_CERTIFICATE = `-----BEGIN CERTIFICATE-----
 MIID6zCCAtOgAwIBAgIUI0lTm5CfVf3mVP8606CkophcyB4wDQYJKoZIhvcNAQEL
@@ -87,7 +89,19 @@ export function getChinookConfig(url = CHINOOK_DATABASE_URL, extraConfig?: Parti
   return chinookConfig
 }
 
-export function getChinookConnection(callback?: ResultsCallback, extraConfig?: Partial<SQLiteCloudConfig>): SQLiteCloudConnection {
+/** Returns connection to chinook via websocket gateway */
+export function getChinookWebsocketConnection(callback?: ResultsCallback, extraConfig?: Partial<SQLiteCloudConfig>): SQLiteCloudConnection {
+  let chinookConfig = getChinookConfig(CHINOOK_DATABASE_URL, extraConfig)
+  chinookConfig = {
+    ...chinookConfig,
+    useWebsocket: true,
+    gatewayUrl: GATEWAY_URL
+  }
+  const chinookConnection = new SQLiteCloudConnection(chinookConfig, callback)
+  return chinookConnection
+}
+
+export function getChinookTlsConnection(callback?: ResultsCallback, extraConfig?: Partial<SQLiteCloudConfig>): SQLiteCloudConnection {
   const chinookConfig = getChinookConfig(CHINOOK_DATABASE_URL, extraConfig)
   return new SQLiteCloudConnection(chinookConfig, callback)
 }

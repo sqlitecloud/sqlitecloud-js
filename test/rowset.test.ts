@@ -3,12 +3,12 @@
  */
 
 import { SQLiteCloudRowset, SQLiteCloudRow } from '../src/index'
-import { SQLiteCloudConnection } from '../src/connection'
-import { CHINOOK_DATABASE_URL, getChinookConnection, getChinookConfig } from './shared'
+import { SQLiteCloudConnection } from '../src/'
+import { CHINOOK_DATABASE_URL, getChinookTlsConnection, getChinookConfig } from './shared'
 
 describe('rowset', () => {
   it('can be accessed as an array', done => {
-    const connection = getChinookConnection()
+    const connection = getChinookTlsConnection()
     connection.sendCommands('SELECT * FROM tracks LIMIT 10;', (error, rowset) => {
       expect(rowset).toBeInstanceOf(SQLiteCloudRowset)
       expect(rowset.numberOfColumns).toBe(9)
@@ -35,7 +35,7 @@ describe('rowset', () => {
   })
 
   it('implements .map', done => {
-    const connection = getChinookConnection()
+    const connection = getChinookTlsConnection()
     connection.sendCommands('SELECT * FROM tracks LIMIT 10;', (error, rowset) => {
       expect(rowset).toBeInstanceOf(SQLiteCloudRowset)
       expect(rowset.numberOfColumns).toBe(9)
@@ -54,7 +54,7 @@ describe('rowset', () => {
   })
 
   it('implements .filter', done => {
-    const connection = getChinookConnection()
+    const connection = getChinookTlsConnection()
     connection.sendCommands('SELECT * FROM tracks LIMIT 10;', (error, rowset) => {
       expect(rowset).toBeInstanceOf(SQLiteCloudRowset)
       expect(rowset.numberOfColumns).toBe(9)
@@ -73,7 +73,7 @@ describe('rowset', () => {
   })
 
   it('implements .reduce', done => {
-    const connection = getChinookConnection()
+    const connection = getChinookTlsConnection()
     connection.sendCommands('SELECT * FROM invoices;', (error, rowset) => {
       expect(rowset).toBeInstanceOf(SQLiteCloudRowset)
 
@@ -87,7 +87,7 @@ describe('rowset', () => {
   })
 
   it('can be sliced like an array', done => {
-    const connection = getChinookConnection()
+    const connection = getChinookTlsConnection()
     connection.sendCommands('SELECT * FROM tracks LIMIT 50;', (error, rowset) => {
       expect(rowset).toBeInstanceOf(SQLiteCloudRowset)
       expect(rowset.numberOfColumns).toBe(9)
@@ -127,7 +127,7 @@ describe('rowset', () => {
   })
 
   it('contains basic metadata', done => {
-    const connection = getChinookConnection()
+    const connection = getChinookTlsConnection()
     connection.sendCommands('SELECT * FROM tracks LIMIT 10;', (error, rowset) => {
       expect(rowset).toBeInstanceOf(SQLiteCloudRowset)
       expect(rowset.metadata.numberOfRows).toBe(10)
