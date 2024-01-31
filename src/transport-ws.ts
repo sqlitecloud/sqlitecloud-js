@@ -32,7 +32,7 @@ export class WebSocketTransport implements ConnectionTransport {
       if (!this.socket) {
         this.config = config
         let connectionString = this.config.connectionString as string
-        let gatewayUrl = this.config.websocketOptions?.gatewayUrl || `ws://${this.config.host}:4000`
+        let gatewayUrl = this.config?.gatewayUrl || `ws://${this.config.host}:4000`
         this.socket = io(gatewayUrl, { auth: { token: connectionString } })
       }
       callback?.call(this, null)
