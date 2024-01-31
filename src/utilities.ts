@@ -5,6 +5,14 @@
 import { SQLiteCloudConfig, SQLiteCloudError, SQLiteCloudDataTypes } from './types'
 
 //
+// determining running environment, thanks to browser-or-node
+// https://www.npmjs.com/package/browser-or-node
+//
+
+export const isBrowser: boolean = typeof window !== 'undefined' && typeof window.document !== 'undefined'
+export const isNode: boolean = typeof process !== 'undefined' && process.versions != null && process.versions.node != null
+
+//
 // utility methods
 //
 
@@ -107,26 +115,36 @@ export function popCallback<T extends ErrorCallback = ErrorCallback>(
   return { args: remaining }
 }
 
-/** Parse connectionString like sqlitecloud://usernam:password@host:port/database?option1=xxx&option2=xxx into its components */
+/** Parse connectionString like sqlitecloud://username:password@host:port/database?option1=xxx&option2=xxx into its components */
 export function parseConnectionString(connectionString: string): SQLiteCloudConfig {
   try {
     // The URL constructor throws a TypeError if the URL is not valid.
-    const url = new URL(connectionString)
-    const database = url.pathname.replace('/', '') // pathname is database name, remove the leading slash
+    // in spite of having the same structure as a regular url
+    // protocol://username:password@host:port/database?option1=xxx&option2=xxx)
+    // the sqlitecloud: protocol is not recognized by the URL constructor in browsers
+    // so we need to replace it with https: to make it work
+    const knownProtocolUrl = connectionString.replace('sqlitecloud:', 'https:')
+    const url = new URL(knownProtocolUrl)
     const options: { [key: string]: string } = {}
 
     url.searchParams.forEach((value, key) => {
       options[key] = value
     })
 
-    return {
+    const config: SQLiteCloudConfig = {
       username: url.username,
       password: url.password,
       host: url.hostname,
       port: url.port ? parseInt(url.port) : undefined,
-      database,
       ...options
     }
+
+    const database = url.pathname.replace('/', '') // pathname is database name, remove the leading slash
+    if (database) {
+      config.database = database
+    }
+
+    return config
   } catch (error) {
     throw new SQLiteCloudError(`Invalid connection string: ${connectionString}`)
   }
