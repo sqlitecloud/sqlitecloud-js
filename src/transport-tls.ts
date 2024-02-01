@@ -73,14 +73,13 @@ export class TlsSocketTransport implements ConnectionTransport {
     this.socket = tls.connect(this.config.port as number, this.config.host, this.config.tlsOptions, () => {
       if (!this.socket?.authorized) {
         const anonimizedError = anonimizeError((this.socket as TLSSocket).authorizationError)
-        console.debug('Connection was not authorized', anonimizedError)
+        console.error('Connection was not authorized', anonimizedError)
         this.close()
         finish(new SQLiteCloudError('Connection was not authorized', { cause: anonimizedError }))
       } else {
         // the connection was closed before it was even opened,
         // eg. client closed the connection before the server accepted it
         if (this.socket === null) {
-          console.debug('Connection was closed before it was opened')
           finish(new SQLiteCloudError('Connection was closed before it was done opening'))
           return
         }
@@ -102,13 +101,12 @@ export class TlsSocketTransport implements ConnectionTransport {
     })
 
     this.socket.on('close', () => {
-      console.debug('Connection closed')
       this.socket = null
       finish(new SQLiteCloudError('Connection was closed'))
     })
 
     this.socket.once('error', (error: any) => {
-      console.debug('Connection error', error)
+      console.error('Connection error', error)
       finish(new SQLiteCloudError('Connection error', { cause: error }))
     })
 
@@ -129,7 +127,6 @@ export class TlsSocketTransport implements ConnectionTransport {
     let buffer = Buffer.alloc(0)
     const rowsetChunks: Buffer[] = []
     const startedOn = new Date()
-    console.debug(`Send: ${commands}`)
 
     // define what to do if an answer does not arrive within the set timeout
     let socketTimeout: number
@@ -166,7 +163,7 @@ export class TlsSocketTransport implements ConnectionTransport {
                 bufferString = bufferString.substring(0, 100) + '...' + bufferString.substring(bufferString.length - 40)
               }
               const elapsedMs = new Date().getTime() - startedOn.getTime()
-              console.debug(`Receive: ${bufferString} - ${elapsedMs}ms`)
+              // console.debug(`Receive: ${bufferString} - ${elapsedMs}ms`)
             }
 
             // need to decompress this buffer before decoding?
@@ -189,7 +186,6 @@ export class TlsSocketTransport implements ConnectionTransport {
                 rowsetChunks.push(buffer)
                 buffer = Buffer.alloc(0)
                 const okCommand = formatCommand('OK')
-                console.debug(`Send: ${okCommand}`)
                 this.socket?.write(okCommand)
               }
             }
@@ -217,14 +213,14 @@ export class TlsSocketTransport implements ConnectionTransport {
     this.socket?.write(commands, 'utf8', () => {
       socketTimeout = setTimeout(() => {
         const timeoutError = new SQLiteCloudError('Request timed out', { cause: anonimizeCommand(commands) })
-        console.debug(`Request timed out, config.timeout is ${this.config?.timeout as number}ms`, timeoutError)
+        // console.debug(`Request timed out, config.timeout is ${this.config?.timeout as number}ms`, timeoutError)
         finish(timeoutError)
       }, this.config?.timeout)
       this.socket?.on('data', readData)
     })
 
     this.socket?.once('error', (error: any) => {
-      console.debug('Socket error', error)
+      console.error('Socket error', error)
       this.close()
       finish(new SQLiteCloudError('Socket error', { cause: anonimizeError(error) }))
     })

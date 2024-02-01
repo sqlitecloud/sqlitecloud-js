@@ -49,7 +49,7 @@ describe('connection-ws', () => {
       const configObj = getChinookConfig()
       configObj.connectionString?.replace(configObj.password as string, 'wrongpassword')
       configObj.password = 'wrongpassword'
-      configObj.useWebsocket = true 
+      configObj.useWebsocket = true
 
       // should attemp connection and return error
       const connection = new SQLiteCloudConnection(configObj)
@@ -281,7 +281,7 @@ describe('connection-ws', () => {
       },
       LONG_TIMEOUT
     )
-/* TODO RESTORE TEST
+    /* TODO RESTORE TEST
     it('should apply short timeout', done => {
       // apply shorter timeout
       const configObj = parseConnectionString(CHINOOK_DATABASE_URL + '?timeout=20')
@@ -303,8 +303,9 @@ describe('connection-ws', () => {
         }
       })
     })
-  })
 */
+  })
+
   describe('send select commands', () => {
     it('should LIST METADATA', done => {
       chinook.sendCommands('LIST METADATA;', (error, results) => {
