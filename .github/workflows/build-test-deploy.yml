@@ -55,6 +55,7 @@ jobs:
         env:
           CHINOOK_DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
           TESTING_DATABASE_URL: ${{ secrets.TESTING_DATABASE_URL }}
+          GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
         run: npm test
       - name: Upload Code Coverage
         uses: codecov/codecov-action@v3
