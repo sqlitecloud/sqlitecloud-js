@@ -7,10 +7,23 @@ import {
   SQLiteManagerDefault,
   SQLiteManagerCollate,
   SQLiteManagerForeignKeyOptions,
-  SQLiteManagerForeignKeyOn,
-  AT
+  SQLiteManagerForeignKeyOn
 } from './types'
 
+enum AT {
+  ADD_COLUMN,
+  DROP_COLUMN,
+  RENAME_COLUMN,
+  RENAME_TABLE
+}
+
+/**
+ *
+ * When creating a new istance of the SQLiteManager class, the constructor:
+ * - will get you in the alter table section if you pass an entire table
+ * - will get you to the create table section if you just pass the name of the table or you pass nothing
+ *
+ * */
 export class SQLiteManager {
   private table: SQLiteManagerTable
   private create = false
@@ -63,15 +76,33 @@ export class SQLiteManager {
       } else {
         if (typeof op != 'undefined' && column) {
           let oldname: string
+
           switch (op) {
             case AT.RENAME_TABLE:
               this.query += 'ALTER TABLE "' + this.table.name + '" RENAME TO "' + column.name + '";\n'
               break
             case AT.ADD_COLUMN:
-              this.query += 'ALTER TABLE "' + this.table.name + '" ADD COLUMN ' + this.queryBuilderColumn(column) + ';\n'
+              if (
+                column.constraints?.PRIMARY_KEY ||
+                column.constraints?.UNIQUE ||
+                column.constraints?.Default != SQLiteManagerDefault.NULL ||
+                (typeof column.constraints.NOT_NULL != 'undefined' && column.constraints?.Default == SQLiteManagerDefault.NULL) ||
+                (column.constraints?.ForeignKey?.enabled &&
+                  column.constraints?.ForeignKey?.table &&
+                  column.constraints?.ForeignKey?.column &&
+                  column.constraints?.Default != SQLiteManagerDefault.NULL)
+              ) {
+                query += this.queryBuilder('', {} as SQLiteManagerColumn)
+              } else {
+                this.query += 'ALTER TABLE "' + this.table.name + '" ADD COLUMN ' + this.queryBuilderColumn(column) + ';\n'
+              }
               break
             case AT.DROP_COLUMN:
-              this.query += 'ALTER TABLE "' + this.table.name + '" DROP COLUMN "' + column.name + '";\n'
+              if (this.isReferenced(column) || column.constraints?.PRIMARY_KEY || column.constraints?.UNIQUE) {
+                query += this.queryBuilder('', {} as SQLiteManagerColumn)
+              } else {
+                this.query += 'ALTER TABLE "' + this.table.name + '" DROP COLUMN "' + column.name + '";\n'
+              }
               break
             case AT.RENAME_COLUMN:
               if (newColumn) this.query += 'ALTER TABLE "' + this.table.name + '" RENAME COLUMN "' + column.name + '" TO "' + newColumn + '";\n'
@@ -79,7 +110,10 @@ export class SQLiteManager {
             default:
               this.query += '\n\nPRAGMA foreign_keys = OFF;\n'
               this.query += 'BEGIN TRANSACTION;\n'
-              this.query += 'SELECT type, sql FROM sqlite_schema WHERE tbl_name=' + this.table.name + ';\n'
+              /*
+              this.query += 'WITH indexntriggernview AS (SELECT type, sql FROM sqlite_schema WHERE tbl_name="' + this.table.name + '");\n'
+              DROP views, indexes and triggers
+              */
               this.create = true
               oldname = this.table.name
               if (typeof this.findColumn('new_' + this.table.name) == 'undefined') {
@@ -93,13 +127,11 @@ export class SQLiteManager {
               this.query += 'DROP TABLE "' + oldname + '";\n'
               this.query += 'ALTER TABLE "' + this.table.name + '" RENAME TO "' + oldname + '";\n'
               this.table.name = oldname
+              this.query += 'CREATE INDEX '
               /*          
-TODO  
-Use CREATE INDEX, CREATE TRIGGER, and CREATE VIEW to reconstruct indexes, triggers, and views associated with table X. Perhaps use the old format of the triggers, indexes, and views saved from step 3 above as a guide, making changes as appropriate for the alteration.
-
-If any views refer to table X in a way that is affected by the schema change, then drop those views using DROP VIEW and recreate them with whatever changes are necessary to accommodate the schema change using CREATE VIEW.
-
-*/
+              Reconstruct using CREATE INDEX, CREATE TRIGGER, and CREATE VIEW
+              If any views refer to table X in a way that is affected by the schema change, then drop those views using DROP VIEW and recreate them with whatever changes are necessary to accommodate the schema change using CREATE VIEW.
+              */
               this.query += 'PRAGMA foreign_key_check("' + this.table.name + '");\n'
               this.query += 'COMMIT;\n'
               this.query += 'PRAGMA foreign_keys = ON;\n'
@@ -122,12 +154,17 @@ If any views refer to table X in a way that is affected by the schema change, th
     if (column.constraints) {
       const constraints: string[] = Object.keys(column.constraints).filter(key => {
         if (column.constraints) {
-          return column.constraints[key as keyof SQLiteManagerConstraints]
+          const constcol = column.constraints[key as keyof SQLiteManagerConstraints]
+          if (typeof constcol == 'boolean' && constcol == true) {
+            return constcol
+          }
         }
       })
 
       constraints.forEach(constraint => {
-        query += ' ' + constraint.replace('_', ' ')
+        if (!(constraint == 'AUTOINCREMENT' && column.type != SQLiteManagerType.INTEGER)) {
+          query += ' ' + constraint.replace('_', ' ')
+        }
       })
 
       if (column.constraints.Check) {
@@ -155,25 +192,37 @@ If any views refer to table X in a way that is affected by the schema change, th
       if (column.constraints.ForeignKey) {
         if (column.constraints.ForeignKey.enabled) {
           query += ' REFERENCES ' + column.constraints.ForeignKey.table + '(' + column.constraints.ForeignKey.column + ')'
-          if (column.constraints.ForeignKey.options) {
-            query += ' ' + SQLiteManagerForeignKeyOptions[column.constraints.ForeignKey.options]
+
+          if (typeof column.constraints.ForeignKey.onDelete !== 'undefined') {
+            query += ' ON DELETE ' + SQLiteManagerForeignKeyOn[column.constraints.ForeignKey.onDelete].replace('_', ' ')
           }
 
-          if (column.constraints.ForeignKey.onDelete) {
-            query += ' ON DELETE ' + SQLiteManagerForeignKeyOn[column.constraints.ForeignKey.onDelete]
-          }
-
-          if (column.constraints.ForeignKey.onUpdate) {
-            query += ' ON UPDATE ' + SQLiteManagerForeignKeyOn[column.constraints.ForeignKey.onUpdate]
+          if (typeof column.constraints.ForeignKey.onUpdate !== 'undefined') {
+            query += ' ON UPDATE ' + SQLiteManagerForeignKeyOn[column.constraints.ForeignKey.onUpdate].replace('_', ' ')
           }
 
           if (column.constraints.ForeignKey.match) {
             query += ' MATCH ' + column.constraints.ForeignKey.match
           }
+
+          if (typeof column.constraints.ForeignKey.options !== 'undefined') {
+            query += ' ' + SQLiteManagerForeignKeyOptions[column.constraints.ForeignKey.options].replace('_', ' ')
+          }
         }
       }
     }
     return query
+  }
+
+  private isReferenced(column: SQLiteManagerColumn): boolean {
+    if (this.table.columns) {
+      for (let i = 0; i < this.table.columns.length; i++) {
+        if (this.table.columns[i].constraints?.ForeignKey?.column == column.name) {
+          return true
+        }
+      }
+    }
+    return false
   }
 
   addColumn(column: SQLiteManagerColumn): string {
@@ -191,13 +240,20 @@ If any views refer to table X in a way that is affected by the schema change, th
   }
 
   deleteColumn(name: string): string {
+    let query = ''
     const i = this.findColumn(name)
 
-    if (typeof i != 'undefined' && this.table.columns) {
-      this.table.columns.splice(i, 1)
+    if (this.table.columns && typeof i != 'undefined') {
+      if (this.create) {
+        this.table.columns.splice(i, 1)
+        query = this.queryBuilder(AT.DROP_COLUMN, this.table.columns[i])
+      } else {
+        query = this.queryBuilder(AT.DROP_COLUMN, this.table.columns[i])
+        this.table.columns.splice(i, 1)
+      }
     }
 
-    return this.queryBuilder(AT.DROP_COLUMN, { name: name } as SQLiteManagerColumn)
+    return query
   }
 
   renameColumn(oldColumnName: string, newColumnName: string): string {

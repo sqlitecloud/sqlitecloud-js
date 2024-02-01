@@ -175,7 +175,7 @@ export enum SQLiteManagerForeignKeyOn {
 }
 
 /** SQLite foreign key */
-class SQLiteManagerForeignKey {
+export class SQLiteManagerForeignKey {
   enabled = false
   table = ''
   column = ''
@@ -201,7 +201,7 @@ class SQLiteManagerForeignKey {
   }
 
   /** By disabling foreign key you delete references */
-  disable() {
+  disable(): void {
     this.enabled = false
     this.table = ''
     this.column = ''
@@ -218,7 +218,7 @@ class SQLiteManagerForeignKey {
     onDelete?: SQLiteManagerForeignKeyOn,
     onUpdate?: SQLiteManagerForeignKeyOn,
     match?: string
-  ) {
+  ): void {
     this.enabled = true
     this.table = table
     this.column = column
@@ -249,12 +249,13 @@ export interface SQLiteManagerConstraints {
   UNIQUE?: boolean
   Check?: string
 
-  /** You should pass: SQLiteManagerDefault.NULL, SQLiteManagerDefault.CURRENT_TIME, etc. */
+  /** You can leave it undefined or pass: SQLiteManagerDefault.NULL, SQLiteManagerDefault.CURRENT_TIME, etc. */
   Default?: SQLiteManagerDefault | string
 
-  /** You should pass: SQLiteManagerCollate.BINARY, SQLiteManagerCollate.NOCASE, etc. */
+  /** You can leave it undefined or pass: SQLiteManagerCollate.BINARY, SQLiteManagerCollate.NOCASE, etc. */
   Collate?: SQLiteManagerCollate | string
 
+  /** You should pass: new SQLiteManagerForeignKey(), or you can leave it undefined */
   ForeignKey?: SQLiteManagerForeignKey
 }
 
@@ -277,12 +278,4 @@ export interface SQLiteManagerTable {
 
   /** Columns */
   columns?: SQLiteManagerColumn[]
-}
-
-/** SQLite Alter Table */
-export enum AT {
-  ADD_COLUMN,
-  DROP_COLUMN,
-  RENAME_COLUMN,
-  RENAME_TABLE
 }

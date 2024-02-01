@@ -49,10 +49,10 @@ export const testTable2 = {
       name: 'test1',
       type: types.SQLiteManagerType.REAL,
       constraints: {
-        PRIMARY_KEY: true,
+        PRIMARY_KEY: false,
         AUTOINCREMENT: true,
-        NOT_NULL: true,
-        UNIQUE: true
+        UNIQUE: false,
+        Default: types.SQLiteManagerDefault.NULL
       }
     },
     {
@@ -77,7 +77,15 @@ export const testTable2 = {
       constraints: {
         NOT_NULL: true,
         UNIQUE: true,
-        CHECK: 'test4 > 0'
+        CHECK: 'test4 > 0',
+        ForeignKey: new types.SQLiteManagerForeignKey(
+          true,
+          'myTable2',
+          'test1',
+          types.SQLiteManagerForeignKeyOptions.NONE,
+          types.SQLiteManagerForeignKeyOn.CASCADE,
+          types.SQLiteManagerForeignKeyOn.CASCADE
+        )
       }
     }
   ]
