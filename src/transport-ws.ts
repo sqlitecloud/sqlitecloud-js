@@ -31,8 +31,8 @@ export class WebSocketTransport implements ConnectionTransport {
       console.assert(!this.connected, 'Connection already established')
       if (!this.socket) {
         this.config = config
-        let connectionString = this.config.connectionString as string
-        let gatewayUrl = this.config?.gatewayUrl || `ws://${this.config.host}:4000`
+        const connectionString = this.config.connectionString as string
+        const gatewayUrl = this.config?.gatewayUrl || `ws://${this.config.host as string}:4000`
         this.socket = io(gatewayUrl, { auth: { token: connectionString } })
       }
       callback?.call(this, null)
@@ -59,7 +59,9 @@ export class WebSocketTransport implements ConnectionTransport {
         const { data, metadata } = response
         if (data && metadata) {
           if (metadata.numberOfRows !== undefined && metadata.numberOfColumns !== undefined && metadata.columns !== undefined) {
-            // we can recreate a SQLiteCloudRowset from the response
+            console.assert(Array.isArray(data), 'SQLiteCloudWebsocketConnection.processCommands - data is not an array')
+            // we can recreate a SQLiteCloudRowset from the response which we know to be an array of arrays
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-call
             const rowset = new SQLiteCloudRowset(metadata, data.flat())
             callback?.call(this, null, rowset)
             return

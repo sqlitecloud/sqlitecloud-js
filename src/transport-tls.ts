@@ -162,7 +162,7 @@ export class TlsSocketTransport implements ConnectionTransport {
               if (bufferString.length > 1000) {
                 bufferString = bufferString.substring(0, 100) + '...' + bufferString.substring(bufferString.length - 40)
               }
-              const elapsedMs = new Date().getTime() - startedOn.getTime()
+              // const elapsedMs = new Date().getTime() - startedOn.getTime()
               // console.debug(`Receive: ${bufferString} - ${elapsedMs}ms`)
             }
 

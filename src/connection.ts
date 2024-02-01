@@ -3,7 +3,7 @@
  */
 
 import { SQLiteCloudConfig, SQLiteCloudError, ErrorCallback, ResultsCallback } from './types'
-import { parseConnectionString, parseBoolean, isBrowser, isNode } from './utilities'
+import { parseConnectionString, parseBoolean, isBrowser } from './utilities'
 
 /** Default timeout value for queries */
 export const DEFAULT_TIMEOUT = 300 * 1000
@@ -116,11 +116,13 @@ export class SQLiteCloudConnection {
     config.sqliteMode = parseBoolean(config.sqliteMode)
 
     if (!config.username || !config.password || !config.host) {
-      console.error(`SQLiteCloudConnection.validateConfiguration - missing arguments`, config)
+      console.error('SQLiteCloudConnection.validateConfiguration - missing arguments', config)
       throw new SQLiteCloudError('The user, password and host arguments must be specified.', { errorCode: 'ERR_MISSING_ARGS' })
     }
 
     if (!config.connectionString) {
+      // build connection string from configuration, values are already validated
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       config.connectionString = `sqlitecloud://${config.username}:${config.password}@${config.host}:${config.port}/${config.database}`
     }
 
