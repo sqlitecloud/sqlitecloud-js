@@ -55,7 +55,6 @@ export class WebSocketTransport implements ConnectionTransport {
         const error = new SQLiteCloudError(response.error.detail, { ...response.error })
         callback?.call(this, error)
       } else {
-        console.debug(`SQLiteCloudWebsocketConnection.processCommands - response: ${JSON.stringify(response)}`)
         const { data, metadata } = response
         if (data && metadata) {
           if (metadata.numberOfRows !== undefined && metadata.numberOfColumns !== undefined && metadata.columns !== undefined) {
