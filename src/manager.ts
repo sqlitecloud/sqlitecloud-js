@@ -22,12 +22,14 @@ enum AT {
  * When creating a new istance of the SQLiteManager class, the constructor:
  * - will get you in the alter table section if you pass an entire table
  * - will get you to the create table section if you just pass the name of the table or you pass nothing
+ * IMPORTANT: if you don't call sqlite_schema before making any change, then old views, triggers and indexes will be lost
  *
  * */
 export class SQLiteManager {
   private table: SQLiteManagerTable
   private create = false
   private query = ''
+  private sql: string[] = []
 
   constructor(table?: SQLiteManagerTable) {
     if (typeof table === 'undefined') {
@@ -44,8 +46,9 @@ export class SQLiteManager {
     }
   }
 
-  reset(): void {
-    this.table = {} as SQLiteManagerTable
+  /** Pass to this method the result of this query: SELECT sql FROM sqlite_schema WHERE tbl_name='X'; where X is the name of the table you're using */
+  sqlite_schema(sql: string[]): void {
+    this.sql = sql
   }
 
   /** If changing name in altertable you need to manually call the queryBuilder() */
@@ -98,8 +101,15 @@ export class SQLiteManager {
               }
               break
             case AT.DROP_COLUMN:
-              if (this.isReferenced(column) || column.constraints?.PRIMARY_KEY || column.constraints?.UNIQUE) {
-                query += this.queryBuilder('', {} as SQLiteManagerColumn)
+              if (
+                this.is(column, true) ||
+                column.constraints?.PRIMARY_KEY ||
+                column.constraints?.UNIQUE ||
+                this.sql?.includes(column.name) ||
+                this.is(column, false, true)
+                // can't check for generated columns and outside this table CHECK constraints
+              ) {
+                query += this.queryBuilder('' + AT[op], column)
               } else {
                 this.query += 'ALTER TABLE "' + this.table.name + '" DROP COLUMN "' + column.name + '";\n'
               }
@@ -110,10 +120,6 @@ export class SQLiteManager {
             default:
               this.query += '\n\nPRAGMA foreign_keys = OFF;\n'
               this.query += 'BEGIN TRANSACTION;\n'
-              /*
-              this.query += 'WITH indexntriggernview AS (SELECT type, sql FROM sqlite_schema WHERE tbl_name="' + this.table.name + '");\n'
-              DROP views, indexes and triggers
-              */
               this.create = true
               oldname = this.table.name
               if (typeof this.findColumn('new_' + this.table.name) == 'undefined') {
@@ -128,10 +134,21 @@ export class SQLiteManager {
               this.query += 'ALTER TABLE "' + this.table.name + '" RENAME TO "' + oldname + '";\n'
               this.table.name = oldname
               this.query += 'CREATE INDEX '
-              /*          
-              Reconstruct using CREATE INDEX, CREATE TRIGGER, and CREATE VIEW
-              If any views refer to table X in a way that is affected by the schema change, then drop those views using DROP VIEW and recreate them with whatever changes are necessary to accommodate the schema change using CREATE VIEW.
-              */
+
+              if (this.sql) {
+                if (op == 'DROP_COLUMN' && column) {
+                  this.sql.forEach(element => {
+                    if (!element.includes(column.name)) {
+                      query += element + '\n'
+                    }
+                  })
+                } else {
+                  this.sql.forEach(element => {
+                    query += element + '\n'
+                  })
+                }
+              }
+
               this.query += 'PRAGMA foreign_key_check("' + this.table.name + '");\n'
               this.query += 'COMMIT;\n'
               this.query += 'PRAGMA foreign_keys = ON;\n'
@@ -214,18 +231,11 @@ export class SQLiteManager {
     return query
   }
 
-  private isReferenced(column: SQLiteManagerColumn): boolean {
-    if (this.table.columns) {
-      for (let i = 0; i < this.table.columns.length; i++) {
-        if (this.table.columns[i].constraints?.ForeignKey?.column == column.name) {
-          return true
-        }
-      }
-    }
-    return false
-  }
-
-  addColumn(column: SQLiteManagerColumn): string {
+  /**
+   * column: the SQLiteManagerColumn you want to add to the table
+   * sql[]: SELECT sql FROM sqlite_schema WHERE tbl_name='X'; where X is the name of the table you're using
+   */
+  addColumn(column: SQLiteManagerColumn, sql: string[]): string {
     if (this.table.columns) {
       if (typeof this.findColumn(column.name) == 'undefined') {
         this.table.columns.push(column)
@@ -236,10 +246,15 @@ export class SQLiteManager {
       this.table.columns = [column]
     }
 
+    this.sqlite_schema(sql)
     return this.queryBuilder(AT.ADD_COLUMN, column)
   }
 
-  deleteColumn(name: string): string {
+  /**
+   * name: name of the column you want to delete
+   * sql[]: SELECT sql FROM sqlite_schema WHERE tbl_name='X'; where X is the name of the table you're using
+   */
+  deleteColumn(name: string, sql: string[]): string {
     let query = ''
     const i = this.findColumn(name)
 
@@ -253,6 +268,7 @@ export class SQLiteManager {
       }
     }
 
+    this.sqlite_schema(sql)
     return query
   }
 
@@ -270,24 +286,43 @@ export class SQLiteManager {
     return this.queryBuilder(AT.RENAME_COLUMN, { name: oldColumnName } as SQLiteManagerColumn, newColumnName)
   }
 
-  changeColumnType(name: string, type: SQLiteManagerType): string {
-    const i = this.findColumn(name)
-
-    if (typeof i != 'undefined' && this.table.columns) {
-      this.table.columns[i].type = type
-    }
-
-    return this.queryBuilder('', {} as SQLiteManagerColumn)
+  /**
+   * name: name of the column you want to change the type of
+   * type: the new type you want to give to the column
+   * sql[]: SELECT sql FROM sqlite_schema WHERE tbl_name='X'; where X is the name of the table you're using
+   */
+  changeColumnType(name: string, type: SQLiteManagerType, sql: string[]): string {
+    return this.generalFun(name, (column: SQLiteManagerColumn) => (column.type = type), sql)
   }
 
-  changeColumnConstraints(name: string, constraints: SQLiteManagerConstraints): string {
+  /**
+   * name: name of the column you want to change constraints of
+   * constraits: edited constraints you get from getConstraints()
+   * sql[]: SELECT sql FROM sqlite_schema WHERE tbl_name='X'; where X is the name of the table you're using
+   */
+  changeColumnConstraints(name: string, constraints: SQLiteManagerConstraints, sql: string[]): string {
+    return this.generalFun(name, (column: SQLiteManagerColumn) => (column.constraints = constraints), sql)
+  }
+
+  /** name: name of the column you want to get the constraints of */
+  getConstraints(name: string): SQLiteManagerConstraints | undefined {
+    let rtconstraints
+    this.generalFun(name, (column: SQLiteManagerColumn) => (rtconstraints = column.constraints))
+    return rtconstraints
+  }
+
+  private generalFun(name: string, fun: (column: SQLiteManagerColumn) => void, sql?: string[], qb1?: any, qb2?: SQLiteManagerColumn): string {
     const i = this.findColumn(name)
 
     if (typeof i != 'undefined' && this.table.columns) {
-      this.table.columns[i].constraints = constraints
+      fun(this.table.columns[i])
     }
 
-    return this.queryBuilder('', {} as SQLiteManagerColumn)
+    if (sql) {
+      this.sqlite_schema(sql)
+    }
+
+    return this.queryBuilder(qb1 ? qb1 : '', qb2 ? qb2 : ({} as SQLiteManagerColumn))
   }
 
   private findColumn(name: string): number | undefined {
@@ -297,5 +332,19 @@ export class SQLiteManager {
         return i
       }
     }
+  }
+
+  private is(column: SQLiteManagerColumn, referenced?: boolean, checked?: boolean): boolean {
+    if (this.table.columns) {
+      for (let i = 0; i < this.table.columns.length; i++) {
+        if (referenced && this.table.columns[i].constraints?.ForeignKey?.column == column.name) {
+          return true
+        }
+        if (checked && this.table.columns[i].constraints?.Check?.includes(column.name)) {
+          return true
+        }
+      }
+    }
+    return false
   }
 }
