@@ -90,3 +90,9 @@ export const testTable2 = {
     }
   ]
 }
+
+export const sqlite_schema = [
+  'CREATE VIEW "myView" AS SELECT "myTable"."column1", "myTable"."column2", "myTable"."column3", "myTable"."column4" FROM "myTable";',
+  'CREATE TRIGGER "myTrigger" AFTER INSERT ON "myTable" BEGIN INSERT INTO "myTable2" ("test1", "test2", "test3", "test4") VALUES (new."column1", new."column2", new."column3", new."column4"); END;',
+  'CREATE INDEX "myIndex" ON "myTable" ("column1", "column2", "column3", "column4");'
+]

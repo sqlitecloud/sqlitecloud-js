@@ -1,7 +1,7 @@
 /* eslint-disable prettier/prettier */
 import { SQLiteManager } from '../src/manager'
 import { SQLiteManagerType } from '../src/types'
-import { testTable, testTable2 } from './assets/manager-test-tables'
+import { testTable, testTable2, sqlite_schema } from './assets/manager-test-tables'
 
 describe('Create a table', () => {
   let manager: SQLiteManager
@@ -34,7 +34,7 @@ describe('Create a table', () => {
   it('tests alter table', () => {
     manager = new SQLiteManager(testTable)
 
-    const addColumn: string = manager.addColumn(testTable2.columns[0])
+    const addColumn: string = manager.addColumn(testTable2.columns[0], sqlite_schema)
 
     expect(addColumn).toContain('ALTER TABLE')
     expect(addColumn).toContain(testTable.name)
@@ -42,8 +42,10 @@ describe('Create a table', () => {
     expect(addColumn).toContain(testTable2.columns[0].name)
     expect(addColumn).toContain(SQLiteManagerType[testTable2.columns[0].type])
 
-    manager.addColumn(JSON.parse(JSON.stringify(testTable2.columns[1])))
-    expect(manager.deleteColumn(testTable2.columns[0].name)).toContain('ALTER TABLE "' + testTable.name + '" DROP COLUMN "' + testTable2.columns[0].name + '";')
+    manager.addColumn(JSON.parse(JSON.stringify(testTable2.columns[1])), sqlite_schema)
+    expect(manager.deleteColumn(testTable2.columns[0].name, sqlite_schema)).toContain(
+      'ALTER TABLE "' + testTable.name + '" DROP COLUMN "' + testTable2.columns[0].name + '";'
+    )
 
     const risRen: string = manager.renameColumn(testTable.columns[1].name, testTable2.columns[2].name)
 
@@ -55,7 +57,7 @@ describe('Create a table', () => {
 
     expect(renTable).toContain('ALTER TABLE "' + testTable.name + '" RENAME TO "' + testTable2.name + '";')
 
-    const risCh: string = manager.changeColumnType(testTable.columns[2].name, SQLiteManagerType.TEXT)
+    const risCh: string = manager.changeColumnType(testTable.columns[2].name, SQLiteManagerType.TEXT, sqlite_schema)
 
     expect(risCh).toContain('PRAGMA foreign_keys = OFF;')
     expect(risCh).toContain('BEGIN TRANSACTION;')
@@ -66,7 +68,9 @@ describe('Create a table', () => {
     expect(risCh).toContain('COMMIT;')
     expect(risCh).toContain('PRAGMA foreign_keys = ON;')
 
-    const risCnstr: string = manager.changeColumnConstraints(testTable.columns[2].name, testTable2.columns[2].constraints)
+    const risCnstr: string = manager.changeColumnConstraints(testTable.columns[2].name, testTable2.columns[2].constraints, sqlite_schema)
     expect(risCnstr).toContain('"' + testTable.columns[2].name + '" TEXT UNIQUE')
+
+    console.log(risCnstr)
   })
 })

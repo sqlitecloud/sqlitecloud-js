@@ -47,8 +47,14 @@ export class SQLiteManager {
   }
 
   /** Pass to this method the result of this query: SELECT sql FROM sqlite_schema WHERE tbl_name='X'; where X is the name of the table you're using */
-  sqlite_schema(sql: string[]): void {
-    this.sql = sql
+  sqlite_schema(sql?: string[]): void {
+    if (sql) {
+      this.sql = sql
+    } else {
+      if (!this.create) {
+        throw new Error('Alter table needs SELECT sql FROM sqlite_schema WHERE tbl_name=X; as sql')
+      }
+    }
   }
 
   /** If changing name in altertable you need to manually call the queryBuilder() */
@@ -133,18 +139,17 @@ export class SQLiteManager {
               this.query += 'DROP TABLE "' + oldname + '";\n'
               this.query += 'ALTER TABLE "' + this.table.name + '" RENAME TO "' + oldname + '";\n'
               this.table.name = oldname
-              this.query += 'CREATE INDEX '
 
               if (this.sql) {
                 if (op == 'DROP_COLUMN' && column) {
                   this.sql.forEach(element => {
                     if (!element.includes(column.name)) {
-                      query += element + '\n'
+                      this.query += element + '\n'
                     }
                   })
                 } else {
                   this.sql.forEach(element => {
-                    query += element + '\n'
+                    this.query += element + '\n'
                   })
                 }
               }
@@ -235,7 +240,7 @@ export class SQLiteManager {
    * column: the SQLiteManagerColumn you want to add to the table
    * sql[]: SELECT sql FROM sqlite_schema WHERE tbl_name='X'; where X is the name of the table you're using
    */
-  addColumn(column: SQLiteManagerColumn, sql: string[]): string {
+  addColumn(column: SQLiteManagerColumn, sql?: string[]): string {
     if (this.table.columns) {
       if (typeof this.findColumn(column.name) == 'undefined') {
         this.table.columns.push(column)
@@ -254,7 +259,7 @@ export class SQLiteManager {
    * name: name of the column you want to delete
    * sql[]: SELECT sql FROM sqlite_schema WHERE tbl_name='X'; where X is the name of the table you're using
    */
-  deleteColumn(name: string, sql: string[]): string {
+  deleteColumn(name: string, sql?: string[]): string {
     let query = ''
     const i = this.findColumn(name)
 
@@ -291,7 +296,7 @@ export class SQLiteManager {
    * type: the new type you want to give to the column
    * sql[]: SELECT sql FROM sqlite_schema WHERE tbl_name='X'; where X is the name of the table you're using
    */
-  changeColumnType(name: string, type: SQLiteManagerType, sql: string[]): string {
+  changeColumnType(name: string, type: SQLiteManagerType, sql?: string[]): string {
     return this.generalFun(name, (column: SQLiteManagerColumn) => (column.type = type), sql)
   }
 
@@ -300,7 +305,7 @@ export class SQLiteManager {
    * constraits: edited constraints you get from getConstraints()
    * sql[]: SELECT sql FROM sqlite_schema WHERE tbl_name='X'; where X is the name of the table you're using
    */
-  changeColumnConstraints(name: string, constraints: SQLiteManagerConstraints, sql: string[]): string {
+  changeColumnConstraints(name: string, constraints: SQLiteManagerConstraints, sql?: string[]): string {
     return this.generalFun(name, (column: SQLiteManagerColumn) => (column.constraints = constraints), sql)
   }
 
@@ -318,9 +323,7 @@ export class SQLiteManager {
       fun(this.table.columns[i])
     }
 
-    if (sql) {
-      this.sqlite_schema(sql)
-    }
+    this.sqlite_schema(sql)
 
     return this.queryBuilder(qb1 ? qb1 : '', qb2 ? qb2 : ({} as SQLiteManagerColumn))
   }
