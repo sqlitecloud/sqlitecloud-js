@@ -7,7 +7,8 @@ import {
   SQLiteManagerDefault,
   SQLiteManagerCollate,
   SQLiteManagerForeignKeyOptions,
-  SQLiteManagerForeignKeyOn
+  SQLiteManagerForeignKeyOn,
+  keywords
 } from './types'
 
 enum AT {
@@ -40,9 +41,14 @@ export class SQLiteManager {
         this.create = true
         if (table.columns) {
           this.create = false
+          this.table = table
+        } else {
+          this.table = { name: this.escape(table.name) } as SQLiteManagerTable
         }
+      } else {
+        this.create = true
+        this.table = {} as SQLiteManagerTable
       }
-      this.table = table
     }
   }
 
@@ -60,10 +66,10 @@ export class SQLiteManager {
   /** If changing name in altertable you need to manually call the queryBuilder() */
   set name(name: string) {
     if (this.create) {
-      this.table.name = name
+      this.table.name = this.escape(name)
     } else {
-      this.table.name = name
-      this.queryBuilder(AT.RENAME_TABLE, { name: name } as SQLiteManagerColumn)
+      this.table.name = this.escape(name)
+      this.queryBuilder(AT.RENAME_TABLE, { name: this.table.name } as SQLiteManagerColumn)
     }
   }
 
@@ -241,6 +247,7 @@ export class SQLiteManager {
    * sql[]: SELECT sql FROM sqlite_schema WHERE tbl_name='X'; where X is the name of the table you're using
    */
   addColumn(column: SQLiteManagerColumn, sql?: string[]): string {
+    column.name = this.escape(column.name)
     if (this.table.columns) {
       if (typeof this.findColumn(column.name) == 'undefined') {
         this.table.columns.push(column)
@@ -279,6 +286,8 @@ export class SQLiteManager {
 
   renameColumn(oldColumnName: string, newColumnName: string): string {
     const i = this.findColumn(oldColumnName)
+    newColumnName = this.escape(newColumnName)
+    let query = ''
 
     if (typeof i != 'undefined' && this.table.columns) {
       if (typeof this.findColumn(newColumnName) == 'undefined') {
@@ -286,9 +295,10 @@ export class SQLiteManager {
       } else {
         throw new Error('Column already exists')
       }
+      query = this.queryBuilder(AT.RENAME_COLUMN, { name: oldColumnName } as SQLiteManagerColumn, newColumnName)
     }
 
-    return this.queryBuilder(AT.RENAME_COLUMN, { name: oldColumnName } as SQLiteManagerColumn, newColumnName)
+    return query
   }
 
   /**
@@ -349,5 +359,18 @@ export class SQLiteManager {
       }
     }
     return false
+  }
+
+  private escape(name: string): string {
+    keywords.forEach(keyword => {
+      if (name.toUpperCase() == keyword) {
+        throw new Error("You can't use a SQLite keyword as a name")
+      }
+    })
+
+    name = name.replace(/'/g, "''")
+    name = name.replace(/"/g, '""')
+
+    return name
   }
 }
