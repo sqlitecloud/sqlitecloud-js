@@ -18,6 +18,11 @@ enum AT {
   RENAME_TABLE
 }
 
+interface constraints {
+  constrain: string
+  active: boolean
+}
+
 /**
  *
  * When creating a new istance of the SQLiteManager class, the constructor:
@@ -316,21 +321,52 @@ export class SQLiteManager {
    * sql[]: SELECT sql FROM sqlite_schema WHERE tbl_name='X'; where X is the name of the table you're using
    */
   changeColumnConstraints(name: string, constraints: SQLiteManagerConstraints, sql?: string[]): string {
-    return this.generalFun(name, (column: SQLiteManagerColumn) => (column.constraints = constraints), sql)
+    return this.generalFun(name, (column: SQLiteManagerColumn) => (column.constraints = { ...column.constraints, ...constraints }), sql)
   }
 
-  /** name: name of the column you want to get the constraints of */
-  getConstraints(name: string): SQLiteManagerConstraints | undefined {
-    let rtconstraints
-    this.generalFun(name, (column: SQLiteManagerColumn) => (rtconstraints = column.constraints))
-    return rtconstraints
+  /** name: name of the column OR name of the type you want to get the compatible constraints of */
+  getCompatibleConstraints(name: string | SQLiteManagerType): constraints[] {
+    const constraints: constraints[] = []
+    let constrain: constraints
+
+    const cns = ['PRIMARY_KEY', 'AUTOINCREMENT', 'NOT_NULL', 'UNIQUE', 'Check', 'Default', 'Collate', 'ForeignKey']
+
+    this.create = true
+
+    if (typeof name == 'string') {
+      this.generalFun(name, (column: SQLiteManagerColumn) =>
+        cns.forEach(key => {
+          constrain = { constrain: key, active: true }
+          if (column.type != SQLiteManagerType.INTEGER && key == 'AUTOINCREMENT') {
+            constrain.active = false
+          }
+          constraints.push(constrain)
+        })
+      )
+    } else {
+      cns.forEach(key => {
+        constrain = { constrain: key, active: true }
+        if (name != SQLiteManagerType.INTEGER && key == 'AUTOINCREMENT') {
+          constrain.active = false
+        }
+        constraints.push(constrain)
+      })
+    }
+
+    this.create = false
+
+    return constraints
   }
 
   private generalFun(name: string, fun: (column: SQLiteManagerColumn) => void, sql?: string[], qb1?: any, qb2?: SQLiteManagerColumn): string {
     const i = this.findColumn(name)
 
     if (typeof i != 'undefined' && this.table.columns) {
+      /* console.log('IN: ') //DEBUG
+      console.log(this.table.columns[i]) */
       fun(this.table.columns[i])
+      /* console.log('OUT: ') //DEBUG
+      console.log(this.table.columns[i]) */
     }
 
     this.sqlite_schema(sql)

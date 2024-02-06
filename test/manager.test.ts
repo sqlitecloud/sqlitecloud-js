@@ -17,7 +17,6 @@ describe('Create a table', () => {
     expect(manager.deleteColumn(testTable.columns[0].name)).not.toContain(testTable.columns[0].name)
 
     const risRen: string = manager.renameColumn(testTable.columns[1].name, testTable.columns[2].name)
-    console.log(risRen)
 
     expect(risRen).not.toContain(testTable.columns[1].name)
     expect(risRen).toContain(testTable.columns[2].name)
@@ -27,10 +26,9 @@ describe('Create a table', () => {
     expect(risCh).toContain(SQLiteManagerType[SQLiteManagerType.TEXT])
     expect(risCh).not.toContain(SQLiteManagerType[SQLiteManagerType.INTEGER])
 
-    const risCnstr: string = manager.changeColumnConstraints(testTable.columns[2].name, testTable.columns[2].constraints)
+    const risCnstr: string = manager.changeColumnConstraints(testTable.columns[2].name, { NOT_NULL: false })
 
-    expect(risCnstr).toContain('NOT NULL UNIQUE')
-    console.log(risCnstr)
+    expect(risCnstr).toContain('UNIQUE')
   })
 
   it('tests alter table', () => {
