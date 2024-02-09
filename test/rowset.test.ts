@@ -150,25 +150,24 @@ describe('rowset', () => {
   })
 
   it('contains extended metadata', done => {
-    // custom connection with sqliteMode enabled
-    const connection = new SQLiteCloudConnection(getChinookConfig(CHINOOK_DATABASE_URL + '?sqliteMode=1'))
+    // custom connection used to required sqliteMode enabled but since feb/2/24 it's enabled by default
+    const connection = getChinookTlsConnection()
     connection.sendCommands('SELECT * FROM tracks LIMIT 10;', (error, rowset) => {
       expect(rowset).toBeInstanceOf(SQLiteCloudRowset)
       expect(rowset.metadata.version).toBe(2)
       expect(rowset.metadata.numberOfRows).toBe(10)
       expect(rowset.metadata.numberOfColumns).toBe(9)
       expect(rowset.metadata.columns).toMatchObject([
-        { column: 'TrackId', database: 'main', name: 'TrackId', table: 'tracks', type: 'INTEGER' },
-        { column: 'Name', database: 'main', name: 'Name', table: 'tracks', type: 'NVARCHAR(200)' },
-        { column: 'AlbumId', database: 'main', name: 'AlbumId', table: 'tracks', type: 'INTEGER' },
-        { column: 'MediaTypeId', database: 'main', name: 'MediaTypeId', table: 'tracks', type: 'INTEGER' },
-        { column: 'GenreId', database: 'main', name: 'GenreId', table: 'tracks', type: 'INTEGER' },
-        { column: 'Composer', database: 'main', name: 'Composer', table: 'tracks', type: 'NVARCHAR(220)' },
-        { column: 'Milliseconds', database: 'main', name: 'Milliseconds', table: 'tracks', type: 'INTEGER' },
-        { column: 'Bytes', database: 'main', name: 'Bytes', table: 'tracks', type: 'INTEGER' },
-        { column: 'UnitPrice', database: 'main', name: 'UnitPrice', table: 'tracks', type: 'NUMERIC(10,2)' }
+        { column: 'TrackId', database: 'main', name: 'TrackId', table: 'tracks', type: 'INTEGER', primaryKey: 1, autoIncrement: 1, notNull: 1 },
+        { column: 'Name', database: 'main', name: 'Name', table: 'tracks', type: 'NVARCHAR(200)', primaryKey: 0, autoIncrement: 0, notNull: 1 },
+        { column: 'AlbumId', database: 'main', name: 'AlbumId', table: 'tracks', type: 'INTEGER', primaryKey: 0, autoIncrement: 0, notNull: 0 },
+        { column: 'MediaTypeId', database: 'main', name: 'MediaTypeId', table: 'tracks', type: 'INTEGER', primaryKey: 0, autoIncrement: 0, notNull: 1 },
+        { column: 'GenreId', database: 'main', name: 'GenreId', table: 'tracks', type: 'INTEGER', primaryKey: 0, autoIncrement: 0, notNull: 0 },
+        { column: 'Composer', database: 'main', name: 'Composer', table: 'tracks', type: 'NVARCHAR(220)', primaryKey: 0, autoIncrement: 0, notNull: 0 },
+        { column: 'Milliseconds', database: 'main', name: 'Milliseconds', table: 'tracks', type: 'INTEGER', primaryKey: 0, autoIncrement: 0, notNull: 1 },
+        { column: 'Bytes', database: 'main', name: 'Bytes', table: 'tracks', type: 'INTEGER', primaryKey: 0, autoIncrement: 0, notNull: 0 },
+        { column: 'UnitPrice', database: 'main', name: 'UnitPrice', table: 'tracks', type: 'NUMERIC(10,2)', primaryKey: 0, autoIncrement: 0, notNull: 1 }
       ])
-      connection.close()
       done()
     })
   })
