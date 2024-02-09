@@ -284,6 +284,29 @@ describe('connection-tls', () => {
     )
 
     it(
+      'should test chunked rowset via ',
+      done => {
+        // this operation sends 150 packets, so we need to increase the timeout
+        const database = getChinookTlsConnection(undefined, { timeout: 60 * 1000 })
+        database.sendCommands('TEST ROWSET_CHUNK', (error, results) => {
+          expect(error).toBeNull()
+          expect(results.numberOfRows).toBe(147)
+          expect(results.numberOfColumns).toBe(1)
+          expect(results.columnsNames).toEqual(['key'])
+
+          expect(results[0]['key']).toBe('REINDEX')
+          expect(results[1]['key']).toBe('INDEXED')
+          expect(results[2]['key']).toBe('INDEX')
+          expect(results[3]['key']).toBe('DESC')
+
+          database.close()
+          done()
+        })
+      },
+      LONG_TIMEOUT
+    )
+
+    it(
       'should test chunked rowset twice',
       done => {
         // this operation sends 150 packets, so we need to increase the timeout

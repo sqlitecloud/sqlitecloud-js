@@ -377,9 +377,9 @@ function parseRowsetColumnsMetadata(buffer: Buffer, metadata: SQLCloudRowsetMeta
     for (let i = 0; i < metadata.numberOfColumns; i++) metadata.columns[i].table = popForward() as string
     for (let i = 0; i < metadata.numberOfColumns; i++) metadata.columns[i].column = popForward() as string // original column name
 
-    for (let i = 0; i < metadata.numberOfColumns; i++) metadata.columns[i].notNull = popForward() as boolean
-    for (let i = 0; i < metadata.numberOfColumns; i++) metadata.columns[i].primaryKey = popForward() as boolean
-    for (let i = 0; i < metadata.numberOfColumns; i++) metadata.columns[i].autoIncrement = popForward() as boolean
+    for (let i = 0; i < metadata.numberOfColumns; i++) metadata.columns[i].notNull = popForward() as number
+    for (let i = 0; i < metadata.numberOfColumns; i++) metadata.columns[i].primaryKey = popForward() as number
+    for (let i = 0; i < metadata.numberOfColumns; i++) metadata.columns[i].autoIncrement = popForward() as number
   }
 
   return buffer

@@ -128,8 +128,6 @@ export function getTestingConfig(url = TESTING_DATABASE_URL): SQLiteCloudConfig 
     }
   }
 
-  testingConfig.sqliteMode = true
-
   // create a unique id for this test run based on current time with
   // enough precision to avoid duplicate ids and be human readable
   function generateRandomId(length: number): string {
@@ -156,7 +154,6 @@ export function getTestingConfig(url = TESTING_DATABASE_URL): SQLiteCloudConfig 
 
 export function getTestingDatabase(callback?: ResultsCallback): Database {
   const testingConfig = getTestingConfig()
-  testingConfig.sqliteMode = true
   const database = new Database(testingConfig)
   // database.verbose()
   database.exec(TESTING_SQL, callback)
@@ -165,7 +162,6 @@ export function getTestingDatabase(callback?: ResultsCallback): Database {
 
 export async function getTestingDatabaseAsync(): Promise<Database> {
   const testingConfig = getTestingConfig()
-  testingConfig.sqliteMode = true
   const database = new Database(testingConfig)
   // database.verbose()
   await database.sql(TESTING_SQL)
