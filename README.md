@@ -44,9 +44,9 @@ How can I contribute or suggest features?
 
 [build-img]: https://github.com/sqlitecloud/sqlitecloud-js/actions/workflows/build-test-deploy.yml/badge.svg
 [build-url]: https://github.com/sqlitecloud/sqlitecloud-js/actions/workflows/build-test-deploy.yml
-[downloads-img]: https://img.shields.io/npm/dt/sqlitecloud-js
-[downloads-url]: https://www.npmtrends.com/sqlitecloud-js
-[npm-img]: https://img.shields.io/npm/v/sqlitecloud-js
-[npm-url]: https://www.npmjs.com/package/sqlitecloud-js
+[downloads-img]: https://img.shields.io/npm/dt/@sqlitecloud/drivers
+[downloads-url]: https://www.npmtrends.com/@sqlitecloud/drivers
+[npm-img]: https://img.shields.io/npm/v/@sqlitecloud/drivers
+[npm-url]: https://www.npmjs.com/package/@sqlitecloud/drivers
 [issues-img]: https://img.shields.io/github/issues/sqlitecloud/sqlitecloud-js
 [issues-url]: https://github.com/sqlitecloud/sqlitecloud-js/issues
