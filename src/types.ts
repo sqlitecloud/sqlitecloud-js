@@ -77,12 +77,12 @@ export interface SQLCloudRowsetMetadata {
     table?: string
     /** Original name of the column */
     column?: string
-    /** Column is not nullable? */
-    notNull?: boolean
-    /** Column is primary key */
-    primaryKey?: boolean
-    /** Column has autoincrement flag */
-    autoIncrement?: boolean
+    /** Column is not nullable? 1 */
+    notNull?: number
+    /** Column is primary key? 1 */
+    primaryKey?: number
+    /** Column has autoincrement flag? 1 */
+    autoIncrement?: number
   }[]
 }
 
