@@ -29,8 +29,6 @@ export interface SQLiteCloudConfig {
   createDatabase?: boolean
   /** Database will be created in memory */
   dbMemory?: boolean
-  /** Enable SQLite compatibility mode */
-  sqliteMode?: boolean
   /* Enable compression */
   compression?: boolean
   /** Request for immediate responses from the server node without waiting for linerizability guarantees */
@@ -79,6 +77,12 @@ export interface SQLCloudRowsetMetadata {
     table?: string
     /** Original name of the column */
     column?: string
+    /** Column is not nullable? */
+    notNull?: boolean
+    /** Column is primary key */
+    primaryKey?: boolean
+    /** Column has autoincrement flag */
+    autoIncrement?: boolean
   }[]
 }
 

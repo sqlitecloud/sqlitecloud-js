@@ -1,6 +1,6 @@
 {
-  "name": "sqlitecloud-js",
-  "version": "0.0.33",
+  "name": "@sqlitecloud/drivers",
+  "version": "0.0.35",
   "description": "SQLiteCloud drivers for Typescript/Javascript in edge, web and node clients",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
@@ -10,7 +10,7 @@
   "scripts": {
     "test": "jest --coverage",
     "build": "rm -rf ./lib/ && tsc --project tsconfig.build.json && npx webpack",
-    "publish": "npm run build && npm publish",
+    "publish": "npm run build && npm publish --access public",
     "prettier": "prettier --write 'src/**/*'",
     "lint": "eslint ./src/ --fix && tsc --noEmit",
     "typedoc": "rm -rf ./docs/ && typedoc --out docs && typedoc --plugin typedoc-plugin-markdown --out docs/markdown",

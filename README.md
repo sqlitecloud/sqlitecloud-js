@@ -1,4 +1,4 @@
-# sqlitecloud-js
+# @sqlitecloud/drivers
 
 [![npm package][npm-img]][npm-url]
 [![Build Status][build-img]][build-url]
@@ -9,13 +9,13 @@
 ## Install
 
 ```bash
-npm install sqlitecloud-js
+npm install @sqlitecloud/drivers
 ```
 
 ## Usage
 
 ```ts
-import { Database } from 'sqlitecloud-js'
+import { Database } from '@sqlitecloud/drivers'
 
 let database = new Database('sqlitecloud://user:password@xxx.sqlite.cloud:8860/chinook.db')
 

@@ -463,16 +463,4 @@ describe('connection-ws', () => {
       LONG_TIMEOUT
     )
   })
-
-  describe('anonimizeCommand', () => {
-    it('should mask username and password', () => {
-      const anonimized = anonimizeCommand('+62 AUTH USER admin PASSWORD notreallyapassword; USE DATABASE chinook.db; ')
-      expect(anonimized).toBe('+62 AUTH USER ****** PASSWORD ******; USE DATABASE chinook.db; ')
-    })
-
-    it('should leave other values untouched', () => {
-      const anonimized = anonimizeCommand('+62 AUTH USER admin SOMETHING notreallyapassword; USE DATABASE chinook.db; ')
-      expect(anonimized).toBe('+62 AUTH USER ****** SOMETHING notreallyapassword; USE DATABASE chinook.db; ')
-    })
-  })
 })

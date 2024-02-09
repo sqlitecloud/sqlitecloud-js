@@ -113,7 +113,6 @@ export class SQLiteCloudConnection {
     config.compression = parseBoolean(config.compression)
     config.createDatabase = parseBoolean(config.createDatabase)
     config.nonlinearizable = parseBoolean(config.nonlinearizable)
-    config.sqliteMode = parseBoolean(config.sqliteMode)
 
     if (!config.username || !config.password || !config.host) {
       console.error('SQLiteCloudConnection.validateConfiguration - missing arguments', config)
@@ -250,9 +249,6 @@ export function getInitializationCommands(config: SQLiteCloudConfig): string {
       commands += `CREATE DATABASE ${config.database} IF NOT EXISTS; `
     }
     commands += `USE DATABASE ${config.database}; `
-  }
-  if (config.sqliteMode) {
-    commands += 'SET CLIENT KEY SQLITE TO 1; '
   }
   if (config.compression) {
     commands += 'SET CLIENT KEY COMPRESSION TO 1; '

@@ -185,8 +185,10 @@ export class TlsSocketTransport implements ConnectionTransport {
                 // no ending string? ask server for another chunk
                 rowsetChunks.push(buffer)
                 buffer = Buffer.alloc(0)
-                const okCommand = formatCommand('OK')
-                this.socket?.write(okCommand)
+
+                // no longer need to ack the server
+                // const okCommand = formatCommand('OK')
+                // this.socket?.write(okCommand)
               }
             }
           }
@@ -374,6 +376,11 @@ function parseRowsetColumnsMetadata(buffer: Buffer, metadata: SQLCloudRowsetMeta
     for (let i = 0; i < metadata.numberOfColumns; i++) metadata.columns[i].database = popForward() as string
     for (let i = 0; i < metadata.numberOfColumns; i++) metadata.columns[i].table = popForward() as string
     for (let i = 0; i < metadata.numberOfColumns; i++) metadata.columns[i].column = popForward() as string // original column name
+
+    for (let i = 0; i < metadata.numberOfColumns; i++) metadata.columns[i].notNull = popForward() as boolean
+    for (let i = 0; i < metadata.numberOfColumns; i++) metadata.columns[i].primaryKey = popForward() as boolean
+    for (let i = 0; i < metadata.numberOfColumns; i++) metadata.columns[i].autoIncrement = popForward() as boolean
+    console.debug('metadata', metadata)
   }
 
   return buffer
