@@ -126,7 +126,7 @@ export class TlsSocketTransport implements ConnectionTransport {
 
     let buffer = Buffer.alloc(0)
     const rowsetChunks: Buffer[] = []
-    const startedOn = new Date()
+    // const startedOn = new Date()
 
     // define what to do if an answer does not arrive within the set timeout
     let socketTimeout: number

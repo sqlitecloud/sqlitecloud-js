@@ -3,12 +3,7 @@
  */
 
 import { SQLiteCloudConfig, SQLiteCloudError, ErrorCallback, ResultsCallback } from './types'
-import { parseConnectionString, parseBoolean, isBrowser } from './utilities'
-
-/** Default timeout value for queries */
-export const DEFAULT_TIMEOUT = 300 * 1000
-/** Default tls connection port */
-export const DEFAULT_PORT = 9960
+import { validateConfiguration, isBrowser } from './utilities'
 
 /**
  * Base class for SQLiteCloudConnection handles basics and defines methods.
@@ -18,9 +13,9 @@ export class SQLiteCloudConnection {
   /** Parse and validate provided connectionString or configuration */
   constructor(config: SQLiteCloudConfig | string, callback?: ErrorCallback) {
     if (typeof config === 'string') {
-      this.config = this.validateConfiguration({ connectionString: config })
+      this.config = validateConfiguration({ connectionString: config })
     } else {
-      this.config = this.validateConfiguration(config)
+      this.config = validateConfiguration(config)
     }
 
     // connect transport layer to server
@@ -92,41 +87,6 @@ export class SQLiteCloudConnection {
   //
   // private methods
   //
-
-  /** Validate configuration, apply defaults, throw if something is missing or misconfigured */
-  protected validateConfiguration(config: SQLiteCloudConfig): SQLiteCloudConfig {
-    if (config.connectionString) {
-      config = {
-        ...config,
-        ...parseConnectionString(config.connectionString),
-        connectionString: config.connectionString // keep original connection string
-      }
-    }
-
-    // apply defaults where needed
-    config.port ||= DEFAULT_PORT
-    config.timeout = config.timeout && config.timeout > 0 ? config.timeout : DEFAULT_TIMEOUT
-    config.clientId ||= 'SQLiteCloud'
-
-    config.verbose = parseBoolean(config.verbose)
-    config.noBlob = parseBoolean(config.noBlob)
-    config.compression = parseBoolean(config.compression)
-    config.createDatabase = parseBoolean(config.createDatabase)
-    config.nonlinearizable = parseBoolean(config.nonlinearizable)
-
-    if (!config.username || !config.password || !config.host) {
-      console.error('SQLiteCloudConnection.validateConfiguration - missing arguments', config)
-      throw new SQLiteCloudError('The user, password and host arguments must be specified.', { errorCode: 'ERR_MISSING_ARGS' })
-    }
-
-    if (!config.connectionString) {
-      // build connection string from configuration, values are already validated
-      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      config.connectionString = `sqlitecloud://${config.username}:${config.password}@${config.host}:${config.port}/${config.database}`
-    }
-
-    return config
-  }
 
   /** Will log to console if verbose mode is enabled */
   protected log(message: string, ...optionalParams: any[]): void {

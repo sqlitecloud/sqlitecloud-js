@@ -4,6 +4,11 @@
 
 import tls from 'tls'
 
+/** Default timeout value for queries */
+export const DEFAULT_TIMEOUT = 300 * 1000
+/** Default tls connection port */
+export const DEFAULT_PORT = 9960
+
 /** Configuration for SQLite cloud connection */
 export interface SQLiteCloudConfig {
   /** Connection string in the form of sqlitecloud://user:password@host:port/database?options */

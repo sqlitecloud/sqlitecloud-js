@@ -2,7 +2,7 @@
 // utilities.ts - utility methods to manipulate SQL statements
 //
 
-import { SQLiteCloudConfig, SQLiteCloudError, SQLiteCloudDataTypes } from './types'
+import { SQLiteCloudConfig, SQLiteCloudError, SQLiteCloudDataTypes, DEFAULT_PORT, DEFAULT_TIMEOUT } from './types'
 
 //
 // determining running environment, thanks to browser-or-node
@@ -113,6 +113,45 @@ export function popCallback<T extends ErrorCallback = ErrorCallback>(
     return { args: remaining.slice(0, -1), callback: args[args.length - 1] as T }
   }
   return { args: remaining }
+}
+
+//
+// configuration validation
+//
+
+/** Validate configuration, apply defaults, throw if something is missing or misconfigured */
+export function validateConfiguration(config: SQLiteCloudConfig): SQLiteCloudConfig {
+  if (config.connectionString) {
+    config = {
+      ...config,
+      ...parseConnectionString(config.connectionString),
+      connectionString: config.connectionString // keep original connection string
+    }
+  }
+
+  // apply defaults where needed
+  config.port ||= DEFAULT_PORT
+  config.timeout = config.timeout && config.timeout > 0 ? config.timeout : DEFAULT_TIMEOUT
+  config.clientId ||= 'SQLiteCloud'
+
+  config.verbose = parseBoolean(config.verbose)
+  config.noBlob = parseBoolean(config.noBlob)
+  config.compression = parseBoolean(config.compression)
+  config.createDatabase = parseBoolean(config.createDatabase)
+  config.nonlinearizable = parseBoolean(config.nonlinearizable)
+
+  if (!config.username || !config.password || !config.host) {
+    console.error('SQLiteCloudConnection.validateConfiguration - missing arguments', config)
+    throw new SQLiteCloudError('The user, password and host arguments must be specified.', { errorCode: 'ERR_MISSING_ARGS' })
+  }
+
+  if (!config.connectionString) {
+    // build connection string from configuration, values are already validated
+    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+    config.connectionString = `sqlitecloud://${config.username}:${config.password}@${config.host}:${config.port}/${config.database}`
+  }
+
+  return config
 }
 
 /** Parse connectionString like sqlitecloud://username:password@host:port/database?option1=xxx&option2=xxx into its components */
