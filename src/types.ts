@@ -25,6 +25,9 @@ export interface SQLiteCloudConfig {
   host?: string
   /** Port number for tls socket */
   port?: number
+  /** Connect using plain TCP port, without TLS encryption, NOT RECOMMENDED, TEST ONLY */
+  insecure?: boolean
+
   /** Optional query timeout passed directly to TLS socket */
   timeout?: number
   /** Name of database to open */

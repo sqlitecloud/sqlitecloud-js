@@ -21,9 +21,11 @@ const productionConfig = {
     minimize: true
   },
 
+  // add mock 'net' module
   // add mock 'tls' module
   resolve: {
     fallback: {
+      net: false, // tell Webpack to ignore "net"
       tls: false // tell Webpack to ignore "tls"
     }
   }

@@ -6,6 +6,7 @@ import { SQLiteCloudError } from '../src/index'
 import { SQLiteCloudConnection, anonimizeCommand } from '../src/connection'
 import {
   CHINOOK_DATABASE_URL,
+  INSECURE_DATABASE_URL,
   LONG_TIMEOUT,
   getTestingConfig,
   getChinookConfig,
@@ -83,6 +84,26 @@ describe('connection-tls', () => {
         })
       })
       expect(conn).toBeDefined()
+    })
+
+    it('should connect with insecure connection string', done => {
+      if (INSECURE_DATABASE_URL) {
+        expect(INSECURE_DATABASE_URL).toBeDefined()
+        const conn = new SQLiteCloudConnection(INSECURE_DATABASE_URL, error => {
+          expect(error).toBeNull()
+          expect(conn.connected).toBe(true)
+
+          chinook.sendCommands('TEST STRING', (error, results) => {
+            conn.close()
+            expect(conn.connected).toBe(false)
+            done()
+          })
+        })
+        expect(conn).toBeDefined()
+      } else {
+        console.warn(`INSECURE_DATABASE_URL is not defined, ?insecure= connection will not be tested`)
+        done()
+      }
     })
 
     it('should throw when connection string lacks credentials', done => {

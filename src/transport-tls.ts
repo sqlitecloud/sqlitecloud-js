@@ -2,19 +2,18 @@
  * transport-tls.ts - handles low level communication with sqlitecloud server via tls socket and binary protocol
  */
 
-import { SQLiteCloudConfig, SQLCloudRowsetMetadata, SQLiteCloudError, SQLiteCloudDataTypes, ErrorCallback, ResultsCallback } from './types'
+import { SQLiteCloudConfig, SQLiteCloudError, ErrorCallback, ResultsCallback, SQLCloudRowsetMetadata, SQLiteCloudDataTypes } from './types'
 import { SQLiteCloudRowset } from './rowset'
-import { ConnectionTransport, getInitializationCommands } from './connection'
-import { anonimizeError, anonimizeCommand } from './connection'
+import { ConnectionTransport, getInitializationCommands, anonimizeError, anonimizeCommand } from './connection'
 
-import tls, { TLSSocket } from 'tls'
+import net from 'net'
+import tls from 'tls'
 const lz4 = require('lz4js')
 
-/**
- * The server communicates with clients via commands defined
- * in the SQLiteCloud Server Protocol (SCSP), see more at:
- * https://github.com/sqlitecloud/sdk/blob/master/PROTOCOL.md
- */
+// The server communicates with clients via commands defined in
+// SQLiteCloud Server Protocol (SCSP), see more at:
+// https://github.com/sqlitecloud/sdk/blob/master/PROTOCOL.md
+
 const CMD_STRING = '+'
 const CMD_ZEROSTRING = '!'
 const CMD_ERROR = '-'
@@ -34,6 +33,7 @@ const CMD_ARRAY = '='
 
 /**
  * Implementation of SQLiteCloudConnection that connects directly to the database via tls socket and raw, binary protocol.
+ * Connects with plain socket with no encryption is the ?insecure=1 parameter is specified.
  * SQLiteCloud low-level connection, will do messaging, handle socket, authentication, etc.
  * A connection socket is established when the connection is created and closed when the connection is closed.
  * All operations are serialized by waiting for any pending operations to complete. Once a connection is closed,
@@ -43,7 +43,7 @@ export class TlsSocketTransport implements ConnectionTransport {
   /** Configuration passed to connect */
   private config?: SQLiteCloudConfig
   /** Currently opened tls socket used to communicated with SQLiteCloud server */
-  private socket?: tls.TLSSocket | null
+  private socket?: tls.TLSSocket | net.Socket | null
 
   /** True if connection is open */
   get connected(): boolean {
@@ -69,36 +69,51 @@ export class TlsSocketTransport implements ConnectionTransport {
 
     this.config = config
 
-    // connect to tls socket, initialize connection, setup event handlers
-    this.socket = tls.connect(this.config.port as number, this.config.host, this.config.tlsOptions, () => {
-      if (!this.socket?.authorized) {
-        const anonimizedError = anonimizeError((this.socket as TLSSocket).authorizationError)
-        console.error('Connection was not authorized', anonimizedError)
-        this.close()
-        finish(new SQLiteCloudError('Connection was not authorized', { cause: anonimizedError }))
-      } else {
-        // the connection was closed before it was even opened,
-        // eg. client closed the connection before the server accepted it
-        if (this.socket === null) {
-          finish(new SQLiteCloudError('Connection was closed before it was done opening'))
-          return
-        }
-
-        // send initialization commands
-        console.assert(this.socket, 'Connection already closed')
-        const commands = getInitializationCommands(config)
-        this.processCommands(commands, error => {
-          if (error && this.socket) {
-            this.close()
-          }
-          if (callback) {
-            callback?.call(this, error)
-            callback = undefined
-          }
-          finish(error)
-        })
+    if (config.insecure) {
+      // connect to plain socket, without encryption, only if insecure parameter specified
+      // this option is mainly for testing purposes and is not available on production nodes
+      // which would need to connect using tls and proper certificates as per code below
+      const connectionOptions: net.SocketConnectOpts = {
+        host: config.host,
+        port: config.port as number
       }
-    })
+      this.socket = net.connect(connectionOptions, () => {
+        console.warn(`TlsTransport.connect - connected to ${config.host}:${config.port} using insecure protocol`)
+        callback?.call(this, null)
+      })
+    } else {
+      // connect to tls socket, initialize connection, setup event handlers
+      this.socket = tls.connect(this.config.port as number, this.config.host, this.config.tlsOptions, () => {
+        const tlsSocket = this.socket as tls.TLSSocket
+        if (!tlsSocket?.authorized) {
+          const anonimizedError = anonimizeError(tlsSocket.authorizationError)
+          console.error('Connection was not authorized', anonimizedError)
+          this.close()
+          finish(new SQLiteCloudError('Connection was not authorized', { cause: anonimizedError }))
+        } else {
+          // the connection was closed before it was even opened,
+          // eg. client closed the connection before the server accepted it
+          if (this.socket === null) {
+            finish(new SQLiteCloudError('Connection was closed before it was done opening'))
+            return
+          }
+
+          // send initialization commands
+          console.assert(this.socket, 'Connection already closed')
+          const commands = getInitializationCommands(config)
+          this.processCommands(commands, error => {
+            if (error && this.socket) {
+              this.close()
+            }
+            if (callback) {
+              callback?.call(this, error)
+              callback = undefined
+            }
+            finish(error)
+          })
+        }
+      })
+    }
 
     this.socket.on('close', () => {
       this.socket = null
@@ -408,9 +423,9 @@ function parseRowset(buffer: Buffer, spaceIndex: number): SQLiteCloudRowset {
  * Parse a chunk of a chunked rowset command, eg:
  * *LEN 0:VERS NROWS NCOLS DATA
  */
-function parseRowsetChunks(buffers: Buffer[]) {
+export function parseRowsetChunks(buffers: Buffer[]) {
   let metadata: SQLCloudRowsetMetadata = { version: 1, numberOfColumns: 0, numberOfRows: 0, columns: [] }
-  const data = []
+  const data: any[] = []
 
   for (let i = 0; i < buffers.length; i++) {
     let buffer: Buffer = buffers[i]
@@ -456,7 +471,7 @@ function popIntegers(buffer: Buffer, numberOfIntegers = 1): { data: number[]; fw
 }
 
 /** Parse command, extract its data, return the data and the buffer moved to the first byte after the command */
-function popData(buffer: Buffer): { data: SQLiteCloudDataTypes | SQLiteCloudRowset; fwdBuffer: Buffer } {
+export function popData(buffer: Buffer): { data: SQLiteCloudDataTypes | SQLiteCloudRowset; fwdBuffer: Buffer } {
   function popResults(data: any) {
     const fwdBuffer = buffer.subarray(commandEnd)
     return { data, fwdBuffer }
@@ -511,7 +526,7 @@ function popData(buffer: Buffer): { data: SQLiteCloudDataTypes | SQLiteCloudRows
 }
 
 /** Format a command to be sent via SCSP protocol */
-function formatCommand(command: string): string {
+export function formatCommand(command: string): string {
   const commandLength = Buffer.byteLength(command, 'utf-8')
   return `+${commandLength} ${command}`
 }

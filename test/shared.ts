@@ -33,6 +33,9 @@ expect(CHINOOK_DATABASE_URL).toBeDefined()
 expect(TESTING_DATABASE_URL).toBeDefined()
 expect(GATEWAY_URL).toBeDefined()
 
+/** Url to insecure database used for testing */
+export const INSECURE_DATABASE_URL = process.env.INSECURE_DATABASE_URL as string
+
 export const SELF_SIGNED_CERTIFICATE = `-----BEGIN CERTIFICATE-----
 MIID6zCCAtOgAwIBAgIUI0lTm5CfVf3mVP8606CkophcyB4wDQYJKoZIhvcNAQEL
 BQAwgYQxCzAJBgNVBAYTAklUMQswCQYDVQQIDAJNTjEQMA4GA1UEBwwHVmlhZGFu

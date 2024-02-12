@@ -139,6 +139,7 @@ export function validateConfiguration(config: SQLiteCloudConfig): SQLiteCloudCon
   config.compression = parseBoolean(config.compression)
   config.createDatabase = parseBoolean(config.createDatabase)
   config.nonlinearizable = parseBoolean(config.nonlinearizable)
+  config.insecure = parseBoolean(config.insecure)
 
   if (!config.username || !config.password || !config.host) {
     console.error('SQLiteCloudConnection.validateConfiguration - missing arguments', config)
