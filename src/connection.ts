@@ -51,7 +51,10 @@ export class SQLiteCloudConnection {
             this.transport = new transport.WebSocketTransport()
             this.transport.connect(this.config, error => {
               if (error) {
-                console.error(`SQLiteCloudConnection.connect - error while connecting WebSocketTransport: ${error.toString()}`, this.config, error)
+                console.error(
+                  `SQLiteCloudConnection.connect - error while connecting WebSocketTransport: ${error.toString()} to ${this.config.host}:${this.config.port}`,
+                  error
+                )
                 this.close()
               }
               callback?.call(this, error || null)
@@ -68,7 +71,10 @@ export class SQLiteCloudConnection {
             this.transport = new transport.TlsSocketTransport()
             this.transport.connect(this.config, error => {
               if (error) {
-                console.error(`SQLiteCloudConnection.connect - error while connecting TlsSocketTransport: ${error.toString()}`, this.config, error)
+                console.error(
+                  `SQLiteCloudConnection.connect - error while connecting TlsSocketTransport: ${error.toString()} to ${this.config.host}:${this.config.port}`,
+                  error
+                )
                 this.close()
               }
               callback?.call(this, error || null)
