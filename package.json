@@ -50,7 +50,7 @@
     "@types/jest": "^29.5.11",
     "@types/lz4": "^0.6.4",
     "@types/node": "^12.20.55",
-    "@typescript-eslint/eslint-plugin": "^4.22.0",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^4.22.0",
     "dotenv": "^16.4.1",
     "eslint": "^7.32.0",
