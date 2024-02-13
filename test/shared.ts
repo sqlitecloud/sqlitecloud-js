@@ -8,6 +8,9 @@ import { Database } from '../src/database'
 import { ResultsCallback, SQLiteCloudConfig } from '../src/types'
 import { parseConnectionString } from '../src/utilities'
 
+import { SQLiteCloudTlsConnection } from '../src/connection-tls'
+import { SQLiteCloudWebsocketConnection } from '../src/connection-ws'
+
 import * as dotenv from 'dotenv'
 import { SQLiteCloudConnection } from '../src'
 dotenv.config()
@@ -100,13 +103,13 @@ export function getChinookWebsocketConnection(callback?: ResultsCallback, extraC
     useWebsocket: true,
     gatewayUrl: GATEWAY_URL
   }
-  const chinookConnection = new SQLiteCloudConnection(chinookConfig, callback)
+  const chinookConnection = new SQLiteCloudWebsocketConnection(chinookConfig, callback)
   return chinookConnection
 }
 
 export function getChinookTlsConnection(callback?: ResultsCallback, extraConfig?: Partial<SQLiteCloudConfig>): SQLiteCloudConnection {
   const chinookConfig = getChinookConfig(CHINOOK_DATABASE_URL, extraConfig)
-  return new SQLiteCloudConnection(chinookConfig, callback)
+  return new SQLiteCloudTlsConnection(chinookConfig, callback)
 }
 
 /** Returns a chinook.db connection, caller is responsible for closing the database */

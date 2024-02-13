@@ -4,7 +4,7 @@
 
 import { SQLiteCloudConfig, SQLiteCloudError, ErrorCallback, ResultsCallback } from './types'
 import { SQLiteCloudRowset } from './rowset'
-import { ConnectionTransport } from './connection'
+import { SQLiteCloudConnection } from './connection'
 import { io, Socket } from 'socket.io-client'
 
 /**
@@ -13,9 +13,7 @@ import { io, Socket } from 'socket.io-client'
  * requests by returning results and rowsets in json format. The gateway handles
  * connect, disconnect, retries, order of operations, timeouts, etc.
  */
-export class WebSocketTransport implements ConnectionTransport {
-  /** Configuration passed to connect */
-  private config?: SQLiteCloudConfig
+export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
   /** Socket.io used to communicated with SQLiteCloud server */
   private socket?: Socket
 
@@ -25,7 +23,7 @@ export class WebSocketTransport implements ConnectionTransport {
   }
 
   /* Opens a connection with the server and sends the initialization commands. Will throw in case of errors. */
-  connect(config: SQLiteCloudConfig, callback?: ErrorCallback): this {
+  connectTransport(config: SQLiteCloudConfig, callback?: ErrorCallback): this {
     try {
       // connection established while we were waiting in line?
       console.assert(!this.connected, 'Connection already established')
@@ -43,7 +41,7 @@ export class WebSocketTransport implements ConnectionTransport {
   }
 
   /** Will send a command immediately (no queueing), return the rowset/result or throw an error */
-  processCommands(commands: string, callback?: ResultsCallback): this {
+  transportCommands(commands: string, callback?: ResultsCallback): this {
     // connection needs to be established?
     if (!this.socket) {
       callback?.call(this, new SQLiteCloudError('Connection not established', { errorCode: 'ERR_CONNECTION_NOT_ESTABLISHED' }))
@@ -58,7 +56,7 @@ export class WebSocketTransport implements ConnectionTransport {
         const { data, metadata } = response
         if (data && metadata) {
           if (metadata.numberOfRows !== undefined && metadata.numberOfColumns !== undefined && metadata.columns !== undefined) {
-            console.assert(Array.isArray(data), 'SQLiteCloudWebsocketConnection.processCommands - data is not an array')
+            console.assert(Array.isArray(data), 'SQLiteCloudWebsocketConnection.transportCommands - data is not an array')
             // we can recreate a SQLiteCloudRowset from the response which we know to be an array of arrays
             // eslint-disable-next-line @typescript-eslint/no-unsafe-call
             const rowset = new SQLiteCloudRowset(metadata, data.flat())
@@ -75,12 +73,15 @@ export class WebSocketTransport implements ConnectionTransport {
 
   /** Disconnect socket.io from server */
   public close(): this {
-    console.assert(this.socket !== null, 'WebsocketTransport.close - connection already closed')
+    console.assert(this.socket !== null, 'SQLiteCloudWebsocketConnection.close - connection already closed')
     if (this.socket) {
       this.socket?.close()
       this.socket = undefined
     }
+    this.operations.clear()
     this.socket = undefined
     return this
   }
 }
+
+export default SQLiteCloudWebsocketConnection

@@ -4,9 +4,7 @@
 
 export { Database } from './database'
 export { Statement } from './statement'
+export { SQLiteCloudConnection } from './connection'
 export { SQLiteCloudConfig, SQLCloudRowsetMetadata, SQLiteCloudError, ErrorCallback } from './types'
 export { SQLiteCloudRowset, SQLiteCloudRow } from './rowset'
-export { SQLiteCloudConnection } from './connection'
 export { escapeSqlParameter, prepareSql, parseConnectionString, validateConfiguration } from './utilities'
-export { WebSocketTransport } from './transport-ws'
-export { TlsSocketTransport } from './transport-tls'

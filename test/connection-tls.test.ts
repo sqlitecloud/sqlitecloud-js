@@ -3,7 +3,9 @@
  */
 
 import { SQLiteCloudError } from '../src/index'
-import { SQLiteCloudConnection, anonimizeCommand } from '../src/connection'
+import { SQLiteCloudConnection } from '../src/connection'
+import { SQLiteCloudTlsConnection } from '../src/connection-tls'
+import { anonimizeCommand } from '../src/utilities'
 import {
   CHINOOK_DATABASE_URL,
   INSECURE_DATABASE_URL,
@@ -54,7 +56,7 @@ describe('connection-tls', () => {
 
     it('should connect with config object string', done => {
       const configObj = getChinookConfig()
-      const conn = new SQLiteCloudConnection(configObj, error => {
+      const conn = new SQLiteCloudTlsConnection(configObj, error => {
         expect(error).toBeNull()
         expect(conn.connected).toBe(true)
 
@@ -73,7 +75,7 @@ describe('connection-tls', () => {
         done()
       }
 
-      const conn = new SQLiteCloudConnection(CHINOOK_DATABASE_URL, error => {
+      const conn = new SQLiteCloudTlsConnection(CHINOOK_DATABASE_URL, error => {
         expect(error).toBeNull()
         expect(conn.connected).toBe(true)
 
@@ -89,7 +91,7 @@ describe('connection-tls', () => {
     it('should connect with insecure connection string', done => {
       if (INSECURE_DATABASE_URL) {
         expect(INSECURE_DATABASE_URL).toBeDefined()
-        const conn = new SQLiteCloudConnection(INSECURE_DATABASE_URL, error => {
+        const conn = new SQLiteCloudTlsConnection(INSECURE_DATABASE_URL, error => {
           expect(error).toBeNull()
           expect(conn.connected).toBe(true)
 
@@ -100,9 +102,6 @@ describe('connection-tls', () => {
           })
         })
         expect(conn).toBeDefined()
-      } else {
-        console.warn(`INSECURE_DATABASE_URL is not defined, ?insecure= connection will not be tested`)
-        done()
       }
     })
 
@@ -113,7 +112,7 @@ describe('connection-tls', () => {
       delete testingConfig.password
 
       try {
-        const conn = new SQLiteCloudConnection(testingConfig)
+        const conn = new SQLiteCloudTlsConnection(testingConfig)
       } catch (error) {
         expect(error).toBeDefined()
         expect(error).toBeInstanceOf(SQLiteCloudError)

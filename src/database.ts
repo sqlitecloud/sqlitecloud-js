@@ -17,6 +17,7 @@ import { prepareSql, popCallback } from './utilities'
 import { Statement } from './statement'
 import { ErrorCallback, ResultsCallback, RowCallback, RowsCallback } from './types'
 import EventEmitter from 'eventemitter3'
+import { isBrowser } from './utilities'
 
 // Uses eventemitter3 instead of node events for browser compatibility
 // https://github.com/primus/eventemitter3
@@ -64,17 +65,47 @@ export class Database extends EventEmitter {
     if (this.connections?.length > 0) {
       callback?.call(this, null, this.connections[0])
     } else {
-      this.connections.push(
-        new SQLiteCloudConnection(this.config, error => {
-          if (error) {
-            this.handleError(this.connections[0], error, callback)
-          } else {
-            console.assert
-            callback?.call(this, null, this.connections[0])
-            this.emitEvent('open')
-          }
-        })
-      )
+      // connect using websocket if tls is not supported or if explicitly requested
+      const useWebsocket = isBrowser || this.config?.useWebsocket || this.config?.gatewayUrl
+      if (useWebsocket) {
+        // socket.io transport works in both node.js and browser environments and connects via SQLite Cloud Gateway
+        import('./connection-ws')
+          .then(module => {
+            this.connections.push(
+              new module.default(this.config, error => {
+                if (error) {
+                  this.handleError(this.connections[0], error, callback)
+                } else {
+                  console.assert
+                  callback?.call(this, null, this.connections[0])
+                  this.emitEvent('open')
+                }
+              })
+            )
+          })
+          .catch(error => {
+            this.handleError(null, error, callback)
+          })
+      } else {
+        // tls sockets work only in node.js environments
+        import('./connection-tls')
+          .then(module => {
+            this.connections.push(
+              new module.default(this.config, error => {
+                if (error) {
+                  this.handleError(this.connections[0], error, callback)
+                } else {
+                  console.assert
+                  callback?.call(this, null, this.connections[0])
+                  this.emitEvent('open')
+                }
+              })
+            )
+          })
+          .catch(error => {
+            this.handleError(null, error, callback)
+          })
+      }
     }
   }
 

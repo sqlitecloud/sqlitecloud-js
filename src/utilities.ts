@@ -16,6 +16,56 @@ export const isNode: boolean = typeof process !== 'undefined' && process.version
 // utility methods
 //
 
+/** Messages going to the server are sometimes logged when error conditions occour and need to be stripped of user credentials  */
+export function anonimizeCommand(message: string): string {
+  // hide password in AUTH command if needed
+  message = message.replace(/USER \S+/, 'USER ******')
+  message = message.replace(/PASSWORD \S+?(?=;)/, 'PASSWORD ******')
+  message = message.replace(/HASH \S+?(?=;)/, 'HASH ******')
+  return message
+}
+
+/** Strip message code in error of user credentials */
+export function anonimizeError(error: Error): Error {
+  if (error?.message) {
+    error.message = anonimizeCommand(error.message)
+  }
+  return error
+}
+
+/** Initialization commands sent to database when connection is established */
+export function getInitializationCommands(config: SQLiteCloudConfig): string {
+  // first user authentication, then all other commands
+  let commands = `AUTH USER ${config.username || ''} ${config.passwordHashed ? 'HASH' : 'PASSWORD'} ${config.password || ''}; `
+
+  if (config.database) {
+    if (config.createDatabase && !config.dbMemory) {
+      commands += `CREATE DATABASE ${config.database} IF NOT EXISTS; `
+    }
+    commands += `USE DATABASE ${config.database}; `
+  }
+  if (config.compression) {
+    commands += 'SET CLIENT KEY COMPRESSION TO 1; '
+  }
+  if (config.nonlinearizable) {
+    commands += 'SET CLIENT KEY NONLINEARIZABLE TO 1; '
+  }
+  if (config.noBlob) {
+    commands += 'SET CLIENT KEY NOBLOB TO 1; '
+  }
+  if (config.maxData) {
+    commands += `SET CLIENT KEY MAXDATA TO ${config.maxData}; `
+  }
+  if (config.maxRows) {
+    commands += `SET CLIENT KEY MAXROWS TO ${config.maxRows}; `
+  }
+  if (config.maxRowset) {
+    commands += `SET CLIENT KEY MAXROWSET TO ${config.maxRowset}; `
+  }
+
+  return commands
+}
+
 /** Takes a generic value and escapes it so it can replace ? as a binding in a prepared SQL statement */
 export function escapeSqlParameter(param: SQLiteCloudDataTypes): string {
   if (param === null || param === undefined) {

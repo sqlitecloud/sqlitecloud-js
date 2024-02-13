@@ -3,8 +3,8 @@
  */
 
 import { SQLiteCloudError } from '../src/index'
-import { SQLiteCloudConnection, anonimizeCommand } from '../src/connection'
-import { parseConnectionString } from '../src/utilities'
+import { SQLiteCloudConnection } from '../src/connection'
+import { SQLiteCloudWebsocketConnection } from '../src/connection-ws'
 import {
   //
   CHINOOK_DATABASE_URL,
@@ -36,7 +36,7 @@ describe('connection-ws', () => {
     it('should connect with config object string', done => {
       const configObj = getChinookConfig()
       configObj.useWebsocket = true
-      const connection = new SQLiteCloudConnection(configObj)
+      const connection = new SQLiteCloudWebsocketConnection(configObj)
       expect(connection).toBeDefined()
       connection.sendCommands('TEST STRING', (error, results) => {
         connection.close()
@@ -51,8 +51,8 @@ describe('connection-ws', () => {
       configObj.password = 'wrongpassword'
       configObj.useWebsocket = true
 
-      // should attemp connection and return error
-      const connection = new SQLiteCloudConnection(configObj)
+      // should attempt connection and return error
+      const connection = new SQLiteCloudWebsocketConnection(configObj)
       expect(connection).toBeDefined()
       connection.sendCommands('TEST STRING', (error, results) => {
         expect(error).toBeDefined()
@@ -71,7 +71,7 @@ describe('connection-ws', () => {
         done()
       }
 
-      const conn = new SQLiteCloudConnection(CHINOOK_DATABASE_URL, error => {
+      const conn = new SQLiteCloudWebsocketConnection(CHINOOK_DATABASE_URL, error => {
         expect(error).toBeNull()
         expect(conn.connected).toBe(true)
 
