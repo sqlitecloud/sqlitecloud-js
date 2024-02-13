@@ -15,7 +15,7 @@ export abstract class SQLiteCloudConnection {
   /** Parse and validate provided connectionString or configuration */
   constructor(config: SQLiteCloudConfig | string, callback?: ErrorCallback) {
     if (typeof config === 'string') {
-      this.config = validateConfiguration({ connectionString: config })
+       this.config = validateConfiguration({ connectionString: config })
     } else {
       this.config = validateConfiguration(config)
     }

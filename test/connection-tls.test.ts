@@ -3,9 +3,9 @@
  */
 
 import { SQLiteCloudError } from '../src/index'
-import { SQLiteCloudConnection } from '../src/connection'
-import { SQLiteCloudTlsConnection } from '../src/connection-tls'
-import { anonimizeCommand } from '../src/utilities'
+import { SQLiteCloudConnection } from '../src/drivers/connection'
+import { SQLiteCloudTlsConnection } from '../src/drivers/connection-tls'
+import { anonimizeCommand } from '../src/drivers/utilities'
 import {
   CHINOOK_DATABASE_URL,
   INSECURE_DATABASE_URL,

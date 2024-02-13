@@ -4,12 +4,12 @@
 
 import { join } from 'path'
 import { readFileSync } from 'fs'
-import { Database } from '../src/database'
-import { ResultsCallback, SQLiteCloudConfig } from '../src/types'
-import { parseConnectionString } from '../src/utilities'
+import { Database } from '../src/drivers/database'
+import { ResultsCallback, SQLiteCloudConfig } from '../src/drivers/types'
+import { parseConnectionString } from '../src/drivers/utilities'
 
-import { SQLiteCloudTlsConnection } from '../src/connection-tls'
-import { SQLiteCloudWebsocketConnection } from '../src/connection-ws'
+import { SQLiteCloudTlsConnection } from '../src/drivers/connection-tls'
+import { SQLiteCloudWebsocketConnection } from '../src/drivers/connection-ws'
 
 import * as dotenv from 'dotenv'
 import { SQLiteCloudConnection } from '../src'

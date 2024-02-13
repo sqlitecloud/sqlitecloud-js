@@ -3,8 +3,8 @@
  */
 
 import { SQLiteCloudError } from '../src/index'
-import { SQLiteCloudConnection } from '../src/connection'
-import { SQLiteCloudWebsocketConnection } from '../src/connection-ws'
+import { SQLiteCloudConnection } from '../src/drivers/connection'
+import { SQLiteCloudWebsocketConnection } from '../src/drivers/connection-ws'
 import {
   //
   CHINOOK_DATABASE_URL,

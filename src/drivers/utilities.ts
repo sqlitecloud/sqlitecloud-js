@@ -171,6 +171,7 @@ export function popCallback<T extends ErrorCallback = ErrorCallback>(
 
 /** Validate configuration, apply defaults, throw if something is missing or misconfigured */
 export function validateConfiguration(config: SQLiteCloudConfig): SQLiteCloudConfig {
+  console.assert(config, 'SQLiteCloudConnection.validateConfiguration - missing config')
   if (config.connectionString) {
     config = {
       ...config,

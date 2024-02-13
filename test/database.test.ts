@@ -4,7 +4,7 @@
 
 import { SQLiteCloudRowset, SQLiteCloudRow, SQLiteCloudError } from '../src/index'
 import { getTestingDatabase, getTestingDatabaseAsync, getChinookDatabase, removeDatabase, removeDatabaseAsync, LONG_TIMEOUT } from './shared'
-import { RowCountCallback } from '../src/types'
+import { RowCountCallback } from '../src/drivers/types'
 import { finished } from 'stream'
 
 //

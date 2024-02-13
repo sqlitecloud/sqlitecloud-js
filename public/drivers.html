@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Driver | SQLite Cloud</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="sqlitecloud.v0.0.37.js"></script>
+  </head>
+
+  <body class="p-4">
+    <h1>SQLite Cloud Driver</h1>
+    <div class="pb-6">
+      <a href="https://www.npmjs.com/package/sqlitecloud">npm sqlitecloud</a>
+    </div>
+
+    <!-- Add the text field and button here -->
+    <div class="pb-2">
+      <div class="text-sm w-12">connectionString:</div>
+      <input
+        type="text"
+        id="connectionStringInput"
+        placeholder="Type your connection string here"
+        value="sqlitecloud://admin:password@host.sqlite.cloud:8860/chinook.db"
+        class="border rounded w-full pl-2 pr-2 mb-2"
+      />
+      <div class="text-sm w-12">sql:</div>
+      <input
+        type="text"
+        id="messageInput"
+        placeholder="Type your SQL query"
+        value="select * from customers limit 3"
+        class="border rounded w-full pl-2 pr-2 mb-2"
+      />
+    </div>
+    <button id="sendButton" class="border rounded w-32 mb-6">query</button>
+
+    <h2 class="pb-4">Results:</h2>
+    <ul id="messages" class="pl-4"></ul>
+
+    <script type="module">
+      // import { io } from 'https://cdn.socket.io/4.7.4/socket.io.esm.min.js'
+      const status = document.getElementById('status')
+      const messages = document.getElementById('messages')
+
+      // connection string is stored in local storage so you don't have to type it every time
+      let connectionString = localStorage.getItem('connectionString')
+      if (!connectionString) {
+        connectionString = 'sqlitecloud://admin:password@host.sqlite.cloud:8860/database.db'
+        localStorage.setItem('connectionString', connectionString)
+      } else connectionStringInput.value = connectionString
+      connectionStringInput.addEventListener('change', () => {
+        localStorage.setItem('connectionString', connectionStringInput.value)
+      })
+
+      const appendMessage = content => {
+        const item = document.createElement('li')
+        item.classList.add('pb-4')
+        item.classList.add('text-sm')
+        item.textContent = content
+        messages.prepend(item)
+      }
+
+      // socket is connected the first time the sql button is clicked and stays connected until the page is refreshed
+      var database = null
+
+      sendButton.addEventListener('click', () => {
+        if (!database) {
+          database = new window.sqlitecloud.Database(connectionString, error => {
+            if (error) {
+              database = null
+              appendMessage(`connection error:  ${error}`)
+            } else {
+              appendMessage(`connected`)
+            }
+          })
+        }
+
+        const sql = messageInput.value
+        const startTime = Date.now()
+
+        // send an async sql request to the server
+        database.all(sql, (error, rows) => {
+          if (error) {
+            console.error(`sql: ${sql}, error: ${error}`, error)
+            appendMessage(`sql: ${sql}, error: ${error}`)
+          } else {
+            console.debug(`sql: ${sql}, elapsed: ${Date.now() - startTime}`, rows)
+            appendMessage(JSON.stringify(rows))
+          }
+        })
+      })
+    </script>
+  </body>
+</html>
