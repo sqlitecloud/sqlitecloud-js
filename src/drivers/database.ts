@@ -46,7 +46,11 @@ export class Database extends EventEmitter {
     // mode is ignored for now
 
     // opens first connection to the database automatically
-    this.getConnection(callback as ResultsCallback)
+    this.getConnection((error, _connection) => {
+      if (callback) {
+        callback.call(this, error)
+      }
+    })
   }
 
   /** Configuration used to open database connections */

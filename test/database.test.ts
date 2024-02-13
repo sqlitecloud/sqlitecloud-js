@@ -5,7 +5,6 @@
 import { SQLiteCloudRowset, SQLiteCloudRow, SQLiteCloudError } from '../src/index'
 import { getTestingDatabase, getTestingDatabaseAsync, getChinookDatabase, removeDatabase, removeDatabaseAsync, LONG_TIMEOUT } from './shared'
 import { RowCountCallback } from '../src/drivers/types'
-import { finished } from 'stream'
 
 //
 // utility methods to setup and destroy temporary test databases
@@ -269,7 +268,7 @@ describe('Database.sql (async)', () => {
   it('should work with regular function parameters', async () => {
     let database
     try {
-      database = await getTestingDatabase()
+      database = await getTestingDatabaseAsync()
       const results = await database.sql('SELECT * FROM people WHERE name = ?', 'Emma Johnson')
       expect(results).toHaveLength(1)
     } finally {
@@ -280,7 +279,7 @@ describe('Database.sql (async)', () => {
   it('should select and return multiple rows', async () => {
     let database
     try {
-      database = await getTestingDatabase()
+      database = await getTestingDatabaseAsync()
       const results = await database.sql('SELECT * FROM people ORDER BY id')
       expect(results).toBeDefined()
 

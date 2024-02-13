@@ -5,14 +5,14 @@
 import { join } from 'path'
 import { readFileSync } from 'fs'
 import { Database } from '../src/drivers/database'
-import { ResultsCallback, SQLiteCloudConfig } from '../src/drivers/types'
+import { ResultsCallback, SQLiteCloudConfig, SQLiteCloudError } from '../src/drivers/types'
 import { parseConnectionString } from '../src/drivers/utilities'
 
 import { SQLiteCloudTlsConnection } from '../src/drivers/connection-tls'
 import { SQLiteCloudWebsocketConnection } from '../src/drivers/connection-ws'
 
 import * as dotenv from 'dotenv'
-import { SQLiteCloudConnection } from '../src'
+import { SQLiteCloudConnection, SQLiteCloudRowset } from '../src'
 dotenv.config()
 
 export const LONG_TIMEOUT = 1 * 60 * 1000 // 1 minute
@@ -168,10 +168,20 @@ export function getTestingDatabase(callback?: ResultsCallback): Database {
 
 export async function getTestingDatabaseAsync(): Promise<Database> {
   const testingConfig = getTestingConfig()
-  const database = new Database(testingConfig)
-  // database.verbose()
-  await database.sql(TESTING_SQL)
-  return database
+  return new Promise((resolve, reject) => {
+    const database = new Database(testingConfig, error => {
+      if (error) {
+        reject(error)
+      }
+      database.run(TESTING_SQL, (error: SQLiteCloudError, results: SQLiteCloudRowset) => {
+        if (error) {
+          reject(error)
+        }
+        expect(results[0]['42']).toBe(42)
+        resolve(database)
+      })
+    })
+  })
 }
 
 /** Drop databases that are no longer in use */

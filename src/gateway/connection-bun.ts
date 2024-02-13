@@ -164,7 +164,7 @@ export class SQLiteCloudBunConnection extends SQLiteCloudConnection {
       if (hasCommandLength(dataType)) {
         const commandLength = parseCommandLength(this.buffer)
         const hasReceivedEntireCommand = this.buffer.length - this.buffer.indexOf(' ') - 1 >= commandLength ? true : false
-        console.debug(`dataType: ${dataType} buffer.length: ${this.buffer.length}, commandLenght: ${commandLength}`)
+
         if (hasReceivedEntireCommand) {
           if (this.config?.verbose) {
             let bufferString = this.buffer.toString('utf8')
