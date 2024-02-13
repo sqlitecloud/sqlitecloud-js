@@ -13,6 +13,7 @@ import { SQLiteCloudWebsocketConnection } from '../src/drivers/connection-ws'
 
 import * as dotenv from 'dotenv'
 import { SQLiteCloudConnection, SQLiteCloudRowset } from '../src'
+import e from 'express'
 dotenv.config()
 
 export const LONG_TIMEOUT = 1 * 60 * 1000 // 1 minute
@@ -24,7 +25,7 @@ export const WARN_SPEED_MS = 500
 export const EXPECT_SPEED_MS = 6 * 1000
 
 /** Number of times or size of stress (when repeated in sequence) */
-export const SEQUENCE_TEST_SIZE = 75
+export const SEQUENCE_TEST_SIZE = 150
 /** Concurrency size for multiple connection tests */
 export const SIMULTANEOUS_TEST_SIZE = 150
 
@@ -160,9 +161,23 @@ export function getTestingConfig(url = TESTING_DATABASE_URL): SQLiteCloudConfig 
 
 export function getTestingDatabase(callback?: ResultsCallback): Database {
   const testingConfig = getTestingConfig()
-  const database = new Database(testingConfig)
+  const database = new Database(testingConfig, error => {
+    if (error) {
+      console.error(`getTestingDatabase - connection error: ${error}`)
+      callback?.call(database, error)
+    }
+    database.run(TESTING_SQL, (error: SQLiteCloudError, results: SQLiteCloudRowset) => {
+      if (error) {
+        console.error(`getTestingDatabase - setup error: ${error}`)
+        callback?.call(database, error)
+      }
+      expect(results).toBeDefined()
+      expect(results[0][42]).toBe(42)
+      callback?.call(database, null)
+    })
+  })
+
   // database.verbose()
-  database.exec(TESTING_SQL, callback)
   return database
 }
 

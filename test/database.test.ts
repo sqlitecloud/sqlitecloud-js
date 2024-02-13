@@ -5,6 +5,7 @@
 import { SQLiteCloudRowset, SQLiteCloudRow, SQLiteCloudError } from '../src/index'
 import { getTestingDatabase, getTestingDatabaseAsync, getChinookDatabase, removeDatabase, removeDatabaseAsync, LONG_TIMEOUT } from './shared'
 import { RowCountCallback } from '../src/drivers/types'
+import e from 'express'
 
 //
 // utility methods to setup and destroy temporary test databases
@@ -37,8 +38,10 @@ describe('Database.run', () => {
         })
       }
 
-      const database = getTestingDatabase()
-      database.run(updateSql, plainCallbackNotALambda)
+      const database = getTestingDatabase(error => {
+        expect(error).toBeNull()
+        database.run(updateSql, plainCallbackNotALambda)
+      })
     },
     LONG_TIMEOUT
   )
@@ -84,8 +87,10 @@ describe('Database.run', () => {
         })
       }
 
-      const database = getTestingDatabase()
-      database.run(insertSql, plainCallbackNotALambdaOne)
+      const database = getTestingDatabase(error => {
+        expect(error).toBeNull()
+        database.run(insertSql, plainCallbackNotALambdaOne)
+      })
     },
     LONG_TIMEOUT
   )
