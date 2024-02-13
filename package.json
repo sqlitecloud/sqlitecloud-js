@@ -17,7 +17,8 @@
     "npmgui": "npx npm-gui@latest",
     "gateway-dev": "bun --watch ./src/gateway/gateway.ts",
     "gateway-start": "bun --smol run ./src/gateway/gateway.ts",
-    "gateway-test": "bun test ./src/gateway/connection-bun.test.ts --watch --coverage"
+    "gateway-test": "bun test ./src/gateway/connection-bun.test.ts --watch --coverage",
+    "gateway-build": "bun build ./src/gateway/gateway.ts --compile --outfile ./lib/sqlitecloud-gateway.out"
   },
   "repository": {
     "type": "git",
