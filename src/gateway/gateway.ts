@@ -115,7 +115,7 @@ app.get('/v1/info', (req, res) => {
 
 app.post('/v1/sql', async (req: express.Request, res: express.Response) => {
   try {
-    log(`POST /v1/sql`)
+    log('POST /v1/sql')
     const response = await handleHttpSqlRequest(req, res)
     res.json(response)
   } catch (error) {
@@ -168,11 +168,11 @@ async function handleHttpSqlRequest(request: express.Request, response: express.
 
 /** Server info for /v1/info endpoints */
 function getServerInfo() {
-  const { objectTypeCounts, ...memory } = heapStats()
+  const { objectTypeCounts, protectedObjectTypeCounts, ...memory } = heapStats()
 
   return {
     data: {
-      name: packageJson.name,
+      name: '@sqlitecloud/gateway',
       version: packageJson.version,
       date: new Date().toISOString(),
       memory
@@ -238,7 +238,7 @@ async function queryAsync(connection: SQLiteCloudBunConnection, apiRequest: SqlA
       result = await sendCommandsAsync(connection, apiRequest.sql)
       // query returned a rowset?
       if (result instanceof SQLiteCloudRowset) {
-        const rowset = result as SQLiteCloudRowset
+        const rowset = result
         const data = apiRequest.row === 'dictionary' ? rowset : rowset.map(rowsetRow => rowsetRow.getData()) // rows as arrays by default
         return { data, metadata: rowset.metadata }
       }

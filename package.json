@@ -16,7 +16,8 @@
     "typedoc": "rm -rf ./docs/ && typedoc --out docs && typedoc --plugin typedoc-plugin-markdown --out docs/markdown",
     "npmgui": "npx npm-gui@latest",
     "gateway-dev": "bun --watch ./src/gateway/gateway.ts",
-    "gateway-test": "bun test ./src/gateway/connection-bun.test.ts --watch"
+    "gateway-start": "bun --smol run ./src/gateway/gateway.ts",
+    "gateway-test": "bun test ./src/gateway/connection-bun.test.ts --watch --coverage"
   },
   "repository": {
     "type": "git",

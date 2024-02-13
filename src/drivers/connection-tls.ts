@@ -134,7 +134,7 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
     // const startedOn = new Date()
 
     // define what to do if an answer does not arrive within the set timeout
-    let socketTimeout: number
+    let socketTimeout: NodeJS.Timeout
 
     // clear all listeners and call done in the operations queue
     const finish: ResultsCallback = (error, result) => {

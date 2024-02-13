@@ -116,7 +116,7 @@ describe('SQLiteCloudBunConnection', () => {
       const results = await sendCommands(chinookConnection, 'TEST BLOB')
       expect(typeof results).toBe('object')
       expect(results).toBeInstanceOf(Buffer)
-      const bufferrowset = results as any as Buffer
+      const bufferrowset = results as Buffer
       expect(bufferrowset.length).toBe(1000)
     })
 
@@ -124,7 +124,7 @@ describe('SQLiteCloudBunConnection', () => {
       const results = await sendCommands(chinookConnection, 'TEST BLOB0')
       expect(typeof results).toBe('object')
       expect(results).toBeInstanceOf(Buffer)
-      const bufferrowset = results as any as Buffer
+      const bufferrowset = results as Buffer
       expect(bufferrowset.length).toBe(0)
     })
 
@@ -161,7 +161,7 @@ describe('SQLiteCloudBunConnection', () => {
     test('should test array', async () => {
       const results = await sendCommands(chinookConnection, 'TEST ARRAY')
       expect(Array.isArray(results)).toBe(true)
-      const arrayrowset = results as any as Array<any>
+      const arrayrowset = results as Array<any>
       expect(arrayrowset.length).toBe(5)
       expect(arrayrowset[0]).toBe('Hello World')
       expect(arrayrowset[1]).toBe(123456)
