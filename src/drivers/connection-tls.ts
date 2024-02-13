@@ -218,6 +218,7 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
     })
 
     this.socket?.write(commands, 'utf8', () => {
+      // @ts-ignore
       socketTimeout = setTimeout(() => {
         const timeoutError = new SQLiteCloudError('Request timed out', { cause: anonimizeCommand(commands) })
         // console.debug(`Request timed out, config.timeout is ${this.config?.timeout as number}ms`, timeoutError)
