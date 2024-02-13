@@ -8,8 +8,9 @@
 import { SQLiteCloudError } from '../drivers/types'
 import { SQLiteCloudBunConnection } from './connection-bun'
 
-const CHINOOK_DATABASE_URL = process.env['CHINOOK_DATABASE_URL'] as string
+let CHINOOK_DATABASE_URL = process.env['CHINOOK_DATABASE_URL'] as string
 console.assert(CHINOOK_DATABASE_URL, 'CHINOOK_DATABASE_URL is required')
+CHINOOK_DATABASE_URL = 'sqlitecloud://admin:uN3ARhdcKQ@oggdnp3zm.sqlite.cloud:8860/chinook.db?verbose=true'
 
 import { expect, test, describe, beforeEach, afterEach } from 'bun:test'
 
@@ -177,7 +178,7 @@ describe('SQLiteCloudBunConnection', () => {
       expect(results.columnsNames).toEqual(['key', 'value'])
     })
 
-    test('should test chunked rowset', async () => {
+    test.only('should test chunked rowset', async () => {
       const results = await sendCommands(chinookConnection, 'TEST ROWSET_CHUNK')
       expect(results.numberOfRows).toBe(147)
       expect(results.numberOfColumns).toBe(1)

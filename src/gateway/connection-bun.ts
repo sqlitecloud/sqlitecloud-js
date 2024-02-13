@@ -13,7 +13,9 @@ import {
   decompressBuffer,
   parseRowsetChunks,
   CMD_COMPRESSED,
-  CMD_ROWSET_CHUNK
+  CMD_ROWSET_CHUNK,
+  bufferEndsWith,
+  ROWSET_CHUNKS_END
 } from '../drivers/protocol'
 import type { Socket } from 'bun'
 
@@ -125,9 +127,8 @@ export class SQLiteCloudBunConnection extends SQLiteCloudConnection {
 
     // reset buffer and rowset chunks, define response callback
     this.buffer = Buffer.alloc(0)
-    this.rowsetChunks = []
-    this.processCallback = callback
     this.startedOn = new Date()
+    this.processCallback = callback
 
     // compose commands following SCPC protocol
     const formattedCommands = formatCommand(commands)
@@ -144,9 +145,8 @@ export class SQLiteCloudBunConnection extends SQLiteCloudConnection {
   // onData is called when data is received, it will process the data until all data is retrieved for a response
   // when response is complete or there's an error, finish is called to call the results callback set by processCommands...
 
-  // buffer to store incoming data
+  // buffer to accumulate incoming data until an whole command is received and can be parsed
   private buffer: Buffer = Buffer.alloc(0)
-  private rowsetChunks: Buffer[] = []
   private startedOn: Date = new Date()
 
   // callback to be called when a command is finished processing
@@ -155,14 +155,16 @@ export class SQLiteCloudBunConnection extends SQLiteCloudConnection {
   /** Handles data received in response to an outbound command sent by processCommands */
   private processCommandsData(socket: Socket<any>, data: Buffer) {
     try {
-      // on first ondata event, dataType is read from data, on subsequent ondata event, is read from buffer that is the concatanations of data received on each ondata event
-      let dataType = this.buffer.length === 0 ? data.subarray(0, 1).toString() : this.buffer.subarray(0, 1).toString('utf8')
-      this.buffer = Buffer.concat([this.buffer, data])
-      const commandLength = hasCommandLength(dataType)
+      // append data to buffer as it arrives
+      if (data.length && data.length > 0) {
+        this.buffer = Buffer.concat([this.buffer, data])
+      }
 
-      if (commandLength) {
+      let dataType = this.buffer?.subarray(0, 1).toString()
+      if (hasCommandLength(dataType)) {
         const commandLength = parseCommandLength(this.buffer)
         const hasReceivedEntireCommand = this.buffer.length - this.buffer.indexOf(' ') - 1 >= commandLength ? true : false
+        console.debug(`dataType: ${dataType} buffer.length: ${this.buffer.length}, commandLenght: ${commandLength}`)
         if (hasReceivedEntireCommand) {
           if (this.config?.verbose) {
             let bufferString = this.buffer.toString('utf8')
@@ -182,18 +184,10 @@ export class SQLiteCloudBunConnection extends SQLiteCloudConnection {
             const { data } = popData(this.buffer)
             this.processCommandsFinish?.call(this, null, data)
           } else {
-            // check if rowset received the ending chunk
-            if (data.subarray(data.indexOf(' ') + 1, data.length).toString() === '0 0 0 ') {
-              const parsedData = parseRowsetChunks(this.rowsetChunks)
+            // check if rowset received the ending chunk in which case it can be unpacked
+            if (bufferEndsWith(this.buffer, ROWSET_CHUNKS_END)) {
+              const parsedData = parseRowsetChunks([this.buffer])
               this.processCommandsFinish?.call(this, null, parsedData)
-            } else {
-              // no ending string? ask server for another chunk
-              this.rowsetChunks.push(this.buffer)
-              this.buffer = Buffer.alloc(0)
-
-              // no longer need to ack the server
-              // const okCommand = formatCommand('OK')
-              // this.socket?.write(okCommand)
             }
           }
         }
@@ -221,6 +215,7 @@ export class SQLiteCloudBunConnection extends SQLiteCloudConnection {
       // console.debug('BunTransport.finish - result', result)
     }
     if (this.processCallback) {
+      // console.error(`SQLiteCloudBunConnection.processCommandsFinish - error:${error}, result: ${result}`, error, result)
       this.processCallback(error, result)
     }
   }

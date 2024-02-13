@@ -4,7 +4,17 @@
 
 import { SQLiteCloudConfig, SQLiteCloudError, ErrorCallback, ResultsCallback } from './types'
 import { SQLiteCloudConnection } from './connection'
-import { formatCommand, hasCommandLength, parseCommandLength, popData, decompressBuffer, CMD_COMPRESSED, CMD_ROWSET_CHUNK } from './protocol'
+import {
+  formatCommand,
+  hasCommandLength,
+  parseCommandLength,
+  popData,
+  decompressBuffer,
+  CMD_COMPRESSED,
+  CMD_ROWSET_CHUNK,
+  bufferEndsWith,
+  ROWSET_CHUNKS_END
+} from './protocol'
 import { getInitializationCommands, anonimizeError, anonimizeCommand } from './utilities'
 import { parseRowsetChunks } from './protocol'
 
@@ -181,19 +191,15 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
               const { data } = popData(buffer)
               finish(null, data)
             } else {
-              // @ts-expect-error
               // check if rowset received the ending chunk
-              if (data.subarray(data.indexOf(' ') + 1, data.length).toString() === '0 0 0 ') {
+              if (bufferEndsWith(buffer, ROWSET_CHUNKS_END)) {
+                rowsetChunks.push(buffer)
                 const parsedData = parseRowsetChunks(rowsetChunks)
                 finish?.call(this, null, parsedData)
               } else {
                 // no ending string? ask server for another chunk
                 rowsetChunks.push(buffer)
                 buffer = Buffer.alloc(0)
-
-                // no longer need to ack the server
-                // const okCommand = formatCommand('OK')
-                // this.socket?.write(okCommand)
               }
             }
           }

@@ -4,6 +4,7 @@
 
 import { SQLiteCloudError, type SQLCloudRowsetMetadata, type SQLiteCloudDataTypes } from './types'
 import { SQLiteCloudRowset } from './rowset'
+import { debug } from 'console'
 
 const lz4 = require('lz4js')
 
@@ -27,6 +28,10 @@ export const CMD_ARRAY = '='
 // const CMD_RAWJSON = '{'
 // const CMD_PUBSUB = '|'
 // const CMD_RECONNECT = '@'
+
+// To mark the end of the Rowset, the special string /LEN 0 0 0   is sent (LEN is always 6 in this case)
+// https://github.com/sqlitecloud/sdk/blob/master/PROTOCOL.md#scsp-rowset-chunk
+export const ROWSET_CHUNKS_END = '/6 0 0 0 '
 
 //
 // utility functions
@@ -190,22 +195,34 @@ function parseRowset(buffer: Buffer, spaceIndex: number): SQLiteCloudRowset {
   return new SQLiteCloudRowset(metadata, data)
 }
 
+export function bufferStartsWith(buffer: Buffer, prefix: string): boolean {
+  return buffer.length >= prefix.length && buffer.subarray(0, prefix.length).toString('utf8') === prefix
+}
+
+export function bufferEndsWith(buffer: Buffer, suffix: string): boolean {
+  return buffer.length >= suffix.length && buffer.subarray(buffer.length - suffix.length, buffer.length).toString('utf8') === suffix
+}
+
 /**
  * Parse a chunk of a chunked rowset command, eg:
  * *LEN 0:VERS NROWS NCOLS DATA
+ * @see https://github.com/sqlitecloud/sdk/blob/master/PROTOCOL.md#scsp-rowset-chunk
  */
 export function parseRowsetChunks(buffers: Buffer[]): SQLiteCloudRowset {
+  let buffer = Buffer.concat(buffers)
+  if (!bufferStartsWith(buffer, CMD_ROWSET_CHUNK) || !bufferEndsWith(buffer, ROWSET_CHUNKS_END)) {
+    throw new Error('SQLiteCloudConnection.parseRowsetChunks - invalid chunks buffer')
+  }
+
   let metadata: SQLCloudRowsetMetadata = { version: 1, numberOfColumns: 0, numberOfRows: 0, columns: [] }
   const data: any[] = []
 
-  for (let i = 0; i < buffers.length; i++) {
-    let buffer: Buffer = buffers[i]
+  // validate and skip data type
+  const dataType = buffer.subarray(0, 1).toString()
+  console.assert(dataType === CMD_ROWSET_CHUNK)
+  buffer = buffer.subarray(buffer.indexOf(' ') + 1)
 
-    // validate and skip data type
-    const dataType = buffer.subarray(0, 1).toString()
-    console.assert(dataType === CMD_ROWSET_CHUNK)
-    buffer = buffer.subarray(buffer.indexOf(' ') + 1)
-
+  while (true) {
     // chunk header, eg: 0:VERS NROWS NCOLS
     const { index: chunkIndex, metadata: chunkMetadata, fwdBuffer } = parseRowsetHeader(buffer)
     buffer = fwdBuffer
@@ -224,10 +241,17 @@ export function parseRowsetChunks(buffers: Buffer[]): SQLiteCloudRowset {
       data.push(itemData)
       buffer = fwdBuffer
     }
+
+    // no more chunks?
+    if (bufferStartsWith(buffer, ROWSET_CHUNKS_END)) {
+      break
+    }
   }
 
-  console.assert(data && data.length === metadata.numberOfRows * metadata.numberOfColumns, 'SQLiteCloudConnection.parseRowsetChunks - invalid rowset data')
-  return new SQLiteCloudRowset(metadata, data)
+  console.assert(data && data.length === metadata.numberOfRows * metadata.numberOfColumns, 'parseRowsetChunks - invalid rowset data')
+  const rowset = new SQLiteCloudRowset(metadata, data)
+  // console.debug(`parseRowsetChunks - ${rowset.numberOfRows} rows, ${rowset.numberOfColumns} columns`)
+  return rowset
 }
 
 /** Pop one or more space separated integers from beginning of buffer, move buffer forward */
