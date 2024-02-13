@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "test": "jest --coverage",
-    "build": "rm -rf ./lib/ && tsc --project tsconfig.build.json && npx webpack",
+    "build": "rm -rf ./lib/ && tsc --project tsconfig.build.json && npx webpack && cp ./lib/sqlitecloud.drivers.js ./public/ && cp ./lib/sqlitecloud.drivers.dev.js ./public/",
     "publish": "npm run build && npm publish --access public",
     "prettier": "prettier --write 'src/**/*'",
     "lint": "eslint ./src/ --fix && tsc --noEmit",

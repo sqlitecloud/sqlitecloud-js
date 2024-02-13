@@ -11,7 +11,7 @@ const productionConfig = {
   // Output configuration
   output: {
     path: path.resolve(__dirname, 'lib'),
-    filename: `sqlitecloud.v${packageJson.version}.js`,
+    filename: `sqlitecloud.drivers.js`,
     library: 'sqlitecloud',
     libraryTarget: 'umd',
     globalObject: 'this'
@@ -35,6 +35,7 @@ const productionConfig = {
 const devConfig = JSON.parse(JSON.stringify(productionConfig))
 devConfig.mode = 'development'
 devConfig.optimization.minimize = false
-devConfig.output.filename = `sqlitecloud.v${packageJson.version}.dev.js`
+devConfig.output.filename = `sqlitecloud.drivers.dev.js`
+// devConfig.output.filename = `sqlitecloud.v${packageJson.version}.dev.js`
 
 module.exports = [productionConfig, devConfig]
