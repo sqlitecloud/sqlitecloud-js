@@ -3,7 +3,7 @@
  */
 
 import { SQLiteCloudRowset } from '../src'
-import { RowCallback, RowCountCallback, SQLiteCloudError } from '../src/types'
+import { RowCallback, RowCountCallback, SQLiteCloudError } from '../src/drivers/types'
 import { getChinookDatabase } from './shared'
 
 describe('Database.prepare', () => {

@@ -111,8 +111,6 @@ describe('Database.on', () => {
 
 describe('Database.run', () => {
   it('sqlite3: insert with plain sql', done => {
-    const testingFile = createTestDatabaseFile()
-
     // https://github.com/TryGhost/node-sqlite3/wiki/API#runsql--param---callback
     function onInsert(error: Error, results: any) {
       expect(error).toBeNull()
@@ -127,12 +125,11 @@ describe('Database.run', () => {
       done()
     }
 
+    const testingFile = createTestDatabaseFile()
     testingFile.run(INSERT_SQL, onInsert)
   })
 
   it('sqlitecloud: insert with plain sql', done => {
-    const testingCloud = getTestingDatabase()
-
     // https://github.com/TryGhost/node-sqlite3/wiki/API#runsql--param---callback
     function onInsert(error: Error, results: any) {
       expect(error).toBeNull()
@@ -150,8 +147,10 @@ describe('Database.run', () => {
       testingCloud.close()
       done()
     }
-
-    testingCloud.run(INSERT_SQL, onInsert)
+    const testingCloud = getTestingDatabase(error => {
+      expect(error).toBeNull()
+      testingCloud.run(INSERT_SQL, onInsert)
+    })
   })
 
   // end run

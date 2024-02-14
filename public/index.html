@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Gateway | SQLite Cloud</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+
+  <body class="p-4">
+    <h1>SQLite Cloud Gateway</h1>
+    <h2 id="status" class="pb-6 font-bold cursor-pointer">Disconnected</h2>
+
+    <!-- Add the text field and button here -->
+    <div class="pb-2">
+      <div class="text-sm w-12">connectionString:</div>
+      <input
+        type="text"
+        id="connectionStringInput"
+        placeholder="Type your connection string here"
+        value="sqlitecloud://admin:password@host.sqlite.cloud:8860/chinook.db"
+        class="border rounded w-full pl-2 pr-2 mb-2"
+      />
+      <div class="text-sm w-12">sql:</div>
+      <input
+        type="text"
+        id="messageInput"
+        placeholder="Type your SQL query"
+        value="select * from tracks where trackid = 1"
+        class="border rounded w-full pl-2 pr-2 mb-2"
+      />
+    </div>
+    <button id="sendButton" class="border rounded w-32 mb-6">send</button>
+
+    <h2>Messages:</h2>
+    <ul id="messages" class="pl-4"></ul>
+
+    <script type="module">
+      import { io } from 'https://cdn.socket.io/4.7.4/socket.io.esm.min.js'
+      const status = document.getElementById('status')
+      const messages = document.getElementById('messages')
+
+      // connection string is stored in local storage so you don't have to type it every time
+      let connectionString = localStorage.getItem('connectionString')
+      if (!connectionString) {
+        connectionString = 'sqlitecloud://admin:password@host.sqlite.cloud:8860/database.db'
+        localStorage.setItem('connectionString', connectionString)
+      } else connectionStringInput.value = connectionString
+      connectionStringInput.addEventListener('change', () => {
+        localStorage.setItem('connectionString', connectionStringInput.value)
+      })
+
+      const appendMessage = content => {
+        const item = document.createElement('li')
+        item.classList.add('pb-4')
+        item.classList.add('text-sm')
+        item.textContent = content
+        messages.prepend(item)
+      }
+
+      function setupSocket() {
+        let host = window.location.host
+        if (host.indexOf(':') !== -1) host = host.substring(0, host.indexOf(':'))
+        console.debug(`socket/connect - connecting to '${host}'`)
+        socket = io(`ws://${host}:4000`, { auth: { token: connectionStringInput.value } })
+        socket.on('connect', () => {
+          status.innerText = 'Connected'
+          appendMessage(`connect | session id: ${socket.id}`)
+        })
+
+        socket.on('connect_error', err => {
+          appendMessage(`connect_error | reason: ${err.message}`)
+        })
+
+        socket.on('disconnect', reason => {
+          status.innerText = 'Disconnected'
+          appendMessage(`disconnect | reason: ${reason}`)
+        })
+
+        return socket
+      }
+
+      // socket is connected the first time the sql button is clicked and stays connected until the page is refreshed
+      var socket = null
+
+      sendButton.addEventListener('click', () => {
+        if (!socket) {
+          socket = setupSocket()
+        }
+
+        // send an async request to the server
+        const sql = messageInput.value
+        const startTime = Date.now()
+        socket.emit('v1/sql', { sql }, response => {
+          console.debug(`sql - sql: ${sql} (${Date.now() - startTime}ms)`, response)
+          appendMessage(`sql | ${JSON.stringify(response)}`)
+        })
+      })
+
+      status.addEventListener('click', () => {
+        if (!socket) {
+          socket = setupSocket()
+        }
+        socket.emit('v1/info', {}, response => {
+          appendMessage(`info | rss: ${(response.data.rss / 1024 / 1024).toFixed(2)}mb, ${JSON.stringify(response)}`)
+        })
+      })
+    </script>
+  </body>
+</html>

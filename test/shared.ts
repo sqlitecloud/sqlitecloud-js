@@ -4,12 +4,16 @@
 
 import { join } from 'path'
 import { readFileSync } from 'fs'
-import { Database } from '../src/database'
-import { ResultsCallback, SQLiteCloudConfig } from '../src/types'
-import { parseConnectionString } from '../src/utilities'
+import { Database } from '../src/drivers/database'
+import { ResultsCallback, SQLiteCloudConfig, SQLiteCloudError } from '../src/drivers/types'
+import { parseConnectionString } from '../src/drivers/utilities'
+
+import { SQLiteCloudTlsConnection } from '../src/drivers/connection-tls'
+import { SQLiteCloudWebsocketConnection } from '../src/drivers/connection-ws'
 
 import * as dotenv from 'dotenv'
-import { SQLiteCloudConnection } from '../src'
+import { SQLiteCloudConnection, SQLiteCloudRowset } from '../src'
+import e from 'express'
 dotenv.config()
 
 export const LONG_TIMEOUT = 1 * 60 * 1000 // 1 minute
@@ -21,7 +25,7 @@ export const WARN_SPEED_MS = 500
 export const EXPECT_SPEED_MS = 6 * 1000
 
 /** Number of times or size of stress (when repeated in sequence) */
-export const SEQUENCE_TEST_SIZE = 75
+export const SEQUENCE_TEST_SIZE = 150
 /** Concurrency size for multiple connection tests */
 export const SIMULTANEOUS_TEST_SIZE = 150
 
@@ -100,13 +104,13 @@ export function getChinookWebsocketConnection(callback?: ResultsCallback, extraC
     useWebsocket: true,
     gatewayUrl: GATEWAY_URL
   }
-  const chinookConnection = new SQLiteCloudConnection(chinookConfig, callback)
+  const chinookConnection = new SQLiteCloudWebsocketConnection(chinookConfig, callback)
   return chinookConnection
 }
 
 export function getChinookTlsConnection(callback?: ResultsCallback, extraConfig?: Partial<SQLiteCloudConfig>): SQLiteCloudConnection {
   const chinookConfig = getChinookConfig(CHINOOK_DATABASE_URL, extraConfig)
-  return new SQLiteCloudConnection(chinookConfig, callback)
+  return new SQLiteCloudTlsConnection(chinookConfig, callback)
 }
 
 /** Returns a chinook.db connection, caller is responsible for closing the database */
@@ -157,18 +161,42 @@ export function getTestingConfig(url = TESTING_DATABASE_URL): SQLiteCloudConfig 
 
 export function getTestingDatabase(callback?: ResultsCallback): Database {
   const testingConfig = getTestingConfig()
-  const database = new Database(testingConfig)
+  const database = new Database(testingConfig, error => {
+    if (error) {
+      console.error(`getTestingDatabase - connection error: ${error}`)
+      callback?.call(database, error)
+    }
+    database.run(TESTING_SQL, (error: SQLiteCloudError, results: SQLiteCloudRowset) => {
+      if (error) {
+        console.error(`getTestingDatabase - setup error: ${error}`)
+        callback?.call(database, error)
+      }
+      expect(results).toBeDefined()
+      expect(results[0][42]).toBe(42)
+      callback?.call(database, null)
+    })
+  })
+
   // database.verbose()
-  database.exec(TESTING_SQL, callback)
   return database
 }
 
 export async function getTestingDatabaseAsync(): Promise<Database> {
   const testingConfig = getTestingConfig()
-  const database = new Database(testingConfig)
-  // database.verbose()
-  await database.sql(TESTING_SQL)
-  return database
+  return new Promise((resolve, reject) => {
+    const database = new Database(testingConfig, error => {
+      if (error) {
+        reject(error)
+      }
+      database.run(TESTING_SQL, (error: SQLiteCloudError, results: SQLiteCloudRowset) => {
+        if (error) {
+          reject(error)
+        }
+        expect(results[0]['42']).toBe(42)
+        resolve(database)
+      })
+    })
+  })
 }
 
 /** Drop databases that are no longer in use */

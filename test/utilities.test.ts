@@ -3,7 +3,7 @@
 //
 
 import { SQLiteCloudError } from '../src/index'
-import { prepareSql, parseConnectionString } from '../src/utilities'
+import { prepareSql, parseConnectionString } from '../src/drivers/utilities'
 
 describe('prepareSql', () => {
   it('should replace single ? parameter', () => {

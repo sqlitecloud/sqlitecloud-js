@@ -31,3 +31,6 @@ INSERT INTO people (name, age, hobby) VALUES
 ('Harper Jackson', 36, 'Bellybutton lint sculpting'),
 ('Ditto il Foho', 27, 'Cloud shaping'),
 ('Benjamin Clark', 39, 'Telepathic cooking');
+
+-- Return the number 42 so we can test the query
+SELECT 42;
