@@ -15,15 +15,29 @@ import { Server } from 'socket.io'
 import express from 'express'
 import http from 'http'
 
+// port where socket.io will listen for connections
+const SOCKET_PORT = parseInt(process.env['SOCKET_PORT'] || DEFAULT_PORT_SOCKET.toString())
+// port where http server will listen for connections
+const HTTP_PORT = parseInt(process.env['HTTP_PORT'] || DEFAULT_PORT_HTTP.toString())
+// should we log verbose messages?
+const VERBOSE = process.env['VERBOSE']?.toLowerCase() === 'true'
+console.debug(`@sqlitecloud/gateway v${packageJson.version}`)
+
+//
+// express
+//
+
 // Express app for HTTP server
 const app = express()
 app.use(express.json())
+app.use(express.static('public'))
 
-// HTTP server for socket.io
+// server for socket.io and http endpoints
 const server = http.createServer(app)
 
-// Replacing Deno's serveDir with Express static middleware
-app.use(express.static('public'))
+//
+// websocket server
+//
 
 // Replacing Deno's Server with socket.io's Server
 const io = new Server(server, {
@@ -33,13 +47,6 @@ const io = new Server(server, {
     credentials: true // allow credentials (cookies, session)
   }
 })
-
-// port where socket.io will listen for connections
-const SOCKET_PORT = parseInt(process.env['SOCKET_PORT'] || DEFAULT_PORT_SOCKET.toString())
-// port where http server will listen for connections
-const HTTP_PORT = parseInt(process.env['HTTP_PORT'] || DEFAULT_PORT_HTTP.toString())
-// should we log verbose messages?
-const VERBOSE = process.env['VERBOSE']?.toLowerCase() === 'true'
 
 // Establish handlers for a socket.io connection
 io.on('connection', socket => {
@@ -51,7 +58,7 @@ io.on('connection', socket => {
   // https://socket.io/docs/v4/client-options/#auth
   const connectionString = socket.handshake.auth.token as string
   let connection: SQLiteCloudBunConnection | null = null
-  log(`socket | connect socket.id: ${socket.id}`)
+  log(`ws | connect socket.id: ${socket.id}`)
 
   //
   // handlers
@@ -60,7 +67,7 @@ io.on('connection', socket => {
   // received a sql query request from the client socket
   socket.on('v1/info', (_request: ApiRequest, callback: (response: ApiResponse) => void) => {
     const serverInfo = getServerInfo()
-    log(`socket | info <- ${JSON.stringify(serverInfo)}`)
+    log(`ws | info <- ${JSON.stringify(serverInfo)}`)
     return callback(serverInfo)
   })
 
@@ -74,14 +81,14 @@ io.on('connection', socket => {
     try {
       if (!connection) {
         const startTime = Date.now()
-        log('socket | connecting...')
+        log('ws | connecting...')
         connection = await connectAsync(connectionString)
-        log(`socket | connected in ${Date.now() - startTime}ms`)
+        log(`ws | connected in ${Date.now() - startTime}ms`)
       }
 
-      log(`socket | sql -> ${JSON.stringify(request)}`)
+      log(`ws | sql -> ${JSON.stringify(request)}`)
       const response = await queryAsync(connection, request)
-      log(`socket | sql <- ${JSON.stringify(response)}`)
+      log(`ws | sql <- ${JSON.stringify(response)}`)
       return callback(response)
     } catch (error) {
       callback({ error: { status: '400', title: 'Bad Request', detail: error as string } })
@@ -90,7 +97,7 @@ io.on('connection', socket => {
 
   // received a disconnect request from the client socket
   socket.on('disconnect', () => {
-    log(`socket | disconnect socket.id: ${socket.id}`)
+    log(`ws | disconnect socket.id: ${socket.id}`)
     connection?.close()
     connection = null
   })
@@ -113,15 +120,17 @@ app.get('/v1/info', (req, res) => {
   res.json(getServerInfo())
 })
 
-app.post('/v1/sql', async (req: express.Request, res: express.Response) => {
-  try {
-    log('POST /v1/sql')
-    const response = await handleHttpSqlRequest(req, res)
-    res.json(response)
-  } catch (error) {
-    log(`POST /v1/sql - error: ${error}`)
-    res.status(400).json({ error: { status: '400', title: 'Bad Request', detail: error as string } })
-  }
+app.post('/v1/sql', (req: express.Request, res: express.Response) => {
+  void (async () => {
+    try {
+      log('POST /v1/sql')
+      const response = await handleHttpSqlRequest(req, res)
+      res.json(response)
+    } catch (error) {
+      log('POST /v1/sql - error', error)
+      res.status(400).json({ error: { status: '400', title: 'Bad Request', detail: error as string } })
+    }
+  })
 })
 
 //
@@ -168,14 +177,21 @@ async function handleHttpSqlRequest(request: express.Request, response: express.
 
 /** Server info for /v1/info endpoints */
 function getServerInfo() {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { objectTypeCounts, protectedObjectTypeCounts, ...memory } = heapStats()
-
   return {
     data: {
       name: '@sqlitecloud/gateway',
       version: packageJson.version,
-      date: new Date().toISOString(),
-      memory
+      bun: {
+        version: Bun.version,
+        path: Bun.which('bun'),
+        main: Bun.main,
+        uptime: Math.floor(Bun.nanoseconds() / 1e9) // seconds
+      },
+      memory,
+      cpuUsage: process.cpuUsage(),
+      date: new Date().toISOString()
     }
   }
 }
@@ -201,7 +217,7 @@ async function connectAsync(connectionString: string): Promise<SQLiteCloudBunCon
     const config = validateConfiguration({ connectionString })
     const connection = new SQLiteCloudBunConnection(config, (error: Error | null) => {
       if (error) {
-        log(`connectAsync | error: ${error}`)
+        log('connectAsync | error', error)
         reject(error)
       } else {
         resolve(connection)
@@ -216,7 +232,7 @@ async function sendCommandsAsync(connection: SQLiteCloudBunConnection, sql: stri
     connection.sendCommands(sql, (error: Error | null, results) => {
       // Explicitly type the 'error' parameter as 'Error'
       if (error) {
-        log(`sendCommandsAsync | error: ${error}`)
+        log('sendCommandsAsync | error', error)
         reject(error)
       } else {
         // console.debug(JSON.stringify(results).substring(0, 140) + '...')
@@ -244,7 +260,7 @@ async function queryAsync(connection: SQLiteCloudBunConnection, apiRequest: SqlA
       }
     }
   } catch (error) {
-    log(`queryAsync | error: ${error}`)
+    log('queryAsync | error', error)
     const sqliteError = error as SQLiteCloudError
     return {
       error: {

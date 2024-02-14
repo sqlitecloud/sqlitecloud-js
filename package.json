@@ -18,7 +18,7 @@
     "gateway-dev": "bun --watch ./src/gateway/gateway.ts",
     "gateway-start": "bun --smol run ./src/gateway/gateway.ts",
     "gateway-test": "bun test ./src/gateway/connection-bun.test.ts --watch --coverage",
-    "gateway-build": "bun build ./src/gateway/gateway.ts --compile --outfile ./lib/sqlitecloud-gateway.out"
+    "gateway-build": "./scripts/gateway-build.sh"
   },
   "repository": {
     "type": "git",

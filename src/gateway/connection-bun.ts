@@ -33,12 +33,13 @@ export class SQLiteCloudBunConnection extends SQLiteCloudConnection {
   }
 
   /* Opens a connection with the server and sends the initialization commands. Will throw in case of errors. */
+  /* eslint-disable @typescript-eslint/no-unused-vars */
   connectTransport(config: SQLiteCloudConfig, callback?: ErrorCallback): this {
-    console.debug(`-> connecting ${config?.host}:${config?.port}`)
+    console.debug(`-> connecting ${config?.host as string}:${config?.port as number}`)
     console.assert(!this.connected, 'BunSocketTransport.connect - connection already established')
     this.config = config
 
-    Bun.connect<any>({
+    void Bun.connect<any>({
       hostname: config.host as string,
       port: config.port as number,
       tls: config.insecure ? false : true,
@@ -50,7 +51,8 @@ export class SQLiteCloudBunConnection extends SQLiteCloudConnection {
 
           // send initialization commands
           const commands = getInitializationCommands(config)
-          this.transportCommands(commands, (error, rowset) => {
+          this.transportCommands(commands, error => {
+            // any results are ignored
             if (error) {
               console.error('BunSocketTransport.connect - error initializing connection', error)
               callback?.call(this, error)
@@ -63,7 +65,7 @@ export class SQLiteCloudBunConnection extends SQLiteCloudConnection {
 
         // connection failed
         connectError: (socket, error) => {
-          console.error(`BunTransport.connect - connectError: ${error}`)
+          console.error('BunTransport.connect - connectError', error)
           this.close()
           callback?.call(this, error)
         },
@@ -106,7 +108,7 @@ export class SQLiteCloudBunConnection extends SQLiteCloudConnection {
       }
     })
       .catch(error => {
-        console.debug(`BunTransport.connect - error: ${error}`)
+        console.debug('BunTransport.connect - error', error)
         this.close()
         callback?.call(this, error)
       })

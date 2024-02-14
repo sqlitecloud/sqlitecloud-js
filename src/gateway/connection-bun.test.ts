@@ -3,16 +3,14 @@
 //
 
 // MUST RUN USING BUN TEST RUNNER, EG:
-// bun test ./src/gateway/gateway.test.ts --watch
+// bun test connection-bun.test.ts --watch
 
 import { SQLiteCloudError } from '../drivers/types'
 import { SQLiteCloudBunConnection } from './connection-bun'
+import { expect, test, describe, beforeEach, afterEach } from 'bun:test'
 
 let CHINOOK_DATABASE_URL = process.env['CHINOOK_DATABASE_URL'] as string
 console.assert(CHINOOK_DATABASE_URL, 'CHINOOK_DATABASE_URL is required')
-CHINOOK_DATABASE_URL = 'sqlitecloud://admin:uN3ARhdcKQ@oggdnp3zm.sqlite.cloud:8860/chinook.db?verbose=true'
-
-import { expect, test, describe, beforeEach, afterEach } from 'bun:test'
 
 async function getConnection(): Promise<SQLiteCloudBunConnection> {
   return new Promise((resolve, reject) => {
@@ -39,8 +37,8 @@ async function sendCommands(connection: SQLiteCloudBunConnection, command: strin
 describe('SQLiteCloudBunConnection', () => {
   // test different ways to connect
   describe('connecting', () => {
-    test('can connect using bun socket', async done => {
-      const connection = new SQLiteCloudBunConnection(CHINOOK_DATABASE_URL, error => {
+    test('can connect using bun socket', done => {
+      new SQLiteCloudBunConnection(CHINOOK_DATABASE_URL, error => {
         if (error) {
           console.error('Error connecting to database', error)
         }
@@ -129,10 +127,11 @@ describe('SQLiteCloudBunConnection', () => {
       expect(bufferrowset.length).toBe(0)
     })
 
-    test('should test error', async done => {
+    test('should test error', done => {
       chinookConnection.sendCommands('TEST ERROR', (error, results) => {
         expect(error).toBeDefined()
         expect(error).toBeInstanceOf(SQLiteCloudError)
+        expect(results).toBeNull()
 
         const sqliteCloudError = error as SQLiteCloudError
         expect(sqliteCloudError.message).toBe('This is a test error message with a devil error code.')
@@ -144,10 +143,11 @@ describe('SQLiteCloudBunConnection', () => {
       })
     })
 
-    test('should test exterror', async done => {
+    test('should test exterror', done => {
       chinookConnection.sendCommands('TEST EXTERROR', (error, results) => {
         expect(error).toBeDefined()
         expect(error).toBeInstanceOf(SQLiteCloudError)
+        expect(results).toBeNull()
 
         const sqliteCloudError = error as SQLiteCloudError
         expect(sqliteCloudError.message).toBe('This is a test error message with an extcode and a devil error code.')
@@ -193,7 +193,7 @@ describe('SQLiteCloudBunConnection', () => {
 
   // various select statements
   describe('select', () => {
-    test('can run simple select', async done => {
+    test('can run simple select', done => {
       const connection = new SQLiteCloudBunConnection(CHINOOK_DATABASE_URL, error => {
         if (error) {
           done(error)
@@ -230,7 +230,8 @@ describe('SQLiteCloudBunConnection', () => {
       const connection = await getConnection()
 
       let sql = ''
-      for (var i = 0; i < 250; i++) {
+      let i = 0
+      for (; i < 250; i++) {
         sql += `SELECT ${i} AS counter; `
       }
 

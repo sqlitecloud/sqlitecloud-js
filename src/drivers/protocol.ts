@@ -4,7 +4,6 @@
 
 import { SQLiteCloudError, type SQLCloudRowsetMetadata, type SQLiteCloudDataTypes } from './types'
 import { SQLiteCloudRowset } from './rowset'
-import { debug } from 'console'
 
 const lz4 = require('lz4js')
 
@@ -222,7 +221,7 @@ export function parseRowsetChunks(buffers: Buffer[]): SQLiteCloudRowset {
   console.assert(dataType === CMD_ROWSET_CHUNK)
   buffer = buffer.subarray(buffer.indexOf(' ') + 1)
 
-  while (true) {
+  while (buffer.length > 0 && !bufferStartsWith(buffer, ROWSET_CHUNKS_END)) {
     // chunk header, eg: 0:VERS NROWS NCOLS
     const { index: chunkIndex, metadata: chunkMetadata, fwdBuffer } = parseRowsetHeader(buffer)
     buffer = fwdBuffer
@@ -240,11 +239,6 @@ export function parseRowsetChunks(buffers: Buffer[]): SQLiteCloudRowset {
       const { data: itemData, fwdBuffer } = popData(buffer)
       data.push(itemData)
       buffer = fwdBuffer
-    }
-
-    // no more chunks?
-    if (bufferStartsWith(buffer, ROWSET_CHUNKS_END)) {
-      break
     }
   }
 
