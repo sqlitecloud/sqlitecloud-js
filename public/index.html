@@ -111,7 +111,7 @@
           socket = setupSocket()
         }
         socket.emit('v1/info', {}, response => {
-          appendMessage(`info | rss: ${(response.data.rss / 1024 / 1024).toFixed(2)}mb, ${JSON.stringify(response)}`)
+          appendMessage(`info | heapSize: ${(response.data.memory.heapSize / 1024 / 1024).toFixed(2)}mb, ${JSON.stringify(response)}`)
         })
       })
     </script>

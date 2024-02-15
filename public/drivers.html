@@ -8,14 +8,14 @@
   </head>
 
   <body class="p-4">
-    <h1>SQLite Cloud Driver</h1>
-    <div class="pb-6">
-      <a href="https://www.npmjs.com/package/sqlitecloud">npm sqlitecloud</a>
+    <h1>SQLite Cloud Drivers</h1>
+    <div class="pb-6 text-sm">
+      <a href="https://www.npmjs.com/package/@sqlitecloud/drivers">npm add @sqlitecloud/drivers</a>
     </div>
 
     <!-- Add the text field and button here -->
     <div class="pb-2">
-      <div class="text-sm w-12">connectionString:</div>
+      <div class="text-xs w-12">databaseUrl</div>
       <input
         type="text"
         id="connectionStringInput"
@@ -65,7 +65,13 @@
 
       sendButton.addEventListener('click', () => {
         if (!database) {
-          database = new window.sqlitecloud.Database(connectionString, error => {
+          // connect via websocket to the gateway on the same server
+          const connectionConfig = {
+            gatewayUrl: `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:4000`,
+            connectionString
+          }
+
+          database = new window.sqlitecloud.Database(connectionConfig, error => {
             if (error) {
               database = null
               appendMessage(`connection error:  ${error}`)
