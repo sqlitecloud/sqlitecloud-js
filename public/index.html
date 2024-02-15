@@ -12,7 +12,15 @@
 
     <!-- Add the text field and button here -->
     <div class="pb-2">
-      <div class="text-sm w-12">connectionString:</div>
+      <div class="text-xs w-12">gatewayUrl</div>
+      <input
+        type="text"
+        id="gatewayStringInput"
+        placeholder="Your SQLite Cloud Gatway address"
+        value="ws://admin:password@host.sqlite.cloud:4000"
+        class="border rounded w-full pl-2 pr-2 mb-2"
+      />
+      <div class="text-xs w-12">databaseUrl</div>
       <input
         type="text"
         id="connectionStringInput"
@@ -20,7 +28,7 @@
         value="sqlitecloud://admin:password@host.sqlite.cloud:8860/chinook.db"
         class="border rounded w-full pl-2 pr-2 mb-2"
       />
-      <div class="text-sm w-12">sql:</div>
+      <div class="text-xs w-12">sql</div>
       <input
         type="text"
         id="messageInput"
@@ -38,6 +46,10 @@
       import { io } from 'https://cdn.socket.io/4.7.4/socket.io.esm.min.js'
       const status = document.getElementById('status')
       const messages = document.getElementById('messages')
+
+      // assign gatewayUrl based on the current protocol and host
+      const gatewayUrl = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:4000`
+      gatewayStringInput.value = gatewayUrl
 
       // connection string is stored in local storage so you don't have to type it every time
       let connectionString = localStorage.getItem('connectionString')
@@ -58,10 +70,8 @@
       }
 
       function setupSocket() {
-        let host = window.location.host
-        if (host.indexOf(':') !== -1) host = host.substring(0, host.indexOf(':'))
-        console.debug(`socket/connect - connecting to '${host}'`)
-        socket = io(`ws://${host}:4000`, { auth: { token: connectionStringInput.value } })
+        console.debug(`socket/connect - connecting to '${gatewayStringInput.value}'`)
+        socket = io(gatewayStringInput.value, { auth: { token: connectionStringInput.value } })
         socket.on('connect', () => {
           status.innerText = 'Connected'
           appendMessage(`connect | session id: ${socket.id}`)
