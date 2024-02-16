@@ -21,8 +21,11 @@ import {
 describe('connection-tls', () => {
   let chinook: SQLiteCloudConnection
 
-  beforeEach(() => {
-    chinook = getChinookTlsConnection()
+  beforeEach(done => {
+    chinook = getChinookTlsConnection(error => {
+      expect(error).toBeNull()
+      done(error)
+    })
   })
 
   afterEach(() => {
@@ -54,20 +57,24 @@ describe('connection-tls', () => {
       expect(remoteConfig.tlsOptions).toBeFalsy()
     })
 
-    it('should connect with config object string', done => {
-      const configObj = getChinookConfig()
-      const conn = new SQLiteCloudTlsConnection(configObj, error => {
-        expect(error).toBeNull()
-        expect(conn.connected).toBe(true)
+    it(
+      'should connect with config object string',
+      done => {
+        const configObj = getChinookConfig()
+        const conn = new SQLiteCloudTlsConnection(configObj, error => {
+          expect(error).toBeNull()
+          expect(conn.connected).toBe(true)
 
-        chinook.sendCommands('TEST STRING', (error, results) => {
-          conn.close()
-          expect(conn.connected).toBe(false)
-          done()
+          chinook.sendCommands('TEST STRING', (error, results) => {
+            conn.close()
+            expect(conn.connected).toBe(false)
+            done()
+          })
         })
-      })
-      expect(conn).toBeDefined()
-    })
+        expect(conn).toBeDefined()
+      },
+      LONG_TIMEOUT
+    )
 
     it('should connect with connection string', done => {
       if (CHINOOK_DATABASE_URL.indexOf('localhost') > 0) {

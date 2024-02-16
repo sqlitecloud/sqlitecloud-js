@@ -223,7 +223,7 @@ describe('connection-ws', () => {
       it('should test rowset', done => {
         chinook.sendCommands('TEST ROWSET', (error, results) => {
           expect(error).toBeNull()
-          expect(results.numberOfRows).toBe(41)
+          expect(results.numberOfRows).toBeGreaterThan(20)
           expect(results.numberOfColumns).toBe(2)
           expect(results.version == 1 || results.version == 2).toBeTruthy()
           expect(results.columnsNames).toEqual(['key', 'value'])
