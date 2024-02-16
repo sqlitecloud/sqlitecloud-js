@@ -30,7 +30,7 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
       if (!this.socket) {
         this.config = config
         const connectionString = this.config.connectionString as string
-        const gatewayUrl = this.config?.gatewayUrl || `ws://${this.config.host as string}:4000`
+        const gatewayUrl = this.config?.gatewayUrl || `${this.config.host === 'localhost' ? 'ws' : 'wss'}://${this.config.host as string}:4000`
         this.socket = io(gatewayUrl, { auth: { token: connectionString } })
       }
       callback?.call(this, null)
