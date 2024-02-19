@@ -63,10 +63,15 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
       // connect to plain socket, without encryption, only if insecure parameter specified
       // this option is mainly for testing purposes and is not available on production nodes
       // which would need to connect using tls and proper certificates as per code below
-      const connectionOptions: net.SocketConnectOpts = {
+      const connectionOptions = {
         host: config.host,
-        port: config.port as number
+        port: config.port as number,
+        // Server name for the SNI (Server Name Indication) TLS extension.
+        // https://r2.nodejs.org/docs/v6.11.4/api/tls.html#tls_class_tls_tlssocket
+        servername: config.host,
+        rejectUnauthorized: false
       }
+
       this.socket = net.connect(connectionOptions, () => {
         console.warn(`TlsConnection.connectTransport - connected to ${config.host as string}:${config.port as number} using insecure protocol`)
         // send initialization commands
