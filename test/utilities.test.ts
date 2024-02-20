@@ -165,4 +165,17 @@ describe('parseConnectionString', () => {
       database: 'database'
     })
   })
+
+  it('should handle url encoded password', () => {
+    const connectionString = 'sqlitecloud://user:pass%25word@host:1234/database'
+    const config = parseConnectionString(connectionString)
+
+    expect(config).toEqual({
+      username: 'user',
+      password: 'pass%word',
+      host: 'host',
+      port: 1234,
+      database: 'database'
+    })
+  })
 })

@@ -200,7 +200,9 @@ export function validateConfiguration(config: SQLiteCloudConfig): SQLiteCloudCon
   if (!config.connectionString) {
     // build connection string from configuration, values are already validated
     // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-    config.connectionString = `sqlitecloud://${config.username}:${config.password}@${config.host}:${config.port}/${config.database}`
+    config.connectionString = `sqlitecloud://${encodeURIComponent(config.username)}:${encodeURIComponent(config.password)}@${config.host}:${config.port}/${
+      config.database
+    }`
   }
 
   return config
@@ -223,8 +225,8 @@ export function parseConnectionString(connectionString: string): SQLiteCloudConf
     })
 
     const config: SQLiteCloudConfig = {
-      username: url.username,
-      password: url.password,
+      username: decodeURIComponent(url.username),
+      password: decodeURIComponent(url.password),
       host: url.hostname,
       port: url.port ? parseInt(url.port) : undefined,
       ...options
