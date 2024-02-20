@@ -1,0 +1,28 @@
+-- 25 SELECTS, numeric BETWEEN, unindexed
+BEGIN;
+SELECT count(*), avg(b), sum(length(c)), group_concat(c) FROM z1 WHERE b BETWEEN 65040 AND 65056;
+SELECT count(*), avg(b), sum(length(c)), group_concat(c) FROM z1 WHERE b BETWEEN 6991 AND 7004;
+SELECT count(*), avg(b), sum(length(c)), group_concat(c) FROM z1 WHERE b BETWEEN 2020 AND 2033;
+SELECT count(*), avg(b), sum(length(c)), group_concat(c) FROM z1 WHERE b BETWEEN 48360 AND 48372;
+SELECT count(*), avg(b), sum(length(c)), group_concat(c) FROM z1 WHERE b BETWEEN 28979 AND 28990;
+SELECT count(*), avg(b), sum(length(c)), group_concat(c) FROM z1 WHERE b BETWEEN 745 AND 756;
+SELECT count(*), avg(b), sum(length(c)), group_concat(c) FROM z1 WHERE b BETWEEN 34436 AND 34447;
+SELECT count(*), avg(b), sum(length(c)), group_concat(c) FROM z1 WHERE b BETWEEN 10091 AND 10107;
+SELECT count(*), avg(b), sum(length(c)), group_concat(c) FROM z1 WHERE b BETWEEN 15196 AND 15209;
+SELECT count(*), avg(b), sum(length(c)), group_concat(c) FROM z1 WHERE b BETWEEN 38866 AND 38878;
+SELECT count(*), avg(b), sum(length(c)), group_concat(c) FROM z1 WHERE b BETWEEN 53750 AND 53764;
+SELECT count(*), avg(b), sum(length(c)), group_concat(c) FROM z1 WHERE b BETWEEN 45301 AND 45316;
+SELECT count(*), avg(b), sum(length(c)), group_concat(c) FROM z1 WHERE b BETWEEN 3695 AND 3707;
+SELECT count(*), avg(b), sum(length(c)), group_concat(c) FROM z1 WHERE b BETWEEN 3033 AND 3048;
+SELECT count(*), avg(b), sum(length(c)), group_concat(c) FROM z1 WHERE b BETWEEN 62836 AND 62849;
+SELECT count(*), avg(b), sum(length(c)), group_concat(c) FROM z1 WHERE b BETWEEN 36919 AND 36936;
+SELECT count(*), avg(b), sum(length(c)), group_concat(c) FROM z1 WHERE b BETWEEN 44860 AND 44870;
+SELECT count(*), avg(b), sum(length(c)), group_concat(c) FROM z1 WHERE b BETWEEN 24982 AND 24992;
+SELECT count(*), avg(b), sum(length(c)), group_concat(c) FROM z1 WHERE b BETWEEN 20532 AND 20548;
+SELECT count(*), avg(b), sum(length(c)), group_concat(c) FROM z1 WHERE b BETWEEN 54169 AND 54181;
+SELECT count(*), avg(b), sum(length(c)), group_concat(c) FROM z1 WHERE b BETWEEN 45092 AND 45106;
+SELECT count(*), avg(b), sum(length(c)), group_concat(c) FROM z1 WHERE b BETWEEN 55315 AND 55334;
+SELECT count(*), avg(b), sum(length(c)), group_concat(c) FROM z1 WHERE b BETWEEN 32580 AND 32592;
+SELECT count(*), avg(b), sum(length(c)), group_concat(c) FROM z1 WHERE b BETWEEN 13563 AND 13575;
+SELECT count(*), avg(b), sum(length(c)), group_concat(c) FROM z1 WHERE b BETWEEN 60784 AND 60802;
+COMMIT;

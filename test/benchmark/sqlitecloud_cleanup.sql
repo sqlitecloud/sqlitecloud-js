@@ -1,0 +1,2 @@
+UNUSE DATABASE;
+REMOVE DATABASE test_benchmark.sqlite IF EXISTS;
