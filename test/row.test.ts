@@ -25,8 +25,8 @@ describe('row', () => {
         UnitPrice: 0.99
       })
 
-      connection.close()
       done()
+      connection.close()
     })
   })
 
@@ -54,8 +54,8 @@ describe('row', () => {
       const rowColumns = rowset.metadata.columns.map((column: any) => column.name)
       expect(rowColumns).toMatchObject(['TrackId', 'Name', 'AlbumId', 'MediaTypeId', 'GenreId', 'Composer', 'Milliseconds', 'Bytes', 'UnitPrice'])
 
-      connection.close()
       done()
+      connection.close()
     })
   })
 })

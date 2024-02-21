@@ -5,7 +5,6 @@
 import { SQLiteCloudRowset, SQLiteCloudRow, SQLiteCloudError } from '../src/index'
 import { getTestingDatabase, getTestingDatabaseAsync, getChinookDatabase, removeDatabase, removeDatabaseAsync, LONG_TIMEOUT } from './shared'
 import { RowCountCallback } from '../src/drivers/types'
-import e from 'express'
 
 //
 // utility methods to setup and destroy temporary test databases

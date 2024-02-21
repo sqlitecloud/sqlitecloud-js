@@ -3,8 +3,7 @@
  */
 
 import { SQLiteCloudRowset, SQLiteCloudRow } from '../src/index'
-import { SQLiteCloudConnection } from '../src/'
-import { CHINOOK_DATABASE_URL, getChinookTlsConnection, getChinookConfig } from './shared'
+import { getChinookTlsConnection } from './shared'
 
 describe('rowset', () => {
   it('can be accessed as an array', done => {
@@ -29,8 +28,8 @@ describe('rowset', () => {
         UnitPrice: 0.99
       })
 
-      connection.close()
       done()
+      connection.close()
     })
   })
 
@@ -48,8 +47,8 @@ describe('rowset', () => {
         expect(Object.keys(row)).toHaveLength(9)
       })
 
-      connection.close()
       done()
+      connection.close()
     })
   })
 
@@ -67,8 +66,8 @@ describe('rowset', () => {
       expect(filtered.numberOfColumns).toBe(9)
       expect(filtered.numberOfRows).toBe(6)
 
-      connection.close()
       done()
+      connection.close()
     })
   })
 
@@ -81,8 +80,8 @@ describe('rowset', () => {
       const total = rowset.reduce((acc: number, row: SQLiteCloudRow) => acc + (row?.Total ? (row.Total as number) : 0), 0)
       expect(Math.floor(total)).toBe(2328)
 
-      connection.close()
       done()
+      connection.close()
     })
   })
 
@@ -121,14 +120,15 @@ describe('rowset', () => {
       const emptySlice = rowset.slice(20, 10)
       expect(emptySlice).toHaveLength(0)
 
-      connection.close()
       done()
+      connection.close()
     })
   })
 
   it('contains basic metadata', done => {
     const connection = getChinookTlsConnection()
     connection.sendCommands('SELECT * FROM tracks LIMIT 10;', (error, rowset) => {
+      expect(error).toBeNull()
       expect(rowset).toBeInstanceOf(SQLiteCloudRowset)
       expect(rowset.metadata.numberOfRows).toBe(10)
       expect(rowset.metadata.numberOfColumns).toBe(9)
@@ -144,8 +144,8 @@ describe('rowset', () => {
         { name: 'UnitPrice' }
       ])
 
-      connection.close()
       done()
+      connection.close()
     })
   })
 
@@ -153,6 +153,7 @@ describe('rowset', () => {
     // custom connection used to required sqliteMode enabled but since feb/2/24 it's enabled by default
     const connection = getChinookTlsConnection()
     connection.sendCommands('SELECT * FROM tracks LIMIT 10;', (error, rowset) => {
+      expect(error).toBeNull()
       expect(rowset).toBeInstanceOf(SQLiteCloudRowset)
       expect(rowset.metadata.version).toBe(2)
       expect(rowset.metadata.numberOfRows).toBe(10)
@@ -168,7 +169,9 @@ describe('rowset', () => {
         { column: 'Bytes', database: 'main', name: 'Bytes', table: 'tracks', type: 'INTEGER', primaryKey: 0, autoIncrement: 0, notNull: 0 },
         { column: 'UnitPrice', database: 'main', name: 'UnitPrice', table: 'tracks', type: 'NUMERIC(10,2)', primaryKey: 0, autoIncrement: 0, notNull: 1 }
       ])
+
       done()
+      connection.close()
     })
   })
 })

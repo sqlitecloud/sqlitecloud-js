@@ -1,6 +1,6 @@
 {
   "name": "@sqlitecloud/drivers",
-  "version": "0.0.50",
+  "version": "0.0.52",
   "description": "SQLiteCloud drivers for Typescript/Javascript in edge, web and node clients",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
@@ -47,7 +47,6 @@
   "homepage": "https://github.com/sqlitecloud/sqlitecloud-js#readme",
   "dependencies": {
     "eventemitter3": "^5.0.1",
-    "express": "^4.18.2",
     "lz4js": "^0.2.0",
     "socket.io": "^4.7.4",
     "socket.io-client": "^4.7.4"
@@ -66,6 +65,7 @@
     "eslint-config-prettier": "^8.10.0",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-prettier": "^3.4.1",
+    "express": "^4.18.2",
     "jest": "^29.7.0",
     "prettier": "^2.2.1",
     "sqlite3": "^5.1.6",

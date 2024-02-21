@@ -9,7 +9,7 @@ import { SQLiteCloudError } from '../drivers/types'
 import { SQLiteCloudBunConnection } from './connection-bun'
 import { expect, test, describe, beforeEach, afterEach } from 'bun:test'
 
-let CHINOOK_DATABASE_URL = process.env['CHINOOK_DATABASE_URL'] as string
+const CHINOOK_DATABASE_URL = process.env['CHINOOK_DATABASE_URL'] as string
 console.assert(CHINOOK_DATABASE_URL, 'CHINOOK_DATABASE_URL is required')
 
 async function getConnection(): Promise<SQLiteCloudBunConnection> {

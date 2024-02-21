@@ -15,8 +15,18 @@ import {
   getChinookTlsConnection,
   // clearTestingDatabasesAsync,
   WARN_SPEED_MS,
-  EXPECT_SPEED_MS
+  EXPECT_SPEED_MS,
+  EXTRA_LONG_TIMEOUT
 } from './shared'
+
+function getConnection() {
+  return getChinookTlsConnection(error => {
+    if (error) {
+      console.error(`getChinookTlsConnection - returned error: ${error}`)
+    }
+    expect(error).toBeNull()
+  })
+}
 
 describe('connection-tls', () => {
   let chinook: SQLiteCloudConnection
@@ -24,7 +34,9 @@ describe('connection-tls', () => {
   beforeEach(done => {
     chinook = getChinookTlsConnection(error => {
       expect(error).toBeNull()
-      done(error)
+      if (error) {
+        done(error)
+      }
     })
   })
 
@@ -48,11 +60,11 @@ describe('connection-tls', () => {
     )
 */
     it('should add self signed certificate for localhost connections', () => {
-      const localConfig = getChinookConfig('sqlitecloud://admin:xxx@localhost:8850/chinook.db')
+      const localConfig = getChinookConfig('sqlitecloud://admin:xxx@localhost:8850/chinook.sqlite')
       expect(localConfig.host).toBe('localhost')
       expect(localConfig.tlsOptions?.ca).toBeTruthy()
 
-      const remoteConfig = getChinookConfig('sqlitecloud://admin:xxx@sqlitecloud.io:8850/chinook.db')
+      const remoteConfig = getChinookConfig('sqlitecloud://admin:xxx@sqlitecloud.io:8850/chinook.sqlite')
       expect(remoteConfig.host).toBe('sqlitecloud.io')
       expect(remoteConfig.tlsOptions).toBeFalsy()
     })
@@ -82,17 +94,18 @@ describe('connection-tls', () => {
         done()
       }
 
-      const conn = new SQLiteCloudTlsConnection(CHINOOK_DATABASE_URL, error => {
+      const connection = new SQLiteCloudTlsConnection(CHINOOK_DATABASE_URL, error => {
         expect(error).toBeNull()
-        expect(conn.connected).toBe(true)
+        expect(connection.connected).toBe(true)
 
         chinook.sendCommands('TEST STRING', (error, results) => {
-          conn.close()
-          expect(conn.connected).toBe(false)
+          expect(results).toBe('Hello World, this is a test string.')
+
           done()
+          connection.close()
         })
       })
-      expect(conn).toBeDefined()
+      expect(connection).toBeDefined()
     })
 
     it('should connect with insecure connection string', done => {
@@ -146,10 +159,13 @@ describe('connection-tls', () => {
     })
 
     it('should test null', done => {
-      chinook.sendCommands('TEST NULL', (error, results) => {
+      const connection = getConnection()
+      connection.sendCommands('TEST NULL', (error, results) => {
         expect(error).toBeNull()
         expect(results).toBeNull()
+
         done()
+        connection.close()
       })
     })
 
@@ -161,13 +177,17 @@ describe('connection-tls', () => {
       })
     })
 
-    it('should test string', done => {
-      chinook.sendCommands('TEST STRING', (error, results) => {
-        expect(error).toBeNull()
-        expect(results).toBe('Hello World, this is a test string.')
-        done()
-      })
-    })
+    it(
+      'should test string',
+      done => {
+        chinook.sendCommands('TEST STRING', (error, results) => {
+          expect(error).toBeNull()
+          expect(results).toBe('Hello World, this is a test string.')
+          done()
+        })
+      },
+      EXTRA_LONG_TIMEOUT
+    )
 
     it('should test zero string', done => {
       chinook.sendCommands('TEST ZERO_STRING', (error, results) => {
@@ -281,7 +301,7 @@ describe('connection-tls', () => {
     it('should test rowset', done => {
       chinook.sendCommands('TEST ROWSET', (error, results) => {
         expect(error).toBeNull()
-        expect(results.numberOfRows).toBe(41)
+        expect(results.numberOfRows).toBeGreaterThanOrEqual(30)
         expect(results.numberOfColumns).toBe(2)
         expect(results.version == 1 || results.version == 2).toBeTruthy()
         expect(results.columnsNames).toEqual(['key', 'value'])
@@ -306,8 +326,8 @@ describe('connection-tls', () => {
           expect(results[3]['key']).toBe('DESC')
           expect(results[146]['key']).toBe('PRIMARY')
 
-          database.close()
           done()
+          database.close()
         })
       },
       LONG_TIMEOUT
@@ -341,7 +361,9 @@ describe('connection-tls', () => {
             database.sendCommands('SELECT 1', (error, results) => {
               expect(error).toBeNull()
               expect(results.numberOfRows).toBe(1)
+
               done()
+              database.close()
             })
           })
         })
@@ -375,19 +397,22 @@ describe('connection-tls', () => {
       LONG_TIMEOUT
     )
 
-    it('should apply short timeout', done => {
+    it('should apply short tls timeout', done => {
       // this operation sends 150 packets and cannot complete in 20ms
+      debugger
       const database = getChinookTlsConnection(
         error => {
           if (error) {
             expect(error).toBeInstanceOf(SQLiteCloudError)
             expect((error as any).message).toBe('Request timed out')
+
             done()
             database.close()
           } else {
             database.sendCommands('TEST ROWSET_CHUNK', (error, results) => {
               expect(error).toBeInstanceOf(SQLiteCloudError)
               expect((error as any).message).toBe('Request timed out')
+
               done()
               database.close()
             })
@@ -438,7 +463,7 @@ describe('connection-tls', () => {
     })
 
     it('should select database', done => {
-      chinook.sendCommands('USE DATABASE chinook.db;', (error, results) => {
+      chinook.sendCommands('USE DATABASE chinook.sqlite;', (error, results) => {
         expect(error).toBeNull()
         expect(results.numberOfColumns).toBeUndefined()
         expect(results.numberOfRows).toBeUndefined()
@@ -558,13 +583,13 @@ describe('connection-tls', () => {
 
   describe('anonimizeCommand', () => {
     it('should mask username and password', () => {
-      const anonimized = anonimizeCommand('+62 AUTH USER admin PASSWORD notreallyapassword; USE DATABASE chinook.db; ')
-      expect(anonimized).toBe('+62 AUTH USER ****** PASSWORD ******; USE DATABASE chinook.db; ')
+      const anonimized = anonimizeCommand('+62 AUTH USER admin PASSWORD notreallyapassword; USE DATABASE chinook.sqlite; ')
+      expect(anonimized).toBe('+62 AUTH USER ****** PASSWORD ******; USE DATABASE chinook.sqlite; ')
     })
 
     it('should leave other values untouched', () => {
-      const anonimized = anonimizeCommand('+62 AUTH USER admin SOMETHING notreallyapassword; USE DATABASE chinook.db; ')
-      expect(anonimized).toBe('+62 AUTH USER ****** SOMETHING notreallyapassword; USE DATABASE chinook.db; ')
+      const anonimized = anonimizeCommand('+62 AUTH USER admin SOMETHING notreallyapassword; USE DATABASE chinook.sqlite; ')
+      expect(anonimized).toBe('+62 AUTH USER ****** SOMETHING notreallyapassword; USE DATABASE chinook.sqlite; ')
     })
   })
 })

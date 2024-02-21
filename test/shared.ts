@@ -30,10 +30,12 @@ export const SIMULTANEOUS_TEST_SIZE = 150
 
 /** Testing database from .env file */
 export const CHINOOK_DATABASE_URL = process.env.CHINOOK_DATABASE_URL as string
-export const TESTING_DATABASE_URL = process.env.TESTING_DATABASE_URL as string
+if (!CHINOOK_DATABASE_URL || CHINOOK_DATABASE_URL.indexOf('/chinook.sqlite') === -1) {
+  throw new Error('CHINOOK_DATABASE_URL is not defined in .env file or is not a valid chinook.sqlite url')
+}
+
 export const GATEWAY_URL = process.env.GATEWAY_URL as string
 expect(CHINOOK_DATABASE_URL).toBeDefined()
-expect(TESTING_DATABASE_URL).toBeDefined()
 expect(GATEWAY_URL).toBeDefined()
 
 /** Url to insecure database used for testing */
@@ -125,7 +127,7 @@ export function getChinookDatabase(callback?: ResultsCallback, extraConfig?: Par
 /** SQL used to setup testing database with some data */
 export const TESTING_SQL = readFileSync(join(__dirname, 'assets/testing.sql'), 'utf8')
 
-export function getTestingConfig(url = TESTING_DATABASE_URL): SQLiteCloudConfig {
+export function getTestingConfig(url = CHINOOK_DATABASE_URL): SQLiteCloudConfig {
   const testingConfig = parseConnectionString(url)
 
   if (testingConfig.host === 'localhost' && testingConfig.tlsOptions === undefined) {
@@ -154,7 +156,12 @@ export function getTestingConfig(url = TESTING_DATABASE_URL): SQLiteCloudConfig 
     generateRandomId(4)
 
   testingConfig.createDatabase = true
-  testingConfig.database = testingConfig.database?.replace('.db', `-${id}.db`)
+
+  if (!(testingConfig.database === 'chinook.sqlite')) {
+    throw Error('testingConfig.database is not equal to chinook.sqlite')
+  }
+
+  testingConfig.database = testingConfig.database?.replace('chinook.sqlite', `testing-${id}.db`)
   return testingConfig
 }
 
@@ -224,7 +231,9 @@ export async function clearTestingDatabasesAsync() {
 
 export function removeDatabase(database: Database, callback?: ResultsCallback) {
   const databaseName = database.getConfiguration().database
-  console.assert(databaseName)
+  if (!databaseName && !databaseName?.startsWith('testing-')) {
+    throw new Error(`removeDatabase - invalid database name: ${databaseName}`)
+  }
 
   database.exec(`UNUSE DATABASE; REMOVE DATABASE ${databaseName};`, error => {
     expect(error).toBeNull()
@@ -238,6 +247,10 @@ export function removeDatabase(database: Database, callback?: ResultsCallback) {
 export async function removeDatabaseAsync(database?: Database) {
   if (database) {
     const databaseName = database.getConfiguration().database
+    if (!databaseName && !databaseName?.startsWith('testing-')) {
+      throw new Error(`removeDatabaseAsync - invalid database name: ${databaseName}`)
+    }
+
     if (databaseName) {
       const result1 = await database.sql`UNUSE DATABASE;`
       console.assert(result1)

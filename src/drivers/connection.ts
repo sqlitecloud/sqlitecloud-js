@@ -45,7 +45,9 @@ export abstract class SQLiteCloudConnection {
           )
           this.close()
         }
-        callback?.call(this, error || null)
+        if (callback) {
+          callback.call(this, error || null)
+        }
         done(error)
       })
     })
@@ -85,12 +87,12 @@ export abstract class SQLiteCloudConnection {
         const error = new SQLiteCloudError('Connection not established', { errorCode: 'ERR_CONNECTION_NOT_ESTABLISHED' })
         callback?.call(this, error)
         done(error)
+      } else {
+        this.transportCommands(commands, (error, result) => {
+          callback?.call(this, error, result)
+          done(error)
+        })
       }
-
-      this.transportCommands(commands, (error, result) => {
-        callback?.call(this, error, result)
-        done(error)
-      })
     })
 
     return this
