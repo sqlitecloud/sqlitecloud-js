@@ -11,9 +11,8 @@ import { parseConnectionString } from '../src/drivers/utilities'
 import { SQLiteCloudTlsConnection } from '../src/drivers/connection-tls'
 import { SQLiteCloudWebsocketConnection } from '../src/drivers/connection-ws'
 
-import * as dotenv from 'dotenv'
 import { SQLiteCloudConnection, SQLiteCloudRowset } from '../src'
-import e from 'express'
+import * as dotenv from 'dotenv'
 dotenv.config()
 
 export const LONG_TIMEOUT = 1 * 60 * 1000 // 1 minute
@@ -68,7 +67,7 @@ otHL5/wB1MaAmCIcQjIxEshj8pSYTecthitmrneimikFf4KFK0YMvGgKrCLmJsg=
 // chinook - read only database
 //
 
-export const CHINOOK_DATABASE_FILE = join(__dirname, 'assets/chinook.db')
+export const CHINOOK_DATABASE_FILE = join(__dirname, 'assets/chinook.sqlite')
 
 export const CHINOOK_FIRST_TRACK = {
   AlbumId: 1,

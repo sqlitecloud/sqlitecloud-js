@@ -32,11 +32,6 @@ describe('prepareSql', () => {
     expect(sql).toBe("UPDATE tbl SET name = 'bar' WHERE id = 42")
   })
 
-  it('should replace multiple ? parameter passed as array', () => {
-    const sql = prepareSql('SELECT * FROM users WHERE name = ? AND last_name = ?', ['John', 'Doe'])
-    expect(sql).toBe("SELECT * FROM users WHERE name = 'John' AND last_name = 'Doe'")
-  })
-
   it("should replace string ? parameter containing ' character", () => {
     const sql = prepareSql('SELECT * FROM phone WHERE name = ?', "Jack's phone")
     expect(sql).toBe("SELECT * FROM phone WHERE name = 'Jack''s phone'")

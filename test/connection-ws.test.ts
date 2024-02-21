@@ -339,7 +339,7 @@ describe('connection-ws', () => {
       })
 
       it('should select database', done => {
-        chinook.sendCommands('USE DATABASE chinook.db;', (error, results) => {
+        chinook.sendCommands('USE DATABASE chinook.sqlite;', (error, results) => {
           expect(error).toBeNull()
           expect(results.numberOfColumns).toBeUndefined()
           expect(results.numberOfRows).toBeUndefined()

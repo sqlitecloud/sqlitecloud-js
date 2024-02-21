@@ -17,7 +17,7 @@ npm install @sqlitecloud/drivers
 ```ts
 import { Database } from '@sqlitecloud/drivers'
 
-let database = new Database('sqlitecloud://user:password@xxx.sqlite.cloud:8860/chinook.db')
+let database = new Database('sqlitecloud://user:password@xxx.sqlite.cloud:8860/chinook.sqlite')
 
 let name = 'Breaking The Rules'
 
