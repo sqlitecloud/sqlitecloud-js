@@ -257,6 +257,23 @@ async function queryAsync(connection: SQLiteCloudBunConnection, apiRequest: SqlA
         const rowset = result
         const data = apiRequest.row === 'dictionary' ? rowset : rowset.map(rowsetRow => rowsetRow.getData()) // rows as arrays by default
         return { data, metadata: rowset.metadata }
+      } else {
+        // detect that this array was sent in response to an insert, update or delete statement and will add special
+        // metadata so it's easier for clients to extract useful information like the number of rows
+        // affected by the statement. in the future, the server may produce a typed rowset instead
+        if (Array.isArray(result) && result.length === 6) {
+          const lowerSql = apiRequest.sql.toLocaleLowerCase()
+          if (lowerSql.includes('insert ') || lowerSql.includes('update ') || lowerSql.includes('delete ')) {
+            const metadata = {
+              version: 1,
+              numberOfRows: 1,
+              numberOfColumns: 6,
+              // https://github.com/sqlitecloud/sdk/blob/master/PROTOCOL.md#sqlite-statements
+              columns: [{ name: 'TYPE' }, { name: 'INDEX' }, { name: 'ROWID' }, { name: 'CHANGES' }, { name: 'TOTAL_CHANGES' }, { name: 'FINALIZED' }]
+            }
+            return { data: [result], metadata }
+          }
+        }
       }
     }
   } catch (error) {
