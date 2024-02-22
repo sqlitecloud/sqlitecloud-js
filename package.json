@@ -1,6 +1,6 @@
 {
   "name": "@sqlitecloud/drivers",
-  "version": "0.0.52",
+  "version": "0.0.53",
   "description": "SQLiteCloud drivers for Typescript/Javascript in edge, web and node clients",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
@@ -17,7 +17,7 @@
     "npmgui": "npx npm-gui@latest",
     "gateway-dev": "bun --watch ./src/gateway/gateway.ts",
     "gateway-start": "bun --smol run ./src/gateway/gateway.ts",
-    "gateway-test": "bun test ./src/gateway/connection-bun.test.ts --watch --coverage",
+    "gateway-test": "bun test ./src/gateway/connection-bun.test.ts --watch --coverage --timeout 2000",
     "gateway-build": "./scripts/gateway-build.sh"
   },
   "repository": {
