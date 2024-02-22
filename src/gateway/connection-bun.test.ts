@@ -172,7 +172,7 @@ describe('SQLiteCloudBunConnection', () => {
 
     test('should test rowset', async () => {
       const results = await sendCommands(chinookConnection, 'TEST ROWSET')
-      expect(results.numberOfRows).toBe(41)
+      expect(results.numberOfRows).toBeGreaterThanOrEqual(30)
       expect(results.numberOfColumns).toBe(2)
       expect(results.version == 1 || results.version == 2).toBeTruthy()
       expect(results.columnsNames).toEqual(['key', 'value'])

@@ -204,7 +204,7 @@ export class SQLiteCloudBunConnection extends SQLiteCloudConnection {
     } catch (error) {
       console.assert(error instanceof Error)
       if (error instanceof Error) {
-        this.processCommandsFinish?.call(this, error)
+        this.processCommandsFinish?.call(this, error, null)
       }
     }
   }
