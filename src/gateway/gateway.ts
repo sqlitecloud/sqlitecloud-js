@@ -189,8 +189,7 @@ function getServerInfo() {
       bun: {
         version: Bun.version,
         path: Bun.which('bun'),
-        main: Bun.main,
-        uptime: Math.floor(Bun.nanoseconds() / 1e9) // seconds
+        main: Bun.main
       },
       memory,
       cpuUsage: process.cpuUsage()
