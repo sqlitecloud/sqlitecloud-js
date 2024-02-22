@@ -258,22 +258,7 @@ async function queryAsync(connection: SQLiteCloudBunConnection, apiRequest: SqlA
         const data = apiRequest.row === 'dictionary' ? rowset : rowset.map(rowsetRow => rowsetRow.getData()) // rows as arrays by default
         return { data, metadata: rowset.metadata }
       } else {
-        // detect that this array was sent in response to an insert, update or delete statement and will add special
-        // metadata so it's easier for clients to extract useful information like the number of rows
-        // affected by the statement. in the future, the server may produce a typed rowset instead
-        if (Array.isArray(result) && result.length === 6) {
-          const lowerSql = apiRequest.sql.toLocaleLowerCase()
-          if (lowerSql.includes('insert ') || lowerSql.includes('update ') || lowerSql.includes('delete ')) {
-            const metadata = {
-              version: 1,
-              numberOfRows: 1,
-              numberOfColumns: 6,
-              // https://github.com/sqlitecloud/sdk/blob/master/PROTOCOL.md#sqlite-statements
-              columns: [{ name: 'TYPE' }, { name: 'INDEX' }, { name: 'ROWID' }, { name: 'CHANGES' }, { name: 'TOTAL_CHANGES' }, { name: 'FINALIZED' }]
-            }
-            return { data: [result], metadata }
-          }
-        }
+        return generateMetadata(apiRequest.sql, result)
       }
     }
   } catch (error) {
@@ -288,6 +273,49 @@ async function queryAsync(connection: SQLiteCloudBunConnection, apiRequest: SqlA
         errorCode: sqliteError?.errorCode,
         offsetCode: sqliteError?.offsetCode,
         externalErrorCode: sqliteError?.externalErrorCode
+      }
+    }
+  }
+
+  return { data: result }
+}
+
+function generateMetadata(sql: string, result: any): ApiResponse {
+  // detect that this array was sent in response to an insert, update or delete statement and will add special
+  // metadata so it's easier for clients to extract useful information like the number of rows
+  // affected by the statement. in the future, the server may produce a typed rowset instead
+  if (Array.isArray(result) && result.length === 6) {
+    const lowerSql = sql.toLocaleLowerCase()
+    if (lowerSql.includes('insert ') || lowerSql.includes('update ') || lowerSql.includes('delete ')) {
+      return {
+        data: [result],
+        metadata: {
+          version: 1,
+          numberOfRows: 1,
+          numberOfColumns: 6,
+          // https://github.com/sqlitecloud/sdk/blob/master/PROTOCOL.md#sqlite-statements
+          columns: [
+            { name: 'TYPE', type: 'INTEGER' },
+            { name: 'INDEX', type: 'INTEGER' },
+            { name: 'ROWID', type: 'INTEGER' },
+            { name: 'CHANGES', type: 'INTEGER' },
+            { name: 'TOTAL_CHANGES', type: 'INTEGER' },
+            { name: 'FINALIZED', type: 'INTEGER' }
+          ]
+        }
+      }
+    }
+  }
+
+  // response is an array value but a special array like above
+  if (Array.isArray(result)) {
+    return {
+      data: result.map(v => [v]),
+      metadata: {
+        version: 1,
+        numberOfRows: result.length,
+        numberOfColumns: 1,
+        columns: [{ name: 'Result' }]
       }
     }
   }
