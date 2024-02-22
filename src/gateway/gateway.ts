@@ -31,6 +31,7 @@ console.debug(`@sqlitecloud/gateway v${packageJson.version}`)
 const app = express()
 app.use(express.json())
 app.use(express.static('public'))
+const appStartedOn = new Date()
 
 // server for socket.io and http endpoints
 const server = http.createServer(app)
@@ -183,6 +184,8 @@ function getServerInfo() {
     data: {
       name: '@sqlitecloud/gateway',
       version: packageJson.version,
+      started: appStartedOn.toISOString(),
+      uptime: `${Math.floor(process.uptime() / 3600)}h:${Math.floor((process.uptime() % 3600) / 60)}m:${Math.floor(process.uptime() % 60)}s`,
       bun: {
         version: Bun.version,
         path: Bun.which('bun'),
@@ -190,8 +193,7 @@ function getServerInfo() {
         uptime: Math.floor(Bun.nanoseconds() / 1e9) // seconds
       },
       memory,
-      cpuUsage: process.cpuUsage(),
-      date: new Date().toISOString()
+      cpuUsage: process.cpuUsage()
     }
   }
 }

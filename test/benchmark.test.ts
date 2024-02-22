@@ -48,6 +48,16 @@ describe('benchmark', () => {
     })
 
     it(
+      'should run script 090.sql',
+      async () => {
+        const { connection, database } = await createDatabaseAsync()
+        await runScript(connection, database, '090.sql')
+        await destroyDatabaseAsync(connection, database)
+      },
+      EXTRA_LONG_TIMEOUT
+    )
+
+    it(
       'should run script 120.sql',
       async () => {
         const { connection, database } = await createDatabaseAsync()
