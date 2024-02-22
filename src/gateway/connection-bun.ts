@@ -35,7 +35,7 @@ export class SQLiteCloudBunConnection extends SQLiteCloudConnection {
   /* Opens a connection with the server and sends the initialization commands. Will throw in case of errors. */
   /* eslint-disable @typescript-eslint/no-unused-vars */
   connectTransport(config: SQLiteCloudConfig, callback?: ErrorCallback): this {
-    console.debug(`-> connecting ${config?.host as string}:${config?.port as number}`)
+    this.log(`-> connecting ${config?.host as string}:${config?.port as number}`)
     console.assert(!this.connected, 'BunSocketTransport.connect - connection already established')
     this.config = config
 
@@ -134,9 +134,7 @@ export class SQLiteCloudBunConnection extends SQLiteCloudConnection {
 
     // compose commands following SCPC protocol
     const formattedCommands = formatCommand(commands)
-    if (this.config?.verbose) {
-      console.debug(`-> ${formattedCommands}`)
-    }
+    this.log(`-> ${formattedCommands}`)
     this.socket.write(formattedCommands)
     this.socket.flush()
 
@@ -168,14 +166,7 @@ export class SQLiteCloudBunConnection extends SQLiteCloudConnection {
         const hasReceivedEntireCommand = this.buffer.length - this.buffer.indexOf(' ') - 1 >= commandLength ? true : false
 
         if (hasReceivedEntireCommand) {
-          if (this.config?.verbose) {
-            let bufferString = this.buffer.toString('utf8')
-            if (bufferString.length > 1000) {
-              bufferString = bufferString.substring(0, 100) + '...' + bufferString.substring(bufferString.length - 40)
-            }
-            const elapsedMs = new Date().getTime() - this.startedOn.getTime()
-            console.debug(`<- ${bufferString} (${elapsedMs}ms)`)
-          }
+          this.log(`<- ${this.buffer.toString('utf8').slice(0, 1000)} (${new Date().getTime() - this.startedOn.getTime()}ms)`)
 
           // need to decompress this buffer before decoding?
           if (dataType === CMD_COMPRESSED) {
