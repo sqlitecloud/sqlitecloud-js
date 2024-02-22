@@ -127,15 +127,7 @@ export function getChinookDatabase(callback?: ResultsCallback, extraConfig?: Par
 /** SQL used to setup testing database with some data */
 export const TESTING_SQL = readFileSync(join(__dirname, 'assets/testing.sql'), 'utf8')
 
-export function getTestingConfig(url = CHINOOK_DATABASE_URL): SQLiteCloudConfig {
-  const testingConfig = parseConnectionString(url)
-
-  if (testingConfig.host === 'localhost' && testingConfig.tlsOptions === undefined) {
-    testingConfig.tlsOptions = {
-      ca: SELF_SIGNED_CERTIFICATE
-    }
-  }
-
+export function getTestingDatabaseName(prefix: string) {
   // create a unique id for this test run based on current time with
   // enough precision to avoid duplicate ids and be human readable
   function generateRandomId(length: number): string {
@@ -155,13 +147,25 @@ export function getTestingConfig(url = CHINOOK_DATABASE_URL): SQLiteCloudConfig 
     '-' +
     generateRandomId(4)
 
+  return `${prefix}-${id}.sqlite`
+}
+
+export function getTestingConfig(url = CHINOOK_DATABASE_URL): SQLiteCloudConfig {
+  const testingConfig = parseConnectionString(url)
+
+  if (testingConfig.host === 'localhost' && testingConfig.tlsOptions === undefined) {
+    testingConfig.tlsOptions = {
+      ca: SELF_SIGNED_CERTIFICATE
+    }
+  }
+
   testingConfig.createDatabase = true
 
   if (!(testingConfig.database === 'chinook.sqlite')) {
     throw Error('testingConfig.database is not equal to chinook.sqlite')
   }
 
-  testingConfig.database = testingConfig.database?.replace('chinook.sqlite', `testing-${id}.db`)
+  testingConfig.database = testingConfig.database?.replace('chinook.sqlite', getTestingDatabaseName('testing'))
   return testingConfig
 }
 
@@ -259,4 +263,16 @@ export async function removeDatabaseAsync(database?: Database) {
     }
     database.close()
   }
+}
+
+export async function sendCommandsAsync<T>(connection: SQLiteCloudConnection, sql: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    connection.sendCommands(sql, (error, results) => {
+      if (error) {
+        console.error(`sendCommandsAsync - error running ${sql}, error: ${error}`, sql, error)
+        reject(error)
+      }
+      resolve(results)
+    })
+  })
 }

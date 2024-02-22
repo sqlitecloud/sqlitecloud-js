@@ -2,7 +2,7 @@
  * connection-tls.test.ts - test low level communication protocol with tls sockets and raw commands
  */
 
-import { SQLiteCloudError } from '../src/index'
+import { SQLiteCloudError, SQLiteCloudRowset } from '../src/index'
 import { SQLiteCloudConnection } from '../src/drivers/connection'
 import { SQLiteCloudTlsConnection } from '../src/drivers/connection-tls'
 import { anonimizeCommand } from '../src/drivers/utilities'
@@ -13,6 +13,7 @@ import {
   getTestingConfig,
   getChinookConfig,
   getChinookTlsConnection,
+  sendCommandsAsync,
   // clearTestingDatabasesAsync,
   WARN_SPEED_MS,
   EXPECT_SPEED_MS,
@@ -453,6 +454,36 @@ describe('connection-tls', () => {
   })
 
   describe('send select commands', () => {
+    it(
+      'should send xxl query',
+      async () => {
+        const XXL_QUERY = 1 * 1_000_000
+        let longSql = ''
+
+        const connection = getConnection()
+        while (longSql.length < XXL_QUERY) {
+          for (let i = 0; i < 5_000; i++) longSql += `SELECT ${longSql.length} 'HowLargeIsTooMuch'; `
+
+          try {
+            const longResults = await sendCommandsAsync(connection, longSql)
+            expect(longResults).toBeInstanceOf(SQLiteCloudRowset)
+            if (longResults instanceof SQLiteCloudRowset) {
+              expect(longResults.numberOfColumns).toBe(1)
+              expect(longResults.numberOfRows).toBe(1)
+              expect(longResults[0]['HowLargeIsTooMuch']).toBeGreaterThanOrEqual(longSql.length - 50)
+            }
+          } catch (error) {
+            console.error(`An error occoured while sending an xxl query of ${longSql.length} bytes, error: ${error}`)
+            debugger
+            throw error
+          }
+        }
+
+        connection.close()
+      },
+      EXTRA_LONG_TIMEOUT
+    )
+
     it('should LIST METADATA', done => {
       const chinook = getConnection()
       chinook.sendCommands('LIST METADATA;', (error, results) => {

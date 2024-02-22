@@ -102,6 +102,7 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
     this.buffer = Buffer.alloc(0)
     this.startedOn = new Date()
     this.processCallback = callback
+    this.executingCommands = commands
 
     // compose commands following SCPC protocol
     const formattedCommands = formatCommand(commands)
@@ -134,6 +135,7 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
   // buffer to accumulate incoming data until an whole command is received and can be parsed
   private buffer: Buffer = Buffer.alloc(0)
   private startedOn: Date = new Date()
+  private executingCommands?: string
 
   // callback to be called when a command is finished processing
   private processCallback?: ResultsCallback
