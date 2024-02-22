@@ -68,9 +68,10 @@ describe('SQLiteCloudBunConnection', () => {
     expect(results).toBeNull()
   })
 
-  test('should insert metadata', async done => {
+  test('should insert metadata without waiting', async done => {
+    const database = `pollo_${Bun.hash(Math.random().toString())}.sqlite`
     const connection = await getConnection()
-    connection.sendCommands('UNUSE DATABASE; REMOVE DATABASE pollo.sqlite IF EXISTS; CREATE DATABASE pollo.sqlite; USE DATABASE pollo.sqlite;')
+    connection.sendCommands(`CREATE DATABASE ${database}; USE DATABASE ${database};`)
     connection.sendCommands('CREATE TABLE pollo (id INTEGER PRIMARY KEY AUTOINCREMENT, firstName TEXT, lastName TEXT);')
     connection.sendCommands("INSERT INTO pollo VALUES (1, 'Cluck', 'Norris')", (error, results) => {
       expect(error).toBeNull()
@@ -78,9 +79,29 @@ describe('SQLiteCloudBunConnection', () => {
       expect(results).toHaveLength(6)
       expect(results[0]).toBe(10)
 
-      connection.sendCommands('UNUSE DATABASE; REMOVE DATABASE pollo.sqlite IF EXISTS; USE DATABASE chinook.sqlite;', () => {
+      connection.sendCommands(`UNUSE DATABASE; REMOVE DATABASE ${database} IF EXISTS;`, () => {
         done(error)
         connection.close()
+      })
+    })
+  })
+
+  test('should insert metadata waiting for each statement', async done => {
+    const database = `pollo_${Bun.hash(Math.random().toString())}.sqlite`
+    const connection = await getConnection()
+    connection.sendCommands(`CREATE DATABASE ${database}; USE DATABASE ${database};`, (error, result) => {
+      connection.sendCommands('CREATE TABLE pollo (id INTEGER PRIMARY KEY AUTOINCREMENT, firstName TEXT, lastName TEXT);', (error, result) => {
+        connection.sendCommands("INSERT INTO pollo VALUES (1, 'Cluck', 'Norris')", (error, results) => {
+          expect(error).toBeNull()
+          expect(Array.isArray(results)).toBeTrue()
+          expect(results).toHaveLength(6)
+          expect(results[0]).toBe(10)
+
+          connection.sendCommands(`UNUSE DATABASE; REMOVE DATABASE ${database} IF EXISTS;`, () => {
+            done(error)
+            connection.close()
+          })
+        })
       })
     })
   })
