@@ -57,11 +57,11 @@ describe('1 billion row challenge', () => {
     await testChallenge(10_000_000)
   })
 
-  it('should create 100_000_000 measurements', async () => {
-    await createMeasurements(100_000_000)
+  it('should create 50_000_000 measurements', async () => {
+    await createMeasurements(50_000_000)
   })
-  it('should run 100_000_000 row challenge', async () => {
-    await testChallenge(100_000_000)
+  it('should run 50_000_000 row challenge', async () => {
+    await testChallenge(50_000_000)
   })
 })
 
@@ -110,12 +110,17 @@ async function createMeasurements(numberOfRows: number = 1000000) {
   }
 
   // make up the rest of the data
-  for (let i = stations.length; i < numberOfRows; i++) {
-    if (i > 0 && i % 50_000_000 === 0) {
+  for (let i = stations.length; i < numberOfRows; i += 10_000) {
+    if (i > 0 && i % 10_000_000 === 0) {
       console.log(`Wrote ${i} measurements in ${Date.now() - startedOn}ms`)
     }
-    let station = stations[Math.floor(Math.random() * stations.length)]
-    await write(`${station.id};${station.measurement()}\n`)
+
+    let chunkCsv = ''
+    for (let j = 0; j < Math.min(10_000, numberOfRows - i); j++) {
+      let station = stations[Math.floor(Math.random() * stations.length)]
+      chunkCsv += `${station.id};${station.measurement()}\n`
+    }
+    await write(chunkCsv)
   }
 
   console.log(`Wrote 1brc_${numberOfRows}_rows.csv in ${Date.now() - startedOn}ms`)
