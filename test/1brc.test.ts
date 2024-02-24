@@ -5,13 +5,14 @@
 
 import { SQLiteCloudRowset } from '../src'
 import { SQLiteCloudConnection } from '../src/drivers/connection'
-import { EXTRA_LONG_TIMEOUT, LONG_TIMEOUT, getChinookTlsConnection, getTestingDatabaseName, sendCommandsAsync } from './shared'
+import { getChinookTlsConnection, getTestingDatabaseName, sendCommandsAsync } from './shared'
 import * as util from 'util'
 
 const fs = require('fs')
 const path = require('path')
 
 const BRC_UNIQUE_STATIONS = 41343
+const BRC_INSERT_CHUNKS = 200_000 // we insert this many rows per request
 
 async function createDatabaseAsync(numberOfRows: number): Promise<{ connection: SQLiteCloudConnection; database: string }> {
   const connection = getChinookTlsConnection()
@@ -44,6 +45,13 @@ describe('1 billion row challenge', () => {
   })
   it('should run 500_000 row challenge', async () => {
     await testChallenge(500_000)
+  })
+
+  it('should create 10_000_000 measurements', async () => {
+    await createMeasurements(10_000_000)
+  })
+  it('should run 10_000_000 row challenge', async () => {
+    await testChallenge(10_000_000)
   })
 })
 
@@ -106,49 +114,57 @@ async function createMeasurements(numberOfRows: number = 1000000) {
 async function testChallenge(numberOfRows: number) {
   const startedOn = Date.now()
 
+  const { connection, database } = await createDatabaseAsync(numberOfRows)
   try {
+    const parseOn = Date.now()
+    // parse csv into array of city/temperature
     const csvPathname = path.resolve(__dirname, 'assets/1brc', `1brc_${numberOfRows}_rows.csv`)
     const csvText = fs.readFileSync(csvPathname, 'utf8')
-
-    // parse into array of city/temperature
     const lines = csvText.trim().split('\n') // Split the CSV text by newline
     const data: { city: string; temp: number }[] = lines.map((line: string) => {
       const [city, temp] = line.split(';') // Split each line by semicolon
       return { city, temp: parseFloat(temp) } // Parse the temperature as a number
     })
     expect(lines.length).toBe(numberOfRows)
-
     const uniqueStations = new Set(data.map(item => item.city))
     expect(uniqueStations.size).toBe(BRC_UNIQUE_STATIONS)
+    console.debug(`Parsed ${numberOfRows} rows .csv file in ${Date.now() - parseOn}ms`)
 
     // create database and table
-    const { connection, database } = await createDatabaseAsync(lines.length)
     const createResult = await sendCommandsAsync(connection, `CREATE TABLE measurements(city VARCHAR(26), temp FLOAT);`)
     expect(createResult).toBe('OK')
 
-    // insert into sqlite database
-    const values = data.map(({ city, temp }) => `('${city.replaceAll("'", "''")}', ${temp})`).join(',\n')
-    const insertSql = `INSERT INTO measurements (city, temp) VALUES \n${values};`
-    const sqlPathname = path.resolve(__dirname, 'assets/1brc', `1brc_${numberOfRows}_rows.sql`)
-    fs.writeFileSync(sqlPathname, insertSql)
+    const insertOn = Date.now()
+    for (let chunk = 0, startRow = 0; startRow < numberOfRows; chunk++, startRow += BRC_INSERT_CHUNKS) {
+      // insert chunk of rows into sqlite database
+      const dataChunk = data.slice(startRow, Math.min(numberOfRows, startRow + BRC_INSERT_CHUNKS))
+      const values = dataChunk.map(({ city, temp }) => `('${city.replaceAll("'", "''")}', ${temp})`).join(',\n')
+      const insertSql = `INSERT INTO measurements (city, temp) VALUES \n${values};`
 
-    // insert values into database
-    const insertResult = (await sendCommandsAsync(connection, insertSql)) as Array<number>
-    expect(Array.isArray(insertResult)).toBeTruthy()
-    expect(insertResult[2] as number).toBe(numberOfRows)
+      // const sqlPathname = path.resolve(__dirname, 'assets/1brc', `1brc_${numberOfRows}_rows_${chunk}.sql`)
+      // fs.writeFileSync(sqlPathname, insertSql)
+
+      // insert values into database
+      const insertResult = (await sendCommandsAsync(connection, insertSql)) as Array<number>
+      expect(Array.isArray(insertResult)).toBeTruthy()
+      expect(insertResult[3] as number).toBe(dataChunk.length) // totalChanges
+    }
+    console.debug(`Inserted ${numberOfRows} rows in ${Date.now() - insertOn}ms`)
 
     // calculate averages, etc
+    const selectOn = Date.now()
     const selectSql = 'SELECT city, MIN(temp), AVG(temp), MAX(temp) FROM measurements GROUP BY city'
     const selectResult = (await sendCommandsAsync(connection, selectSql)) as SQLiteCloudRowset
     expect(selectResult).toBeTruthy()
     expect(selectResult.length).toBe(BRC_UNIQUE_STATIONS)
+    console.debug(`Selected ${numberOfRows} rows with aggregates in ${Date.now() - selectOn}ms`)
 
     console.log(`Ran ${numberOfRows} challenge in ${Date.now() - startedOn}ms`)
-    debugger
   } catch (error) {
     console.error(`An error occoured while running 1brc, error: ${error}`)
     throw error
   } finally {
     // await destroyDatabaseAsync(connection, database)
+    connection?.close()
   }
 }
