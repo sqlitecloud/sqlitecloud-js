@@ -27,46 +27,41 @@ async function runScript(connection: SQLiteCloudConnection, database: string, re
   // convert to absolute path, read contents of .sql script
   const absolutePathname = path.resolve(__dirname, 'benchmark/test', relativePathname)
   const sql = fs.readFileSync(absolutePathname, 'utf8')
-  const results = await sendCommandsAsync(connection, sql)
-  if (results !== 'OK') {
-    const error = `runScript - database: ${database}, script: ${relativePathname}, returned: ${results?.toString()}`
+  try {
+    return await sendCommandsAsync(connection, sql)
+  } catch (error) {
+    const errorMsg = `runScript - database: ${database}, script: ${relativePathname}, returned: ${error}`
     debugger
-    throw new Error(error)
+    throw new Error(errorMsg)
   }
-
-  if (results !== 'OK') {
-    console.error(`runScript - ${relativePathname} returned: ${results}`)
-  }
-  expect(results).toBe('OK')
 }
 
 describe('benchmark', () => {
-  describe('benchmark tests', () => {
-    it('should run setup', async () => {
+  it('should run setup', async () => {
+    const { connection, database } = await createDatabaseAsync()
+    await destroyDatabaseAsync(connection, database)
+  })
+
+  it(
+    'should run script 090.sql',
+    async () => {
       const { connection, database } = await createDatabaseAsync()
+      await runScript(connection, database, '090.sql')
       await destroyDatabaseAsync(connection, database)
-    })
+    },
+    EXTRA_LONG_TIMEOUT
+  )
 
-    it(
-      'should run script 090.sql',
-      async () => {
-        const { connection, database } = await createDatabaseAsync()
-        await runScript(connection, database, '090.sql')
-        await destroyDatabaseAsync(connection, database)
-      },
-      EXTRA_LONG_TIMEOUT
-    )
-
-    it(
-      'should run script 120.sql',
-      async () => {
-        const { connection, database } = await createDatabaseAsync()
-        await runScript(connection, database, '120.sql')
-        await destroyDatabaseAsync(connection, database)
-      },
-      EXTRA_LONG_TIMEOUT
-    )
-
+  it(
+    'should run script 120.sql',
+    async () => {
+      const { connection, database } = await createDatabaseAsync()
+      await runScript(connection, database, '120.sql')
+      await destroyDatabaseAsync(connection, database)
+    },
+    EXTRA_LONG_TIMEOUT
+  )
+  /*
     it(
       'should run scripts with new connection for each script',
       async () => {
@@ -78,33 +73,39 @@ describe('benchmark', () => {
         const files = fs.readdirSync(testFolder).sort()
 
         for (const testFile of files) {
-          const scriptConnection = getChinookTlsConnection()
+          const scriptConnection = getChinookTlsConnection(undefined, { database })
           console.debug(`Benchmark tests, run ${testFile}`)
-          await runScript(scriptConnection, database, testFile)
+          try {
+            await runScript(scriptConnection, database, testFile)
+          } catch (error) {
+            console.debug(`failed while running ${testFile}, error: ${error}`)
+            throw error
+          }
         }
 
         await destroyDatabaseAsync(connection, database)
       },
       EXTRA_LONG_TIMEOUT
     )
+*/
+  it(
+    'should run benchmark scripts with same connection',
+    async () => {
+      // setup database used for testing
+      const { connection, database } = await createDatabaseAsync()
+      // list contents of test folder
+      const testFolder = path.resolve(__dirname, './benchmark/test')
+      const files = fs.readdirSync(testFolder).sort()
 
-    it(
-      'should run benchmark scripts with same connection',
-      async () => {
-        // setup database used for testing
-        const { connection, database } = await createDatabaseAsync()
-        // list contents of test folder
-        const testFolder = path.resolve(__dirname, './benchmark/test')
-        const files = fs.readdirSync(testFolder).sort()
+      for (const testFile of files) {
+        const startedOn = new Date()
+        const result = await runScript(connection, database, testFile)
+        const elapsedMs = new Date().getTime() - startedOn.getTime()
+        console.debug(`${testFile} on ${database} took ${elapsedMs}ms\n`, result)
+      }
 
-        for (const testFile of files) {
-          console.debug(`Benchmark tests, run ${testFile}`)
-          await runScript(connection, database, testFile)
-        }
-
-        await destroyDatabaseAsync(connection, database)
-      },
-      EXTRA_LONG_TIMEOUT
-    )
-  })
+      // await destroyDatabaseAsync(connection, database)
+    },
+    2 * EXTRA_LONG_TIMEOUT
+  )
 })

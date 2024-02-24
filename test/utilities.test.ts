@@ -4,6 +4,7 @@
 
 import { SQLiteCloudError } from '../src/index'
 import { prepareSql, parseConnectionString } from '../src/drivers/utilities'
+import { getTestingDatabaseName } from './shared'
 
 describe('prepareSql', () => {
   it('should replace single ? parameter', () => {
@@ -172,5 +173,12 @@ describe('parseConnectionString', () => {
       port: 1234,
       database: 'database'
     })
+  })
+})
+
+describe('getTestingDatabaseName', () => {
+  it('should generate readable database names', () => {
+    const database = getTestingDatabaseName('benchkmark')
+    expect(database).toBeTruthy()
   })
 })

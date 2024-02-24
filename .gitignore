@@ -127,3 +127,5 @@ test/assets/testing.db
 
 tools/
 test/assets/testing-*.db
+test/assets/1brc/1brc_*.csv
+test/assets/1brc/1brc_*.sql

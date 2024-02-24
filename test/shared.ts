@@ -139,15 +139,13 @@ export function getTestingDatabaseName(prefix: string) {
     }
     return randomId
   }
-  const id =
-    new Date()
-      .toISOString()
-      .replace(/-|:|T|Z|\./g, '')
-      .slice(0, -1) +
-    '-' +
-    generateRandomId(4)
 
-  return `${prefix}-${id}.sqlite`
+  const date = new Date()
+    .toISOString()
+    .replace(/-|:|T|Z|\./g, '')
+    .toLowerCase()
+
+  return `${prefix}-${date.slice(0, 8)}-${date.slice(8, 12)}z-${generateRandomId(4).toLowerCase()}.sqlite`
 }
 
 export function getTestingConfig(url = CHINOOK_DATABASE_URL): SQLiteCloudConfig {

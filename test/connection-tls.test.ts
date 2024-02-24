@@ -20,6 +20,8 @@ import {
   EXTRA_LONG_TIMEOUT
 } from './shared'
 
+import fs from 'fs'
+
 function getConnection() {
   return new SQLiteCloudTlsConnection({ connectionString: CHINOOK_DATABASE_URL }, error => {
     if (error) {
@@ -477,6 +479,36 @@ describe('connection-tls', () => {
             debugger
             throw error
           }
+        }
+
+        connection.close()
+      },
+      EXTRA_LONG_TIMEOUT
+    )
+
+    it(
+      'should send single xxl query',
+      async () => {
+        const XXL_QUERY = 1 * 1_000_000
+        let longSql = ''
+
+        const connection = getConnection()
+        while (longSql.length < XXL_QUERY) {
+          longSql += `${longSql.length}_`
+        }
+        longSql = `SELECT 'start_${longSql}end'`
+        try {
+          const longResults = await sendCommandsAsync(connection, longSql)
+          expect(longResults).toBeInstanceOf(SQLiteCloudRowset)
+          if (longResults instanceof SQLiteCloudRowset) {
+            expect(longResults.numberOfColumns).toBe(1)
+            expect(longResults.numberOfRows).toBe(1)
+            expect(longResults[0]['HowLargeIsTooMuch']).toBeGreaterThanOrEqual(longSql.length - 50)
+          }
+        } catch (error) {
+          console.error(`An error occoured while sending an xxl query of ${longSql.length} bytes, error: ${error}`)
+          debugger
+          throw error
         }
 
         connection.close()

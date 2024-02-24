@@ -26,6 +26,10 @@ export abstract class SQLiteCloudConnection {
 
   /** Configuration passed by client or extracted from connection string */
   protected config: SQLiteCloudConfig
+  /** Returns the connection's configuration */
+  public getConfig(): SQLiteCloudConfig {
+    return { ...this.config }
+  }
 
   /** Operations are serialized by waiting an any pending promises */
   protected operations = new OperationsQueue()
