@@ -29,7 +29,7 @@ async function destroyDatabaseAsync(connection: SQLiteCloudConnection, database:
   connection.close()
 }
 
-const BRC_TIMEOUT = 15 * 60 * 1000 // 15 minutes
+const BRC_TIMEOUT = 12 * 60 * 60 * 1000 // 12 hours
 jest.setTimeout(BRC_TIMEOUT) // Set global timeout
 
 describe('1 billion row challenge', () => {
@@ -43,8 +43,11 @@ describe('1 billion row challenge', () => {
   it('should create 500_000 measurements', async () => {
     await createMeasurements(500_000)
   })
-  it('should run 500_000 row challenge', async () => {
+  it('should run 500_000 row challenge with chunked inserts', async () => {
     await testChallenge(500_000)
+  })
+  it('should run 500_000 row challenge with a single insert statement', async () => {
+    await testChallenge(500_000, 500_000)
   })
 
   it('should create 10_000_000 measurements', async () => {
@@ -52,6 +55,13 @@ describe('1 billion row challenge', () => {
   })
   it('should run 10_000_000 row challenge', async () => {
     await testChallenge(10_000_000)
+  })
+
+  it('should create 100_000_000 measurements', async () => {
+    await createMeasurements(100_000_000)
+  })
+  it('should run 100_000_000 row challenge', async () => {
+    await testChallenge(100_000_000)
   })
 })
 
@@ -111,7 +121,7 @@ async function createMeasurements(numberOfRows: number = 1000000) {
   console.log(`Wrote 1brc_${numberOfRows}_rows.csv in ${Date.now() - startedOn}ms`)
 }
 
-async function testChallenge(numberOfRows: number) {
+async function testChallenge(numberOfRows: number, insertChunks = BRC_INSERT_CHUNKS) {
   const startedOn = Date.now()
 
   const { connection, database } = await createDatabaseAsync(numberOfRows)
@@ -128,14 +138,14 @@ async function testChallenge(numberOfRows: number) {
     expect(lines.length).toBe(numberOfRows)
     const uniqueStations = new Set(data.map(item => item.city))
     expect(uniqueStations.size).toBe(BRC_UNIQUE_STATIONS)
-    console.debug(`Parsed ${numberOfRows} rows .csv file in ${Date.now() - parseOn}ms`)
+    console.debug(`Read 1brc_${numberOfRows}_rows.csv in ${Date.now() - parseOn}ms`)
 
     // create database and table
     const createResult = await sendCommandsAsync(connection, `CREATE TABLE measurements(city VARCHAR(26), temp FLOAT);`)
     expect(createResult).toBe('OK')
 
-    const insertOn = Date.now()
     for (let chunk = 0, startRow = 0; startRow < numberOfRows; chunk++, startRow += BRC_INSERT_CHUNKS) {
+      const insertOn = Date.now()
       // insert chunk of rows into sqlite database
       const dataChunk = data.slice(startRow, Math.min(numberOfRows, startRow + BRC_INSERT_CHUNKS))
       const values = dataChunk.map(({ city, temp }) => `('${city.replaceAll("'", "''")}', ${temp})`).join(',\n')
@@ -148,8 +158,8 @@ async function testChallenge(numberOfRows: number) {
       const insertResult = (await sendCommandsAsync(connection, insertSql)) as Array<number>
       expect(Array.isArray(insertResult)).toBeTruthy()
       expect(insertResult[3] as number).toBe(dataChunk.length) // totalChanges
+      console.debug(`Inserted ${dataChunk.length} rows in ${Date.now() - insertOn}ms`)
     }
-    console.debug(`Inserted ${numberOfRows} rows in ${Date.now() - insertOn}ms`)
 
     // calculate averages, etc
     const selectOn = Date.now()
@@ -160,6 +170,11 @@ async function testChallenge(numberOfRows: number) {
     console.debug(`Selected ${numberOfRows} rows with aggregates in ${Date.now() - selectOn}ms`)
 
     console.log(`Ran ${numberOfRows} challenge in ${Date.now() - startedOn}ms`)
+
+    // write results to csv
+    const selectCsvPathname = path.resolve(__dirname, 'assets/1brc', `1brc_${numberOfRows}_rows_results.csv`)
+    const selectCsv = selectResult.map(row => `"${row.city}",${row['MIN(temp)']},${(row['AVG(temp)'] as number).toFixed(2)},${row['MAX(temp)']}`).join('\n')
+    fs.writeFileSync(selectCsvPathname, selectCsv)
   } catch (error) {
     console.error(`An error occoured while running 1brc, error: ${error}`)
     throw error
