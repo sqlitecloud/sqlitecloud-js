@@ -106,7 +106,7 @@ io.on('connection', socket => {
 
 // Run websocket server
 server.listen(SOCKET_PORT, () => {
-  console.debug(`WebSocket server is running on port ${SOCKET_PORT}`)
+  console.debug(`WebSocket on ws://localhost:${SOCKET_PORT}`)
 })
 
 //
@@ -114,7 +114,7 @@ server.listen(SOCKET_PORT, () => {
 //
 
 app.listen(HTTP_PORT, () => {
-  console.debug(`HTTP server is running on port ${HTTP_PORT}`)
+  console.debug(`HTTP server on http://localhost:${HTTP_PORT}`)
 })
 
 app.get('/v1/info', (req, res) => {

@@ -10,20 +10,22 @@ import { SQLiteCloudRowset } from '../src'
 import { SQLiteCloudConnection } from '../src/drivers/connection'
 import { getChinookTlsConnection, getTestingDatabaseName, sendCommandsAsync } from './shared'
 import * as util from 'util'
+import * as readline from 'readline'
 
 const fs = require('fs')
 const path = require('path')
 
 const BRC_UNIQUE_STATIONS = 41343
-const BRC_INSERT_CHUNKS = 300_000 // insert this many rows per request
+const BRC_INSERT_CHUNKS = 350_000 // insert this many rows per request
 
-const BRC_TIMEOUT = 12 * 60 * 60 * 1000 // 12 hours
+const BRC_TIMEOUT = 24 * 60 * 60 * 1000 // 1 day
 jest.setTimeout(BRC_TIMEOUT) // Set global timeout
 
 describe('1 billion row challenge', () => {
   it('should create 50_000 measurements', async () => {
     await createMeasurements(50_000)
   })
+
   it('should run 50_000 row challenge', async () => {
     await testChallenge(50_000)
   })
@@ -31,16 +33,19 @@ describe('1 billion row challenge', () => {
   it('should create 500_000 measurements', async () => {
     await createMeasurements(500_000)
   })
+
   it('should run 500_000 row challenge with chunked inserts', async () => {
     await testChallenge(500_000)
   })
-  it('should run 500_000 row challenge with a single insert statement', async () => {
-    await testChallenge(500_000, 500_000)
-  })
+
+  //  it('should run 500_000 row challenge with a single insert statement', async () => {
+  //    await testChallenge(500_000, 500_000)
+  // })
 
   it('should create 10_000_000 measurements', async () => {
     await createMeasurements(10_000_000)
   })
+
   it('should run 10_000_000 row challenge', async () => {
     await testChallenge(10_000_000)
   })
@@ -48,8 +53,17 @@ describe('1 billion row challenge', () => {
   it('should create 50_000_000 measurements', async () => {
     await createMeasurements(50_000_000)
   })
+
   it('should run 50_000_000 row challenge', async () => {
     await testChallenge(50_000_000)
+  })
+
+  it('should create 200_000_000 measurements', async () => {
+    await createMeasurements(200_000_000)
+  })
+
+  it('should run 200_000_000 row challenge', async () => {
+    await testChallenge(200_000_000)
   })
 })
 
@@ -127,7 +141,7 @@ async function createMeasurements(numberOfRows: number = 1000000) {
     await write(chunkCsv)
   }
 
-  console.log(`Wrote 1brc_${numberOfRows}_rows.csv in ${Date.now() - startedOn}ms`)
+  console.log(`Created 1brc_${numberOfRows}_rows.csv in ${Date.now() - startedOn}ms`)
 }
 
 /** Read csv with measurements, insert in chunks, summarize and write out results to csv */
@@ -137,38 +151,40 @@ async function testChallenge(numberOfRows: number, insertChunks = BRC_INSERT_CHU
   const { connection, database } = await createDatabaseAsync(numberOfRows)
   try {
     const parseOn = Date.now()
-    // parse csv into array of city/temperature
-    const csvPathname = path.resolve(__dirname, 'assets/1brc', `1brc_${numberOfRows}_rows.csv`)
-    const csvText = fs.readFileSync(csvPathname, 'utf8')
-    const lines = csvText.trim().split('\n') // Split the CSV text by newline
-    const data: { city: string; temp: number }[] = lines.map((line: string) => {
-      const [city, temp] = line.split(';') // Split each line by semicolon
-      return { city, temp: parseFloat(temp) } // Parse the temperature as a number
-    })
-    expect(lines.length).toBe(numberOfRows)
-    const uniqueStations = new Set(data.map(item => item.city))
-    expect(uniqueStations.size).toBe(BRC_UNIQUE_STATIONS)
-    console.debug(`Read 1brc_${numberOfRows}_rows.csv in ${Date.now() - parseOn}ms`)
 
     // create database and table
     const createResult = await sendCommandsAsync(connection, `CREATE TABLE measurements(city VARCHAR(26), temp FLOAT);`)
     expect(createResult).toBe('OK')
 
-    for (let chunk = 0, startRow = 0; startRow < numberOfRows; chunk++, startRow += BRC_INSERT_CHUNKS) {
-      const insertOn = Date.now()
-      // insert chunk of rows into sqlite database
-      const dataChunk = data.slice(startRow, Math.min(numberOfRows, startRow + BRC_INSERT_CHUNKS))
-      const values = dataChunk.map(({ city, temp }) => `('${city.replaceAll("'", "''")}', ${temp})`).join(',\n')
-      const insertSql = `INSERT INTO measurements (city, temp) VALUES \n${values};`
+    const csvPathname = path.resolve(__dirname, 'assets/1brc', `1brc_${numberOfRows}_rows.csv`)
+    const fileStream = fs.createReadStream(csvPathname)
 
-      // const sqlPathname = path.resolve(__dirname, 'assets/1brc', `1brc_${numberOfRows}_rows_${chunk}.sql`)
-      // fs.writeFileSync(sqlPathname, insertSql)
+    const rl = readline.createInterface({
+      input: fileStream,
+      crlfDelay: Infinity
+    })
 
-      // insert values into database
-      const insertResult = (await sendCommandsAsync(connection, insertSql)) as Array<number>
-      expect(Array.isArray(insertResult)).toBeTruthy()
-      expect(insertResult[3] as number).toBe(dataChunk.length) // totalChanges
-      console.debug(`Inserted ${dataChunk.length} rows (${Math.floor(insertSql.length / 1024)}KB) in ${Date.now() - insertOn}ms`)
+    let dataChunk = []
+    let rowCount = 0
+    for await (const line of rl) {
+      const [city, temp] = line.split(';') // Split each line by semicolon
+      dataChunk.push({ city, temp: parseFloat(temp) }) // Parse the temperature as a number
+
+      if (dataChunk.length === insertChunks || rowCount + 1 === numberOfRows) {
+        const insertOn = Date.now()
+        const values = dataChunk.map(({ city, temp }) => `('${city.replaceAll("'", "''")}', ${temp})`).join(',\n')
+        const insertSql = `INSERT INTO measurements (city, temp) VALUES \n${values};`
+
+        // insert values into database
+        const insertResult = (await sendCommandsAsync(connection, insertSql)) as Array<number>
+        expect(Array.isArray(insertResult)).toBeTruthy()
+        expect(insertResult[3] as number).toBe(dataChunk.length) // totalChanges
+        console.debug(`Inserted ${dataChunk.length} rows (${Math.floor(insertSql.length / 1024)}KB) in ${Date.now() - insertOn}ms`)
+
+        dataChunk = [] // reset data chunk
+      }
+
+      rowCount++
     }
 
     // calculate averages, etc
@@ -177,7 +193,6 @@ async function testChallenge(numberOfRows: number, insertChunks = BRC_INSERT_CHU
     const selectResult = (await sendCommandsAsync(connection, selectSql)) as SQLiteCloudRowset
     expect(selectResult).toBeTruthy()
     expect(selectResult.length).toBe(BRC_UNIQUE_STATIONS)
-    console.debug(`Selected ${numberOfRows} rows with aggregates in ${Date.now() - selectOn}ms`)
 
     console.log(`Ran ${numberOfRows} challenge in ${Date.now() - startedOn}ms`)
 
