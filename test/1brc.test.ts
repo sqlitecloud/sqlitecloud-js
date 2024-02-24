@@ -1,6 +1,9 @@
 /**
  * 1brc.test.ts - insert lots of data, syntesize, extract, benchmark
  * https://github.com/gunnarmorling/1brc/tree/main
+ *
+ * To run:
+ * npm test 1brc.test.ts
  */
 
 import { SQLiteCloudRowset } from '../src'
@@ -12,22 +15,7 @@ const fs = require('fs')
 const path = require('path')
 
 const BRC_UNIQUE_STATIONS = 41343
-const BRC_INSERT_CHUNKS = 200_000 // we insert this many rows per request
-
-async function createDatabaseAsync(numberOfRows: number): Promise<{ connection: SQLiteCloudConnection; database: string }> {
-  const connection = getChinookTlsConnection()
-  const database = getTestingDatabaseName(`1brc-${numberOfRows}`)
-  const createSql = `UNUSE DATABASE; CREATE DATABASE ${database}; USE DATABASE ${database};`
-  const createResults = await sendCommandsAsync(connection, createSql)
-  expect(createResults).toBe('OK')
-  return { database, connection }
-}
-
-async function destroyDatabaseAsync(connection: SQLiteCloudConnection, database: string) {
-  const cleanupResults = await sendCommandsAsync(connection, `UNUSE DATABASE; REMOVE DATABASE ${database}`)
-  expect(cleanupResults).toBe('OK')
-  connection.close()
-}
+const BRC_INSERT_CHUNKS = 300_000 // insert this many rows per request
 
 const BRC_TIMEOUT = 12 * 60 * 60 * 1000 // 12 hours
 jest.setTimeout(BRC_TIMEOUT) // Set global timeout
@@ -66,8 +54,23 @@ describe('1 billion row challenge', () => {
 })
 
 //
-// generate data on the fly
+// utility methods
 //
+
+async function createDatabaseAsync(numberOfRows: number): Promise<{ connection: SQLiteCloudConnection; database: string }> {
+  const connection = getChinookTlsConnection()
+  const database = getTestingDatabaseName(`1brc-${numberOfRows}`)
+  const createSql = `UNUSE DATABASE; CREATE DATABASE ${database}; USE DATABASE ${database};`
+  const createResults = await sendCommandsAsync(connection, createSql)
+  expect(createResults).toBe('OK')
+  return { database, connection }
+}
+
+async function destroyDatabaseAsync(connection: SQLiteCloudConnection, database: string) {
+  const cleanupResults = await sendCommandsAsync(connection, `UNUSE DATABASE; REMOVE DATABASE ${database}`)
+  expect(cleanupResults).toBe('OK')
+  connection.close()
+}
 
 class WeatherStation {
   constructor(public id: string, public meanTemperature: number) {}
@@ -85,6 +88,7 @@ class WeatherStation {
   }
 }
 
+/** Create csv file with random measurements starting from list of stations and base temperature */
 async function createMeasurements(numberOfRows: number = 1000000) {
   let startedOn = Date.now()
 
@@ -126,6 +130,7 @@ async function createMeasurements(numberOfRows: number = 1000000) {
   console.log(`Wrote 1brc_${numberOfRows}_rows.csv in ${Date.now() - startedOn}ms`)
 }
 
+/** Read csv with measurements, insert in chunks, summarize and write out results to csv */
 async function testChallenge(numberOfRows: number, insertChunks = BRC_INSERT_CHUNKS) {
   const startedOn = Date.now()
 
@@ -163,7 +168,7 @@ async function testChallenge(numberOfRows: number, insertChunks = BRC_INSERT_CHU
       const insertResult = (await sendCommandsAsync(connection, insertSql)) as Array<number>
       expect(Array.isArray(insertResult)).toBeTruthy()
       expect(insertResult[3] as number).toBe(dataChunk.length) // totalChanges
-      console.debug(`Inserted ${dataChunk.length} rows in ${Date.now() - insertOn}ms`)
+      console.debug(`Inserted ${dataChunk.length} rows (${Math.floor(insertSql.length / 1024)}KB) in ${Date.now() - insertOn}ms`)
     }
 
     // calculate averages, etc
@@ -181,7 +186,7 @@ async function testChallenge(numberOfRows: number, insertChunks = BRC_INSERT_CHU
     const selectCsv = selectResult.map(row => `"${row.city}",${row['MIN(temp)']},${(row['AVG(temp)'] as number).toFixed(2)},${row['MAX(temp)']}`).join('\n')
     fs.writeFileSync(selectCsvPathname, selectCsv)
   } catch (error) {
-    console.error(`An error occoured while running 1brc, error: ${error}`)
+    console.error(`Error: ${error}`)
     throw error
   } finally {
     // await destroyDatabaseAsync(connection, database)
