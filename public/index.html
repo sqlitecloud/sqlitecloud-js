@@ -8,7 +8,8 @@
 
   <body class="p-4">
     <h1>SQLite Cloud Gateway</h1>
-    <h2 id="status" class="pb-6 font-bold cursor-pointer">Disconnected</h2>
+    <h2 id="status" class="font-bold cursor-pointer">Disconnected</h2>
+    <div class="text-sm pb-6"><a id="apiDatabases" class="cursor-pointer">databases</a> | <a id="apiStats" class="cursor-pointer">stats</a></div>
 
     <!-- Add the text field and button here -->
     <div class="pb-2">
@@ -112,6 +113,26 @@
         }
         socket.emit('v1/info', {}, response => {
           appendMessage(`info | heapSize: ${(response.data.memory.heapSize / 1024 / 1024).toFixed(2)}mb, ${JSON.stringify(response)}`)
+        })
+      })
+
+      apiDatabases.addEventListener('click', () => {
+        if (!socket) {
+          socket = setupSocket()
+        }
+        socket.emit('v1/databases', {}, response => {
+          console.debug('/v1/databases', response.data)
+          appendMessage(`databases | ${JSON.stringify(response.data)}`)
+        })
+      })
+
+      apiStats.addEventListener('click', () => {
+        if (!socket) {
+          socket = setupSocket()
+        }
+        socket.emit('v1/stats', {}, response => {
+          console.debug('/v1/stats', response.data)
+          appendMessage(`stats | ${JSON.stringify(response.data)}`)
         })
       })
     </script>

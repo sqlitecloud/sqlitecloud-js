@@ -35,3 +35,11 @@ export interface SqlApiRequest extends ApiRequest {
 
 export const DEFAULT_PORT_SOCKET = 4000
 export const DEFAULT_PORT_HTTP = 8090
+
+export class GatewayError extends Error {
+  constructor(message: string, options: ErrorOptions & { status: number }) {
+    super(message, options)
+    this.status = options.status || 500
+  }
+  status: number
+}

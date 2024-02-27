@@ -7,7 +7,9 @@ import packageJson from '../../package.json'
 // bun specific driver + shared classes
 import { SQLiteCloudBunConnection } from './connection-bun'
 import { SQLiteCloudRowset, SQLiteCloudError, validateConfiguration } from '../index'
-import { type ApiRequest, type ApiResponse, type SqlApiRequest, DEFAULT_PORT_HTTP, DEFAULT_PORT_SOCKET } from './shared'
+import { type ApiRequest, type ApiResponse, type SqlApiRequest, DEFAULT_PORT_HTTP, DEFAULT_PORT_SOCKET, GatewayError } from './shared'
+import { VERBOSE, connectAsync, sendCommandsAsync, log, errorResponse } from './utilities'
+import { getServerInfo, getDatabases, getStats } from './api'
 
 // external modules
 import { heapStats } from 'bun:jsc'
@@ -19,9 +21,8 @@ import http from 'http'
 const SOCKET_PORT = parseInt(process.env['SOCKET_PORT'] || DEFAULT_PORT_SOCKET.toString())
 // port where http server will listen for connections
 const HTTP_PORT = parseInt(process.env['HTTP_PORT'] || DEFAULT_PORT_HTTP.toString())
-// should we log verbose messages?
-const VERBOSE = process.env['VERBOSE']?.toLowerCase() === 'true'
-console.debug(`@sqlitecloud/gateway v${packageJson.version}`)
+
+console.log(`@sqlitecloud/gateway v${packageJson.version}`)
 
 //
 // express
@@ -65,11 +66,43 @@ io.on('connection', socket => {
   // handlers
   //
 
+  async function getConnection(): Promise<SQLiteCloudBunConnection> {
+    if (!connection) {
+      const startTime = Date.now()
+      log('ws | connecting...')
+      connection = await connectAsync(connectionString)
+      log(`ws | connected in ${Date.now() - startTime}ms`)
+    }
+    return connection
+  }
+
+  async function callbackWithApiResponse(
+    callback: (response: ApiResponse) => void,
+    func: (connection: SQLiteCloudBunConnection, ...args: any[]) => Promise<ApiResponse>,
+    ...args: any[]
+  ) {
+    try {
+      const connection = await getConnection()
+      const response = await func(connection, ...args)
+      callback(response)
+    } catch (error) {
+      callback({ error: { status: '500', title: String(error) } })
+    }
+  }
+
   // received a sql query request from the client socket
-  socket.on('v1/info', (_request: ApiRequest, callback: (response: ApiResponse) => void) => {
+  socket.on('v1/info', async (_request: ApiRequest, callback: (response: ApiResponse) => void) => {
     const serverInfo = getServerInfo()
     log(`ws | info <- ${JSON.stringify(serverInfo)}`)
     return callback(serverInfo)
+  })
+
+  socket.on('v1/databases', async (_request: ApiRequest, callback: (response: ApiResponse) => void) => {
+    await callbackWithApiResponse(callback, getDatabases)
+  })
+
+  socket.on('v1/stats', async (_request: ApiRequest, callback: (response: ApiResponse) => void) => {
+    await callbackWithApiResponse(callback, getStats)
   })
 
   // received a sql query request from the client socket
@@ -80,14 +113,8 @@ io.on('connection', socket => {
     }
 
     try {
-      if (!connection) {
-        const startTime = Date.now()
-        log('ws | connecting...')
-        connection = await connectAsync(connectionString)
-        log(`ws | connected in ${Date.now() - startTime}ms`)
-      }
-
       log(`ws | sql -> ${JSON.stringify(request)}`)
+      const connection = await getConnection()
       const response = await queryAsync(connection, request)
       log(`ws | sql <- ${JSON.stringify(response)}`)
       return callback(response)
@@ -121,31 +148,59 @@ app.get('/v1/info', (req, res) => {
   res.json(getServerInfo())
 })
 
-app.post('/v1/sql', (req: express.Request, res: express.Response) => {
-  void (async () => {
-    try {
-      log('POST /v1/sql')
-      const response = await handleHttpSqlRequest(req, res)
-      res.json(response)
-    } catch (error) {
-      log('POST /v1/sql - error', error)
-      res.status(400).json({ error: { status: '400', title: 'Bad Request', detail: error as string } })
-    }
-  })
+app.get('/v1/databases', async (request, response) => {
+  try {
+    response.json(await getDatabases(await getRequestConnection(request)))
+  } catch (error) {
+    errorResponse(response, 500, 'Error', error)
+  }
+})
+
+app.get('/v1/stats', async (request, response) => {
+  try {
+    response.json(await getStats(await getRequestConnection(request)))
+  } catch (error) {
+    errorResponse(response, 500, 'Error', error)
+  }
+})
+
+app.post('/v1/sql', async (req: express.Request, res: express.Response) => {
+  try {
+    log('POST /v1/sql')
+    const response = await handleHttpSqlRequest(req, res)
+    res.json(response)
+  } catch (error) {
+    log('POST /v1/sql - error', error)
+    res.status(400).json({ error: { status: '400', title: 'Bad Request', detail: error as string } })
+  }
 })
 
 //
 // utilities
 //
 
+/** Extract and return bearer token from request authorization headers */
+function getRequestToken(request: express.Request): string | null {
+  const authorization = request.headers['authorization'] as string
+  // console.debug(`getBearerToken - ${authorization}`, request.headers)
+  if (authorization && authorization.startsWith('Bearer ')) {
+    return authorization.substring(7)
+  }
+  return null
+}
+
+/** Returns database connection associated with express request credentials */
+async function getRequestConnection(request: express.Request): Promise<SQLiteCloudBunConnection> {
+  // bearer token is required to connect to sqlitecloud
+  const connectionString = getRequestToken(request)
+  if (!connectionString) {
+    throw new GatewayError('Unauthorized', { status: 401 })
+  }
+  return await connectAsync(connectionString)
+}
+
 /** Handle a stateless sql query request */
 async function handleHttpSqlRequest(request: express.Request, response: express.Response) {
-  // bearer token is required to connect to sqlitecloud
-  const connectionString = getBearerToken(request)
-  if (!connectionString) {
-    return errorResponse(response, 401, 'Unauthorized')
-  }
-
   // ?sql= or json payload with sql property is required
   let apiRequest: SqlApiRequest
   try {
@@ -161,86 +216,21 @@ async function handleHttpSqlRequest(request: express.Request, response: express.
     return errorResponse(response, 400, 'Bad Request', 'Missing ?sql= query or json payload')
   }
 
-  let connection
+  let connection = null
   try {
     // request is stateless so we will connect and disconnect for each request
     log(`http | sql -> ${JSON.stringify(apiRequest)}`)
-    connection = await connectAsync(connectionString)
+    connection = await getRequestConnection(request)
     const apiResponse = await queryAsync(connection, apiRequest)
     log(`http | sql <- ${JSON.stringify(apiResponse)}`)
     response.json(apiResponse)
   } catch (error) {
     errorResponse(response, 400, 'Bad Request', (error as Error).toString())
   } finally {
-    connection?.close()
-  }
-}
-
-/** Server info for /v1/info endpoints */
-function getServerInfo() {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { objectTypeCounts, protectedObjectTypeCounts, ...memory } = heapStats()
-  return {
-    data: {
-      name: '@sqlitecloud/gateway',
-      version: packageJson.version,
-      started: appStartedOn.toISOString(),
-      uptime: `${Math.floor(process.uptime() / 3600)}h:${Math.floor((process.uptime() % 3600) / 60)}m:${Math.floor(process.uptime() % 60)}s`,
-      bun: {
-        version: Bun.version,
-        path: Bun.which('bun'),
-        main: Bun.main
-      },
-      memory,
-      cpuUsage: process.cpuUsage()
+    if (connection) {
+      connection.close()
     }
   }
-}
-
-/** Extract and return bearer token from request authorization headers */
-function getBearerToken(request: express.Request): string | null {
-  const authorization = request.headers['authorization'] as string
-  // console.debug(`getBearerToken - ${authorization}`, request.headers)
-  if (authorization && authorization.startsWith('Bearer ')) {
-    return authorization.substring(7)
-  }
-  return null
-}
-
-/** Returns a json api compatibile error response */
-function errorResponse(response: express.Response, status: number, statusText: string, detail?: string) {
-  response.status(status).json({ error: { status: status.toString(), title: statusText, detail } })
-}
-
-/** Connects to given database asynchronously */
-async function connectAsync(connectionString: string): Promise<SQLiteCloudBunConnection> {
-  return await new Promise((resolve, reject) => {
-    const config = validateConfiguration({ connectionString })
-    const connection = new SQLiteCloudBunConnection(config, (error: Error | null) => {
-      if (error) {
-        log('connectAsync | error', error)
-        reject(error)
-      } else {
-        resolve(connection)
-      }
-    })
-  })
-}
-
-/** Sends given sql commands asynchronously */
-async function sendCommandsAsync(connection: SQLiteCloudBunConnection, sql: string): Promise<unknown> {
-  return await new Promise((resolve, reject) => {
-    connection.sendCommands(sql, (error: Error | null, results) => {
-      // Explicitly type the 'error' parameter as 'Error'
-      if (error) {
-        log('sendCommandsAsync | error', error)
-        reject(error)
-      } else {
-        // console.debug(JSON.stringify(results).substring(0, 140) + '...')
-        resolve(results)
-      }
-    })
-  })
 }
 
 /** Runs query on given connection and returns response payload */
@@ -322,11 +312,4 @@ function generateMetadata(sql: string, result: any): ApiResponse {
   }
 
   return { data: result }
-}
-
-/** Log only in verbose mode */
-function log(...args: unknown[]) {
-  if (VERBOSE) {
-    console.debug(...args)
-  }
 }
