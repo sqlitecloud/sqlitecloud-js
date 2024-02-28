@@ -1,31 +1,28 @@
-var createError = require('http-errors')
+//
+// Using @sqlitecloud/drivers inside an Express app with Javascript
+//
+
+var sqlitecloud = require('@sqlitecloud/drivers')
+require('dotenv').config()
+var DATABASE_URL = process.env.DATABASE_URL
+console.assert(DATABASE_URL, 'DATABASE_URL environment variable not set in .env')
+
 var express = require('express')
-var path = require('path')
-
-var tracksRouter = require('./routes/index')
-
+var http = require('http')
 var app = express()
-
 app.use(express.json())
-app.use(express.urlencoded({ extended: false }))
 
-app.use('/', tracksRouter)
-app.use('/api/hello', tracksRouter)
-
-// catch 404 and forward to error handler
-app.use(function (req, res, next) {
-  next(createError(404))
+/* http://localhost:3001/ returns chinook tracks as json */
+app.get('/', async function (req, res, next) {
+  var database = new sqlitecloud.Database(DATABASE_URL)
+  var tracks = await database.sql`USE DATABASE chinook.sqlite; SELECT * FROM tracks LIMIT 20;`
+  res.send({ tracks })
 })
 
-// error handler
-app.use(function (err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message
-  res.locals.error = req.app.get('env') === 'development' ? err : {}
-
-  // render the error page
-  res.status(err.status || 500)
-  res.render('error')
+const port = process.env.PORT || 3000
+var server = http.createServer(app)
+server.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}/`)
 })
 
 module.exports = app

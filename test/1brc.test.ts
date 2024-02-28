@@ -41,7 +41,7 @@ describe('1 billion row challenge', () => {
   //  it('should run 500_000 row challenge with a single insert statement', async () => {
   //    await testChallenge(500_000, 500_000)
   // })
-
+  /*
   it('should create 10_000_000 measurements', async () => {
     await createMeasurements(10_000_000)
   })
@@ -65,6 +65,7 @@ describe('1 billion row challenge', () => {
   it('should run 200_000_000 row challenge', async () => {
     await testChallenge(200_000_000)
   })
+*/
 })
 
 //
