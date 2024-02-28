@@ -1,5 +1,5 @@
 //
-// Using @sqlitecloud/drivers with plain Javascript
+// app.js - example of @sqlitecloud/drivers using Javascript in Node.js
 //
 
 var sqlitecloud = require('@sqlitecloud/drivers')
@@ -14,7 +14,7 @@ async function selectTracks() {
 
   // run async query
   var tracks = await database.sql`USE DATABASE chinook.sqlite; SELECT * FROM tracks LIMIT 20;`
-  console.log(`getTracks returned:`, tracks)
+  console.log(`selectTracks returned:`, tracks)
 
   // You can also use all the regular sqlite3 api with callbacks, see:
   // https://docs.sqlitecloud.io/docs/sdk/js/intro
