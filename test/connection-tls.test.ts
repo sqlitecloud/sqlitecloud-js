@@ -496,14 +496,16 @@ describe('connection-tls', () => {
         while (longSql.length < XXL_QUERY) {
           longSql += `${longSql.length}_`
         }
-        longSql = `SELECT 'start_${longSql}end'`
+        const selectedValue = `start_${longSql}end`
+        longSql = `SELECT '${selectedValue}'`
         try {
           const longResults = await sendCommandsAsync(connection, longSql)
           expect(longResults).toBeInstanceOf(SQLiteCloudRowset)
           if (longResults instanceof SQLiteCloudRowset) {
             expect(longResults.numberOfColumns).toBe(1)
             expect(longResults.numberOfRows).toBe(1)
-            expect(longResults[0]['HowLargeIsTooMuch']).toBeGreaterThanOrEqual(longSql.length - 50)
+            const columnName = longResults.columnsNames[0]
+            expect(longResults[0][columnName]).toBe(selectedValue)
           }
         } catch (error) {
           console.error(`An error occoured while sending an xxl query of ${longSql.length} bytes, error: ${error}`)
