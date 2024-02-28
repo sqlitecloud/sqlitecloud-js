@@ -1,0 +1,13 @@
+{
+  "name": "with-javascript-express",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node ./app.js"
+  },
+  "dependencies": {
+    "@sqlitecloud/drivers": "^0.0.56",
+    "debug": "^4.3.4",
+    "dotenv": "^16.4.5"
+  }
+}
