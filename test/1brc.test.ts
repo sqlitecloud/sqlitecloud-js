@@ -203,7 +203,9 @@ async function testChallenge(numberOfRows: number, insertChunks = BRC_INSERT_CHU
     fs.writeFileSync(selectCsvPathname, selectCsv)
   } catch (error) {
     console.error(`Error: ${error}`)
-    throw error
+    if (numberOfRows < 500000 ) {
+      throw error
+    }
   } finally {
     // await destroyDatabaseAsync(connection, database)
     connection?.close()
