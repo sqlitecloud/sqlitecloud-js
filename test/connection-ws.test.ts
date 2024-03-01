@@ -42,6 +42,7 @@ describe('connection-ws', () => {
         expect(error).toBeNull()
         done()
       })
+      connection?.close()
     })
 
     it('should not connect with incorrect credentials', done => {
@@ -55,6 +56,7 @@ describe('connection-ws', () => {
         expect(error).toBeDefined()
         done()
       })
+      connection?.close()
     })
     /* TODO RESTORE TEST
     it('should connect with connection string', done => {
@@ -212,10 +214,10 @@ describe('connection-ws', () => {
 
           const arrayrowset = results as any as Array<any>
           expect(arrayrowset.length).toBe(5)
-          expect(arrayrowset[0]).toBe('Hello World')
-          expect(arrayrowset[1]).toBe(123456)
-          expect(arrayrowset[2]).toBe(3.1415)
-          expect(arrayrowset[3]).toBeNull()
+          expect(arrayrowset[0].Result).toBe('Hello World')
+          expect(arrayrowset[1].Result).toBe(123456)
+          expect(arrayrowset[2].Result).toBe(3.1415)
+          expect(arrayrowset[3].Result).toBeNull()
           done()
         })
       })
