@@ -104,7 +104,7 @@ describe('benchmark', () => {
         console.debug(`${testFile} on ${database} took ${elapsedMs}ms\n`, result)
       }
 
-      // await destroyDatabaseAsync(connection, database)
+      await destroyDatabaseAsync(connection, database)
     },
     2 * EXTRA_LONG_TIMEOUT
   )

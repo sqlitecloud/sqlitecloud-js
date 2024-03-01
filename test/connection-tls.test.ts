@@ -75,21 +75,22 @@ describe('connection-tls', () => {
     )
 
     it('should connect with connection string', done => {
-      if (CHINOOK_DATABASE_URL.indexOf('localhost') > 0) {
-        // skip this test when running locally since it requires a self-signed certificate
-        done()
-      }
+      // if (CHINOOK_DATABASE_URL.indexOf('localhost') > 0) {
+      //   // skip this test when running locally since it requires a self-signed certificate
+      //   done()
+      // }
 
       const connection = new SQLiteCloudTlsConnection(CHINOOK_DATABASE_URL, error => {
         expect(error).toBeNull()
         expect(connection.connected).toBe(true)
+        connection.close()
 
         const chinook = getConnection()
         chinook.sendCommands('TEST STRING', (error, results) => {
           expect(results).toBe('Hello World, this is a test string.')
 
           done()
-          connection.close()
+          chinook.close()
         })
       })
       expect(connection).toBeDefined()
