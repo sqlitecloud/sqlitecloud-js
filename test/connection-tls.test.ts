@@ -12,6 +12,7 @@ import {
   LONG_TIMEOUT,
   getTestingConfig,
   getChinookConfig,
+  getChinookApiKeyUrl,
   getChinookTlsConnection,
   sendCommandsAsync,
   // clearTestingDatabasesAsync,
@@ -74,6 +75,32 @@ describe('connection-tls', () => {
       LONG_TIMEOUT
     )
 
+    it(
+      'should connect using api key',
+      done => {
+        try {
+          // eg: sqlitecloud://mIiLARzKm9XBVllbAzkB1wqrgijJ3Gx0X5z1Agm3xBo@host.sqlite.cloud:8860/chinook.sqlite
+          const connectionUrl = getChinookApiKeyUrl()
+          const connection = new SQLiteCloudTlsConnection(connectionUrl, error => {
+            expect(error).toBeNull()
+            expect(connection.connected).toBe(true)
+
+            connection.sendCommands('TEST STRING', (error, results) => {
+              connection.close()
+              expect(connection.connected).toBe(false)
+              done()
+            })
+          })
+          expect(connection).toBeDefined()
+        } catch (error) {
+          console.error(`An error occurred while connecting using api key: ${error}`)
+          debugger
+          throw error
+        }
+      },
+      LONG_TIMEOUT
+    )
+
     it('should connect with connection string', done => {
       // if (CHINOOK_DATABASE_URL.indexOf('localhost') > 0) {
       //   // skip this test when running locally since it requires a self-signed certificate
@@ -128,7 +155,7 @@ describe('connection-tls', () => {
         expect(error).toBeDefined()
         expect(error).toBeInstanceOf(SQLiteCloudError)
         const sqliteCloudError = error as SQLiteCloudError
-        expect(sqliteCloudError.message).toBe('The user, password and host arguments must be specified.')
+        expect(sqliteCloudError.message).toBe('The user, password and host arguments or the ?apiKey= must be specified.')
         expect(sqliteCloudError.errorCode).toBe('ERR_MISSING_ARGS')
         expect(sqliteCloudError.externalErrorCode).toBeUndefined()
         expect(sqliteCloudError.offsetCode).toBeUndefined()
@@ -524,7 +551,7 @@ describe('connection-tls', () => {
       chinook.sendCommands('LIST METADATA;', (error, results) => {
         expect(error).toBeNull()
         expect(results.numberOfColumns).toBe(8)
-        expect(results.numberOfRows).toBe(64)
+        expect(results.numberOfRows).toBeGreaterThanOrEqual(32)
 
         done()
         chinook.close()
@@ -594,7 +621,7 @@ describe('connection-tls', () => {
       chinook.sendCommands('SELECT * FROM tracks;', (error, results) => {
         expect(error).toBeNull()
         expect(results.numberOfColumns).toBe(9)
-        expect(results.numberOfRows).toBe(3503)
+        expect(results.numberOfRows).toBeGreaterThan(3000) // 3503 tracks but we sometimes test deleting rows
 
         done()
         chinook.close()

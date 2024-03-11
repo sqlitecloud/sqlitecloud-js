@@ -36,7 +36,13 @@ export function anonimizeError(error: Error): Error {
 /** Initialization commands sent to database when connection is established */
 export function getInitializationCommands(config: SQLiteCloudConfig): string {
   // first user authentication, then all other commands
-  let commands = `AUTH USER ${config.username || ''} ${config.passwordHashed ? 'HASH' : 'PASSWORD'} ${config.password || ''}; `
+  let commands = ''
+
+  if (config.apiKey) {
+    commands = `AUTH APIKEY ${config.apiKey}; `
+  } else {
+    commands = `AUTH USER ${config.username || ''} ${config.passwordHashed ? 'HASH' : 'PASSWORD'} ${config.password || ''}; `
+  }
 
   if (config.database) {
     if (config.createDatabase && !config.dbMemory) {
@@ -192,23 +198,32 @@ export function validateConfiguration(config: SQLiteCloudConfig): SQLiteCloudCon
   config.nonlinearizable = parseBoolean(config.nonlinearizable)
   config.insecure = parseBoolean(config.insecure)
 
-  if (!config.username || !config.password || !config.host) {
+  const hasCredentials = (config.username && config.password) || config.apiKey
+  if (!config.host || !hasCredentials) {
     console.error('SQLiteCloudConnection.validateConfiguration - missing arguments', config)
-    throw new SQLiteCloudError('The user, password and host arguments must be specified.', { errorCode: 'ERR_MISSING_ARGS' })
+    throw new SQLiteCloudError('The user, password and host arguments or the ?apiKey= must be specified.', { errorCode: 'ERR_MISSING_ARGS' })
   }
 
   if (!config.connectionString) {
     // build connection string from configuration, values are already validated
     // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-    config.connectionString = `sqlitecloud://${encodeURIComponent(config.username)}:${encodeURIComponent(config.password)}@${config.host}:${config.port}/${
-      config.database
-    }`
+    if (config.apiKey) {
+      config.connectionString = `sqlitecloud://${config.host}:${config.port}/${config.database || ''}?apiKey=${config.apiKey}`
+    } else {
+      config.connectionString = `sqlitecloud://${encodeURIComponent(config.username || '')}:${encodeURIComponent(config.password || '')}@${config.host}:${
+        config.port
+      }/${config.database}`
+    }
   }
 
   return config
 }
 
-/** Parse connectionString like sqlitecloud://username:password@host:port/database?option1=xxx&option2=xxx into its components */
+/**
+ * Parse connectionString like sqlitecloud://username:password@host:port/database?option1=xxx&option2=xxx
+ * or sqlitecloud://host.sqlite.cloud:8860/chinook.sqlite?apiKey=mIiLARzKm9XBVllbAzkB1wqrgijJ3Gx0X5z1Agm3xBo
+ * into its basic components.
+ */
 export function parseConnectionString(connectionString: string): SQLiteCloudConfig {
   try {
     // The URL constructor throws a TypeError if the URL is not valid.
@@ -230,6 +245,15 @@ export function parseConnectionString(connectionString: string): SQLiteCloudConf
       host: url.hostname,
       port: url.port ? parseInt(url.port) : undefined,
       ...options
+    }
+
+    // either you use an apiKey or username and password
+    if (config.apiKey) {
+      if (config.username || config.password) {
+        console.warn('SQLiteCloudConnection.parseConnectionString - apiKey and username/password are both specified, using apiKey')
+      }
+      delete config.username
+      delete config.password
     }
 
     const database = url.pathname.replace('/', '') // pathname is database name, remove the leading slash

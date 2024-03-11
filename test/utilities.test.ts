@@ -174,6 +174,24 @@ describe('parseConnectionString', () => {
       database: 'database'
     })
   })
+
+  it('should parse connection with api key', () => {
+    const apiKey = 'mIiLARzKm9XBVllbAzkB1wqrgijJ3Gx0X5z1Agm3xBo'
+    const connectionString = `sqlitecloud://host:1234/database?apiKey=${apiKey}`
+    const config = parseConnectionString(connectionString)
+
+    expect(config.apiKey).toBe(apiKey)
+    expect(config.username).toBeUndefined()
+    expect(config.password).toBeUndefined()
+    expect(config.passwordHashed).toBeUndefined()
+
+    expect(config).toEqual({
+      apiKey,
+      host: 'host',
+      port: 1234,
+      database: 'database'
+    })
+  })
 })
 
 describe('getTestingDatabaseName', () => {

@@ -34,6 +34,9 @@ if (!CHINOOK_DATABASE_URL || CHINOOK_DATABASE_URL.indexOf('/chinook.sqlite') ===
   throw new Error('CHINOOK_DATABASE_URL is not defined in .env file or is not a valid chinook.sqlite url')
 }
 
+// API key for chinook database used to test API key authentication
+export const CHINOOK_API_KEY = process.env.CHINOOK_API_KEY as string
+
 export const GATEWAY_URL = process.env.GATEWAY_URL as string
 expect(CHINOOK_DATABASE_URL).toBeDefined()
 expect(GATEWAY_URL).toBeDefined()
@@ -95,6 +98,15 @@ export function getChinookConfig(url = CHINOOK_DATABASE_URL, extraConfig?: Parti
     chinookConfig = { ...chinookConfig, ...extraConfig }
   }
   return chinookConfig
+}
+
+/** Returns a test connection url with an api key  */
+export function getChinookApiKeyUrl(): string {
+  const chinookConfig = getChinookConfig(CHINOOK_DATABASE_URL)
+  if (!CHINOOK_API_KEY) {
+    throw new Error('CHINOOK_API_KEY is not defined in .env file')
+  }
+  return `sqlitecloud://${chinookConfig.host}:${chinookConfig.port}/${chinookConfig.database || ''}?apiKey=${CHINOOK_API_KEY}`
 }
 
 /** Returns connection to chinook via websocket gateway */
