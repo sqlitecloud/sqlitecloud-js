@@ -84,7 +84,7 @@ export function escapeSqlParameter(param: SQLiteCloudDataTypes): string {
     return `'${param}'`
   }
 
-  if (typeof param === 'number') {
+  if (typeof param === 'number' || typeof param === 'bigint') {
     return param.toString()
   }
 

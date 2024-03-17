@@ -97,7 +97,7 @@ export interface SQLCloudRowsetMetadata {
 }
 
 /** Basic types that can be returned by SQLiteCloud APIs */
-export type SQLiteCloudDataTypes = string | number | boolean | Record<string | number, unknown> | Buffer | null | undefined
+export type SQLiteCloudDataTypes = string | number | bigint | boolean | Record<string | number, unknown> | Buffer | null | undefined
 
 /** Custom error reported by SQLiteCloud drivers */
 export class SQLiteCloudError extends Error {

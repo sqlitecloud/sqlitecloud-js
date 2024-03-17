@@ -166,6 +166,32 @@ describe('connection-tls', () => {
   })
 
   describe('send test commands', () => {
+    test.only(
+      'should test long string',
+      done => {
+        const size = 10 * 1024 * 1204
+        let value = 'LOOOONG'
+        while (value.length < size) {
+          value += 'a'
+        }
+
+        const chinook = getConnection()
+        chinook.sendCommands(`SELECT '${value}' 'VALUE'`, (error, results) => {
+          expect(error).toBeNull()
+          expect(results.numberOfRows).toBe(1)
+          expect(results.numberOfColumns).toBe(1)
+          expect(results.columnsNames).toEqual(['VALUE'])
+          expect(results[0].VALUE).toBe(value)
+
+          done()
+          chinook.close()
+        })
+
+        done()
+      },
+      LONG_TIMEOUT
+    )
+
     it(
       'should test integer',
       done => {
