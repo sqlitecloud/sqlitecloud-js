@@ -3,6 +3,7 @@
 //
 
 import { SQLiteCloudConfig, SQLiteCloudError, SQLiteCloudDataTypes, DEFAULT_PORT, DEFAULT_TIMEOUT } from './types'
+import { SQLiteCloudArrayType } from './types'
 
 //
 // determining running environment, thanks to browser-or-node
@@ -147,6 +148,29 @@ export function prepareSql(sql: string, ...params: (SQLiteCloudDataTypes | SQLit
   }
 
   return preparedSql
+}
+
+/** Converts results of an update or insert call into a more meaning full result set */
+export function getUpdateResults(results?: any): Record<string, any> | undefined {
+  if (results) {
+    if (Array.isArray(results) && results.length > 0) {
+      switch (results[0]) {
+        case SQLiteCloudArrayType.ARRAY_TYPE_SQLITE_EXEC:
+          return {
+            type: results[0],
+            index: results[1],
+            lastID: results[2], // ROWID (sqlite3_last_insert_rowid)
+            changes: results[3], // CHANGES(sqlite3_changes)
+            totalChanges: results[4], // TOTAL_CHANGES (sqlite3_total_changes)
+            finalized: results[5], // FINALIZED
+            //
+            rowId: results[2] // same as lastId
+          }
+      }
+    }
+  }
+
+  return undefined
 }
 
 /**

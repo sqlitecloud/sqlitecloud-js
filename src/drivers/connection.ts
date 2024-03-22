@@ -3,9 +3,9 @@
  */
 
 import { SQLiteCloudConfig, SQLiteCloudError, ErrorCallback, ResultsCallback } from './types'
-import { validateConfiguration } from './utilities'
+import { validateConfiguration, prepareSql } from './utilities'
 import { OperationsQueue } from './queue'
-import { anonimizeCommand } from './utilities'
+import { anonimizeCommand, getUpdateResults } from './utilities'
 
 /**
  * Base class for SQLiteCloudConnection handles basics and defines methods.
@@ -100,6 +100,49 @@ export abstract class SQLiteCloudConnection {
     })
 
     return this
+  }
+
+  /**
+   * Sql is a promise based API for executing SQL statements. You can
+   * pass a simple string with a SQL statement or a template string
+   * using backticks and parameters in ${parameter} format. These parameters
+   * will be properly escaped and quoted like when using a prepared statement.
+   * @param sql A sql string or a template string in `backticks` format
+   * @returns An array of rows in case of selections or an object with
+   * metadata in case of insert, update, delete.
+   */
+  public async sql(sql: TemplateStringsArray | string, ...values: any[]): Promise<any> {
+    let preparedSql = ''
+
+    // sql is a TemplateStringsArray, the 'raw' property is specific to TemplateStringsArray
+    if (Array.isArray(sql) && 'raw' in sql) {
+      sql.forEach((string, i) => {
+        preparedSql += string + (i < values.length ? '?' : '')
+      })
+      preparedSql = prepareSql(preparedSql, ...values)
+    } else {
+      if (typeof sql === 'string') {
+        if (values?.length > 0) {
+          preparedSql = prepareSql(sql, ...values)
+        } else {
+          preparedSql = sql
+        }
+      } else {
+        throw new Error('Invalid sql')
+      }
+    }
+
+    return new Promise((resolve, reject) => {
+      this.sendCommands(preparedSql, (error, results) => {
+        if (error) {
+          reject(error)
+        } else {
+          // metadata for operations like insert, update, delete?
+          const context = getUpdateResults(results)
+          resolve(context ? context : results)
+        }
+      })
+    })
   }
 
   /** Disconnect from server, release transport. */
