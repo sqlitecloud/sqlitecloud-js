@@ -12,6 +12,7 @@ import { SQLiteCloudTlsConnection } from '../src/drivers/connection-tls'
 import { SQLiteCloudWebsocketConnection } from '../src/drivers/connection-ws'
 
 import { SQLiteCloudConnection, SQLiteCloudRowset } from '../src'
+import { expect } from '@jest/globals'
 import * as dotenv from 'dotenv'
 dotenv.config()
 

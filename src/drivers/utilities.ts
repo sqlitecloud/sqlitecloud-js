@@ -259,8 +259,29 @@ export function parseConnectionString(connectionString: string): SQLiteCloudConf
     const url = new URL(knownProtocolUrl)
     const options: { [key: string]: string } = {}
 
+    // properties that are mixed case in the connection string should be accepted even if the
+    // customer mistakenly write them in camelCase or kebab-case or whateverTheCase
+    const mixedCaseProperties = [
+      'connectionString',
+      'passwordHashed',
+      'apiKey',
+      'createDatabase',
+      'dbMemory',
+      'compression',
+      'noBlob',
+      'maxData',
+      'maxRows',
+      'maxRowset',
+      'tlsOptions',
+      'useWebsocket',
+      'gatewayUrl',
+      'clientId'
+    ]
+
     url.searchParams.forEach((value, key) => {
-      options[key] = value
+      let normalizedKey = key.toLowerCase().replaceAll('-', '').replaceAll('_', '')
+      const mixedCaseKey = mixedCaseProperties.find(mixedCaseProperty => mixedCaseProperty.toLowerCase() == normalizedKey)
+      options[mixedCaseKey || normalizedKey] = value
     })
 
     const config: SQLiteCloudConfig = {

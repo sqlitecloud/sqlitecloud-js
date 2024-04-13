@@ -1,6 +1,6 @@
 {
   "name": "@sqlitecloud/drivers",
-  "version": "1.0.82",
+  "version": "1.0.103",
   "description": "SQLiteCloud drivers for Typescript/Javascript in edge, web and node clients",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
@@ -14,7 +14,8 @@
     "prettier": "prettier --write 'src/**/*'",
     "lint": "eslint ./src/ --fix && tsc --noEmit",
     "typedoc": "rm -rf ./docs/ && typedoc --out docs && typedoc --plugin typedoc-plugin-markdown --out docs/markdown",
-    "npmgui": "npx npm-gui@latest"
+    "npmgui": "npx npm-gui@latest",
+    "prepare": "husky"
   },
   "repository": {
     "type": "git",
@@ -22,7 +23,7 @@
   },
   "license": "MIT",
   "author": {
-    "name": "SQLiteCloud, Inc.",
+    "name": "SQLite Cloud, Inc.",
     "email": "support@sqlitecloud.io",
     "url": "https://sqlitecloud.io/"
   },

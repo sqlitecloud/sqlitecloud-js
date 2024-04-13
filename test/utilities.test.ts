@@ -6,6 +6,8 @@ import { SQLiteCloudError } from '../src/index'
 import { prepareSql, parseConnectionString } from '../src/drivers/utilities'
 import { getTestingDatabaseName } from './shared'
 
+import { expect, describe, it } from '@jest/globals'
+
 describe('prepareSql', () => {
   it('should replace single ? parameter', () => {
     const sql = prepareSql('SELECT * FROM users WHERE name = ?', 'John')
@@ -112,6 +114,38 @@ describe('parseConnectionString', () => {
       password: 'password',
       host: 'host',
       port: 1234
+    })
+  })
+
+  it('should parse options regardless of case', () => {
+    const connectionString1 = 'sqlitecloud://host?apiKey=xxx'
+    const config1 = parseConnectionString(connectionString1)
+    expect(config1).toEqual({
+      host: 'host',
+      apiKey: 'xxx'
+    })
+
+    const connectionString2 = 'sqlitecloud://host?apikey=yyy'
+    const config2 = parseConnectionString(connectionString2)
+    expect(config2).toEqual({
+      host: 'host',
+      apiKey: 'yyy'
+    })
+
+    const connectionString3 = 'sqlitecloud://host?api_key=yyy&no_blob=true'
+    const config3 = parseConnectionString(connectionString3)
+    expect(config3).toEqual({
+      host: 'host',
+      apiKey: 'yyy',
+      noBlob: 'true' // only parsing here, validation is later in validateConfiguration
+    })
+
+    const connectionString4 = 'sqlitecloud://host?api-key=yyy&max-rows=42'
+    const config4 = parseConnectionString(connectionString4)
+    expect(config4).toEqual({
+      host: 'host',
+      apiKey: 'yyy',
+      maxRows: '42' // only parsing here, validation is later in validateConfiguration
     })
   })
 
