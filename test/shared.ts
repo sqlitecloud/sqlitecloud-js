@@ -6,7 +6,7 @@ import { join } from 'path'
 import { readFileSync } from 'fs'
 import { Database } from '../src/drivers/database'
 import { ResultsCallback, SQLiteCloudConfig, SQLiteCloudError } from '../src/drivers/types'
-import { parseConnectionString } from '../src/drivers/utilities'
+import { parseconnectionstring } from '../src/drivers/utilities'
 
 import { SQLiteCloudTlsConnection } from '../src/drivers/connection-tls'
 import { SQLiteCloudWebsocketConnection } from '../src/drivers/connection-ws'
@@ -88,9 +88,9 @@ export const CHINOOK_FIRST_TRACK = {
 }
 
 export function getChinookConfig(url = CHINOOK_DATABASE_URL, extraConfig?: Partial<SQLiteCloudConfig>): SQLiteCloudConfig {
-  let chinookConfig = parseConnectionString(url)
-  if (chinookConfig.host === 'localhost' && chinookConfig.tlsOptions === undefined) {
-    chinookConfig.tlsOptions = {
+  let chinookConfig = parseconnectionstring(url)
+  if (chinookConfig.host === 'localhost' && chinookConfig.tlsoptions === undefined) {
+    chinookConfig.tlsoptions = {
       ca: SELF_SIGNED_CERTIFICATE
     }
   }
@@ -107,7 +107,7 @@ export function getChinookApiKeyUrl(): string {
   if (!CHINOOK_API_KEY) {
     throw new Error('CHINOOK_API_KEY is not defined in .env file')
   }
-  return `sqlitecloud://${chinookConfig.host}:${chinookConfig.port}/${chinookConfig.database || ''}?apiKey=${CHINOOK_API_KEY}`
+  return `sqlitecloud://${chinookConfig.host}:${chinookConfig.port}/${chinookConfig.database || ''}?apikey=${CHINOOK_API_KEY}`
 }
 
 /** Returns connection to chinook via websocket gateway */
@@ -115,8 +115,8 @@ export function getChinookWebsocketConnection(callback?: ResultsCallback, extraC
   let chinookConfig = getChinookConfig(CHINOOK_DATABASE_URL, extraConfig)
   chinookConfig = {
     ...chinookConfig,
-    useWebsocket: true,
-    gatewayUrl: GATEWAY_URL
+    usewebsocket: true,
+    gatewayurl: GATEWAY_URL
   }
   const chinookConnection = new SQLiteCloudWebsocketConnection(chinookConfig, callback)
   return chinookConnection
@@ -162,15 +162,16 @@ export function getTestingDatabaseName(prefix: string) {
 }
 
 export function getTestingConfig(url = CHINOOK_DATABASE_URL): SQLiteCloudConfig {
-  const testingConfig = parseConnectionString(url)
+  const testingConfig = parseconnectionstring(url)
 
-  if (testingConfig.host === 'localhost' && testingConfig.tlsOptions === undefined) {
-    testingConfig.tlsOptions = {
+  if (testingConfig.host === 'localhost' && testingConfig.tlsoptions === undefined) {
+    testingConfig.tlsoptions = {
       ca: SELF_SIGNED_CERTIFICATE
     }
   }
 
-  testingConfig.createDatabase = true
+  // create database if it doesn't exist
+  testingConfig.create = true
 
   if (!(testingConfig.database === 'chinook.sqlite')) {
     throw Error('testingConfig.database is not equal to chinook.sqlite')

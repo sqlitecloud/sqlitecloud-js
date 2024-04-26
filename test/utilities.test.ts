@@ -3,7 +3,7 @@
 //
 
 import { SQLiteCloudError } from '../src/index'
-import { prepareSql, parseConnectionString } from '../src/drivers/utilities'
+import { prepareSql, parseconnectionstring } from '../src/drivers/utilities'
 import { getTestingDatabaseName } from './shared'
 
 import { expect, describe, it } from '@jest/globals'
@@ -89,10 +89,10 @@ describe('prepareSql', () => {
   })
 })
 
-describe('parseConnectionString', () => {
+describe('parseconnectionstring', () => {
   it('should parse connection string', () => {
-    const connectionString = 'sqlitecloud://user:password@host:1234/database?option1=xxx&option2=yyy'
-    const config = parseConnectionString(connectionString)
+    const connectionstring = 'sqlitecloud://user:password@host:1234/database?option1=xxx&option2=yyy'
+    const config = parseconnectionstring(connectionstring)
 
     expect(config).toEqual({
       username: 'user',
@@ -106,8 +106,8 @@ describe('parseConnectionString', () => {
   })
 
   it('should parse connection string without database or options', () => {
-    const connectionString = 'sqlitecloud://user:password@host:1234'
-    const config = parseConnectionString(connectionString)
+    const connectionstring = 'sqlitecloud://user:password@host:1234'
+    const config = parseconnectionstring(connectionstring)
 
     expect(config).toEqual({
       username: 'user',
@@ -118,40 +118,33 @@ describe('parseConnectionString', () => {
   })
 
   it('should parse options regardless of case', () => {
-    const connectionString1 = 'sqlitecloud://host?apiKey=xxx'
-    const config1 = parseConnectionString(connectionString1)
+    // NOTE: apiKey intentionally mixedCase here...
+    const connectionstring1 = 'sqlitecloud://host?apiKey=xxx'
+    const config1 = parseconnectionstring(connectionstring1)
     expect(config1).toEqual({
       host: 'host',
-      apiKey: 'xxx'
+      apikey: 'xxx'
     })
 
-    const connectionString2 = 'sqlitecloud://host?apikey=yyy'
-    const config2 = parseConnectionString(connectionString2)
+    const connectionstring2 = 'sqlitecloud://host?apikey=yyy'
+    const config2 = parseconnectionstring(connectionstring2)
     expect(config2).toEqual({
       host: 'host',
-      apiKey: 'yyy'
+      apikey: 'yyy'
     })
 
-    const connectionString3 = 'sqlitecloud://host?api_key=yyy&no_blob=true'
-    const config3 = parseConnectionString(connectionString3)
-    expect(config3).toEqual({
-      host: 'host',
-      apiKey: 'yyy',
-      noBlob: 'true' // only parsing here, validation is later in validateConfiguration
-    })
-
-    const connectionString4 = 'sqlitecloud://host?api-key=yyy&max-rows=42'
-    const config4 = parseConnectionString(connectionString4)
+    const connectionstring4 = 'sqlitecloud://host?apiKey=yyy&maxRows=42'
+    const config4 = parseconnectionstring(connectionstring4)
     expect(config4).toEqual({
       host: 'host',
-      apiKey: 'yyy',
-      maxRows: '42' // only parsing here, validation is later in validateConfiguration
+      apikey: 'yyy',
+      maxrows: '42' // only parsing here, validation is later in validateConfiguration
     })
   })
 
   it('should parse connection string without port', () => {
-    const connectionString = 'sqlitecloud://user:password@host'
-    const config = parseConnectionString(connectionString)
+    const connectionstring = 'sqlitecloud://user:password@host'
+    const config = parseconnectionstring(connectionstring)
 
     expect(config).toEqual({
       username: 'user',
@@ -161,16 +154,16 @@ describe('parseConnectionString', () => {
   })
 
   it('should throw SQLiteCloudError if the connection string is invalid', () => {
-    const connectionString = 'not a valid url'
+    const connectionstring = 'not a valid url'
 
     expect(() => {
-      parseConnectionString(connectionString)
+      parseconnectionstring(connectionstring)
     }).toThrow(SQLiteCloudError)
   })
 
   it('should handle connection strings without port', () => {
-    const connectionString = 'sqlitecloud://user:password@host/database?option1=xxx&option2=yyy'
-    const result = parseConnectionString(connectionString)
+    const connectionstring = 'sqlitecloud://user:password@host/database?option1=xxx&option2=yyy'
+    const result = parseconnectionstring(connectionstring)
 
     expect(result).toEqual({
       username: 'user',
@@ -184,8 +177,8 @@ describe('parseConnectionString', () => {
   })
 
   it('should handle connection strings without options', () => {
-    const connectionString = 'sqlitecloud://user:password@host:1234/database'
-    const config = parseConnectionString(connectionString)
+    const connectionstring = 'sqlitecloud://user:password@host:1234/database'
+    const config = parseconnectionstring(connectionstring)
 
     expect(config).toEqual({
       username: 'user',
@@ -197,8 +190,8 @@ describe('parseConnectionString', () => {
   })
 
   it('should handle url encoded password', () => {
-    const connectionString = 'sqlitecloud://user:pass%25word@host:1234/database'
-    const config = parseConnectionString(connectionString)
+    const connectionstring = 'sqlitecloud://user:pass%25word@host:1234/database'
+    const config = parseconnectionstring(connectionstring)
 
     expect(config).toEqual({
       username: 'user',
@@ -210,17 +203,17 @@ describe('parseConnectionString', () => {
   })
 
   it('should parse connection with api key', () => {
-    const apiKey = 'mIiLARzKm9XBVllbAzkB1wqrgijJ3Gx0X5z1Agm3xBo'
-    const connectionString = `sqlitecloud://host:1234/database?apiKey=${apiKey}`
-    const config = parseConnectionString(connectionString)
+    const apikey = 'mIiLARzKm9XBVllbAzkB1wqrgijJ3Gx0X5z1Agm3xBo'
+    const connectionstring = `sqlitecloud://host:1234/database?apikey=${apikey}`
+    const config = parseconnectionstring(connectionstring)
 
-    expect(config.apiKey).toBe(apiKey)
+    expect(config.apikey).toBe(apikey)
     expect(config.username).toBeUndefined()
     expect(config.password).toBeUndefined()
-    expect(config.passwordHashed).toBeUndefined()
+    expect(config.password_hashed).toBeUndefined()
 
     expect(config).toEqual({
-      apiKey,
+      apikey,
       host: 'host',
       port: 1234,
       database: 'database'

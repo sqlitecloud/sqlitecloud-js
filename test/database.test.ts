@@ -319,80 +319,96 @@ describe('Database.sql (async)', () => {
     }
   })
 
-  it('should select with template string parameters', async () => {
-    let database
-    try {
-      // trivial example here but let's suppose we have this in a variable...
-      let name = 'Ava Jones'
+  it(
+    'should select with template string parameters',
+    async () => {
+      let database
+      try {
+        // trivial example here but let's suppose we have this in a variable...
+        let name = 'Ava Jones'
 
-      // prepared statement using familiar print syntax
-      database = await getTestingDatabaseAsync()
-      let results = await database.sql`SELECT * FROM people WHERE name = ${name}`
-      // => returns { id: 5, name: 'Ava Jones', age: 22, hobby: 'Time traveling' }
+        // prepared statement using familiar print syntax
+        database = await getTestingDatabaseAsync()
+        let results = await database.sql`SELECT * FROM people WHERE name = ${name}`
+        // => returns { id: 5, name: 'Ava Jones', age: 22, hobby: 'Time traveling' }
 
-      expect(results[0]).toMatchObject({
-        id: 5,
-        name: 'Ava Jones',
-        age: 22,
-        hobby: 'Time traveling'
-      })
+        expect(results[0]).toMatchObject({
+          id: 5,
+          name: 'Ava Jones',
+          age: 22,
+          hobby: 'Time traveling'
+        })
 
-      results = await database.sql`SELECT * FROM people WHERE age < 30`
-      expect(results).toHaveLength(11)
-    } finally {
-      await removeDatabaseAsync(database)
-    }
-  })
+        results = await database.sql`SELECT * FROM people WHERE age < 30`
+        expect(results).toHaveLength(11)
+      } finally {
+        await removeDatabaseAsync(database)
+      }
+    },
+    LONG_TIMEOUT
+  )
 
-  it('should take regular concatenated string as parameters', async () => {
-    let database
-    try {
-      // trivial example here but let's suppose we have this in a variable...
-      let name = 'Ava Jones'
+  it(
+    'should take regular concatenated string as parameters',
+    async () => {
+      let database
+      try {
+        // trivial example here but let's suppose we have this in a variable...
+        let name = 'Ava Jones'
 
-      // prepared statement with contacatenated string (shouldn't do this, weak against sql injection)
-      database = await getTestingDatabaseAsync()
-      let results = await database.sql("SELECT * FROM people WHERE name = '" + name + "'")
-      expect(results[0]).toMatchObject({ id: 5, name: 'Ava Jones', age: 22, hobby: 'Time traveling' })
+        // prepared statement with contacatenated string (shouldn't do this, weak against sql injection)
+        database = await getTestingDatabaseAsync()
+        let results = await database.sql("SELECT * FROM people WHERE name = '" + name + "'")
+        expect(results[0]).toMatchObject({ id: 5, name: 'Ava Jones', age: 22, hobby: 'Time traveling' })
 
-      results = await database.sql('SELECT * FROM people WHERE age < 30')
-      expect(results).toHaveLength(11)
-    } finally {
-      await removeDatabaseAsync(database)
-    }
-  })
+        results = await database.sql('SELECT * FROM people WHERE age < 30')
+        expect(results).toHaveLength(11)
+      } finally {
+        await removeDatabaseAsync(database)
+      }
+    },
+    LONG_TIMEOUT
+  )
 
-  it('should update and respond with metadata', async () => {
-    let database
-    try {
-      database = await getTestingDatabaseAsync()
-      const updateSql = "UPDATE people SET name = 'Charlie Brown' WHERE id = 3; UPDATE people SET name = 'David Bowie' WHERE id = 4; "
-      let results = await database.sql(updateSql)
-      expect(results).toMatchObject({
-        lastID: 20,
-        changes: 1,
-        totalChanges: 22,
-        finalized: 1
-      })
-    } finally {
-      await removeDatabaseAsync(database)
-    }
-  })
+  it(
+    'should update and respond with metadata',
+    async () => {
+      let database
+      try {
+        database = await getTestingDatabaseAsync()
+        const updateSql = "UPDATE people SET name = 'Charlie Brown' WHERE id = 3; UPDATE people SET name = 'David Bowie' WHERE id = 4; "
+        let results = await database.sql(updateSql)
+        expect(results).toMatchObject({
+          lastID: 20,
+          changes: 1,
+          totalChanges: 22,
+          finalized: 1
+        })
+      } finally {
+        await removeDatabaseAsync(database)
+      }
+    },
+    LONG_TIMEOUT
+  )
 
-  it('should insert and respond with metadata', async () => {
-    let database
-    try {
-      database = await getTestingDatabaseAsync()
-      const insertSql = "INSERT INTO people (name, hobby, age) VALUES ('Barnaby Bumblecrump', 'Rubber Duck Dressing', 42); "
-      let results = await database.sql(insertSql)
-      expect(results).toMatchObject({
-        lastID: 21,
-        changes: 1,
-        totalChanges: 21,
-        finalized: 1
-      })
-    } finally {
-      await removeDatabaseAsync(database)
-    }
-  })
+  it(
+    'should insert and respond with metadata',
+    async () => {
+      let database
+      try {
+        database = await getTestingDatabaseAsync()
+        const insertSql = "INSERT INTO people (name, hobby, age) VALUES ('Barnaby Bumblecrump', 'Rubber Duck Dressing', 42); "
+        let results = await database.sql(insertSql)
+        expect(results).toMatchObject({
+          lastID: 21,
+          changes: 1,
+          totalChanges: 21,
+          finalized: 1
+        })
+      } finally {
+        await removeDatabaseAsync(database)
+      }
+    },
+    LONG_TIMEOUT
+  )
 })

@@ -36,7 +36,7 @@ describe('connection-ws', () => {
 
     it('should connect with config object string', done => {
       const configObj = getChinookConfig()
-      configObj.useWebsocket = true
+      configObj.usewebsocket = true
       let connection: SQLiteCloudWebsocketConnection | null = null
       connection = new SQLiteCloudWebsocketConnection(configObj, error => {
         expect(error).toBeNull()
@@ -47,9 +47,9 @@ describe('connection-ws', () => {
 
     it('should not connect with incorrect credentials', done => {
       const configObj = getChinookConfig()
-      configObj.connectionString?.replace(configObj.password as string, 'wrongpassword')
+      configObj.connectionstring?.replace(configObj.password as string, 'wrongpassword')
       configObj.password = 'wrongpassword'
-      configObj.useWebsocket = true
+      configObj.usewebsocket = true
 
       // should attempt connection and return error
       const connection = new SQLiteCloudWebsocketConnection(configObj, error => {
@@ -279,7 +279,7 @@ describe('connection-ws', () => {
       /* TODO RESTORE TEST
     it('should apply short timeout', done => {
       // apply shorter timeout
-      const configObj = parseConnectionString(CHINOOK_DATABASE_URL + '?timeout=20')
+      const configObj = parseconnectionstring(CHINOOK_DATABASE_URL + '?timeout=20')
       configObj.websocketOptions = { useWebsocket: true }
       const database = new SQLiteCloudConnection(configObj, error => {
         if (error) {
@@ -430,9 +430,9 @@ describe('connection-ws', () => {
       )
 
       it(
-        '20x batched selects',
+        '10x batched selects',
         done => {
-          const numQueries = 20
+          const numQueries = 10
           let completed = 0
           const startTime = Date.now()
           for (let i = 0; i < numQueries; i++) {

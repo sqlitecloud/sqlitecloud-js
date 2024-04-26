@@ -9,21 +9,24 @@ export const DEFAULT_TIMEOUT = 300 * 1000
 /** Default tls connection port */
 export const DEFAULT_PORT = 9960
 
-/** Configuration for SQLite cloud connection */
+/**
+ * Configuration for SQLite cloud connection
+ * @note Options are all lowecase so they 1:1 compatible with C SDK
+ */
 export interface SQLiteCloudConfig {
   /** Connection string in the form of sqlitecloud://user:password@host:port/database?options */
-  connectionString?: string
+  connectionstring?: string
 
-  /** User name is required unless connectionString is provided */
+  /** User name is required unless connectionstring is provided */
   username?: string
   /** Password is required unless connection string is provided */
   password?: string
   /** True if password is hashed, default is false */
-  passwordHashed?: boolean
+  password_hashed?: boolean
   /** API key can be provided instead of username and password */
-  apiKey?: string
+  apikey?: string
 
-  /** Host name is required unless connectionString is provided, eg: xxx.sqlitecloud.io */
+  /** Host name is required unless connectionstring is provided, eg: xxx.sqlitecloud.io */
   host?: string
   /** Port number for tls socket */
   port?: number
@@ -36,32 +39,32 @@ export interface SQLiteCloudConfig {
   database?: string
 
   /** Create the database if it doesn't exist? */
-  createDatabase?: boolean
+  create?: boolean
   /** Database will be created in memory */
-  dbMemory?: boolean
+  memory?: boolean
   /* Enable compression */
   compression?: boolean
   /** Request for immediate responses from the server node without waiting for linerizability guarantees */
-  nonlinearizable?: boolean
+  non_linearizable?: boolean
   /** Server should send BLOB columns */
-  noBlob?: boolean
+  noblob?: boolean
   /** Do not send columns with more than max_data bytes */
-  maxData?: number
+  maxdata?: number
   /** Server should chunk responses with more than maxRows */
-  maxRows?: number
+  maxrows?: number
   /** Server should limit total number of rows in a set to maxRowset */
-  maxRowset?: number
+  maxrowset?: number
 
   /** Custom options and configurations for tls socket, eg: additional certificates */
-  tlsOptions?: tls.ConnectionOptions
+  tlsoptions?: tls.ConnectionOptions
 
   /** True if we should force use of SQLite Cloud Gateway and websocket connections, default: true in browsers, false in node.js */
-  useWebsocket?: boolean
+  usewebsocket?: boolean
   /** Url where we can connect to a SQLite Cloud Gateway that has a socket.io deamon waiting to connect, eg. wss://host:4000 */
-  gatewayUrl?: string
+  gatewayurl?: string
 
   /** Optional identifier used for verbose logging */
-  clientId?: string
+  clientid?: string
   /** True if connection should enable debug logs */
   verbose?: boolean
 }

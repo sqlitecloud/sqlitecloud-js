@@ -29,9 +29,9 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
       console.assert(!this.connected, 'Connection already established')
       if (!this.socket) {
         this.config = config
-        const connectionString = this.config.connectionString as string
-        const gatewayUrl = this.config?.gatewayUrl || `${this.config.host === 'localhost' ? 'ws' : 'wss'}://${this.config.host as string}:4000`
-        this.socket = io(gatewayUrl, { auth: { token: connectionString } })
+        const connectionstring = this.config.connectionstring as string
+        const gatewayUrl = this.config?.gatewayurl || `${this.config.host === 'localhost' ? 'ws' : 'wss'}://${this.config.host as string}:4000`
+        this.socket = io(gatewayUrl, { auth: { token: connectionstring } })
       }
       callback?.call(this, null)
     } catch (error) {

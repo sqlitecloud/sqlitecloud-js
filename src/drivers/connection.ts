@@ -12,10 +12,10 @@ import { anonimizeCommand, getUpdateResults } from './utilities'
  * Actual connection management and communication with the server in concrete classes.
  */
 export abstract class SQLiteCloudConnection {
-  /** Parse and validate provided connectionString or configuration */
+  /** Parse and validate provided connectionstring or configuration */
   constructor(config: SQLiteCloudConfig | string, callback?: ErrorCallback) {
     if (typeof config === 'string') {
-      this.config = validateConfiguration({ connectionString: config })
+      this.config = validateConfiguration({ connectionstring: config })
     } else {
       this.config = validateConfiguration(config)
     }
@@ -68,7 +68,7 @@ export abstract class SQLiteCloudConnection {
   protected log(message: string, ...optionalParams: any[]): void {
     if (this.config.verbose) {
       message = anonimizeCommand(message)
-      console.log(`${new Date().toISOString()} ${this.config.clientId as string}: ${message}`, ...optionalParams)
+      console.log(`${new Date().toISOString()} ${this.config.clientid as string}: ${message}`, ...optionalParams)
     }
   }
 

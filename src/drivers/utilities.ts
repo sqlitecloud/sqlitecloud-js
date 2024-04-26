@@ -39,14 +39,14 @@ export function getInitializationCommands(config: SQLiteCloudConfig): string {
   // first user authentication, then all other commands
   let commands = ''
 
-  if (config.apiKey) {
-    commands = `AUTH APIKEY ${config.apiKey}; `
+  if (config.apikey) {
+    commands = `AUTH APIKEY ${config.apikey}; `
   } else {
-    commands = `AUTH USER ${config.username || ''} ${config.passwordHashed ? 'HASH' : 'PASSWORD'} ${config.password || ''}; `
+    commands = `AUTH USER ${config.username || ''} ${config.password_hashed ? 'HASH' : 'PASSWORD'} ${config.password || ''}; `
   }
 
   if (config.database) {
-    if (config.createDatabase && !config.dbMemory) {
+    if (config.create && !config.memory) {
       commands += `CREATE DATABASE ${config.database} IF NOT EXISTS; `
     }
     commands += `USE DATABASE ${config.database}; `
@@ -54,20 +54,20 @@ export function getInitializationCommands(config: SQLiteCloudConfig): string {
   if (config.compression) {
     commands += 'SET CLIENT KEY COMPRESSION TO 1; '
   }
-  if (config.nonlinearizable) {
+  if (config.non_linearizable) {
     commands += 'SET CLIENT KEY NONLINEARIZABLE TO 1; '
   }
-  if (config.noBlob) {
+  if (config.noblob) {
     commands += 'SET CLIENT KEY NOBLOB TO 1; '
   }
-  if (config.maxData) {
-    commands += `SET CLIENT KEY MAXDATA TO ${config.maxData}; `
+  if (config.maxdata) {
+    commands += `SET CLIENT KEY MAXDATA TO ${config.maxdata}; `
   }
-  if (config.maxRows) {
-    commands += `SET CLIENT KEY MAXROWS TO ${config.maxRows}; `
+  if (config.maxrows) {
+    commands += `SET CLIENT KEY MAXROWS TO ${config.maxrows}; `
   }
-  if (config.maxRowset) {
-    commands += `SET CLIENT KEY MAXROWSET TO ${config.maxRowset}; `
+  if (config.maxrowset) {
+    commands += `SET CLIENT KEY MAXROWSET TO ${config.maxrowset}; `
   }
 
   return commands
@@ -202,39 +202,39 @@ export function popCallback<T extends ErrorCallback = ErrorCallback>(
 /** Validate configuration, apply defaults, throw if something is missing or misconfigured */
 export function validateConfiguration(config: SQLiteCloudConfig): SQLiteCloudConfig {
   console.assert(config, 'SQLiteCloudConnection.validateConfiguration - missing config')
-  if (config.connectionString) {
+  if (config.connectionstring) {
     config = {
       ...config,
-      ...parseConnectionString(config.connectionString),
-      connectionString: config.connectionString // keep original connection string
+      ...parseconnectionstring(config.connectionstring),
+      connectionstring: config.connectionstring // keep original connection string
     }
   }
 
   // apply defaults where needed
   config.port ||= DEFAULT_PORT
   config.timeout = config.timeout && config.timeout > 0 ? config.timeout : DEFAULT_TIMEOUT
-  config.clientId ||= 'SQLiteCloud'
+  config.clientid ||= 'SQLiteCloud'
 
   config.verbose = parseBoolean(config.verbose)
-  config.noBlob = parseBoolean(config.noBlob)
+  config.noblob = parseBoolean(config.noblob)
   config.compression = parseBoolean(config.compression)
-  config.createDatabase = parseBoolean(config.createDatabase)
-  config.nonlinearizable = parseBoolean(config.nonlinearizable)
+  config.create = parseBoolean(config.create)
+  config.non_linearizable = parseBoolean(config.non_linearizable)
   config.insecure = parseBoolean(config.insecure)
 
-  const hasCredentials = (config.username && config.password) || config.apiKey
+  const hasCredentials = (config.username && config.password) || config.apikey
   if (!config.host || !hasCredentials) {
     console.error('SQLiteCloudConnection.validateConfiguration - missing arguments', config)
-    throw new SQLiteCloudError('The user, password and host arguments or the ?apiKey= must be specified.', { errorCode: 'ERR_MISSING_ARGS' })
+    throw new SQLiteCloudError('The user, password and host arguments or the ?apikey= must be specified.', { errorCode: 'ERR_MISSING_ARGS' })
   }
 
-  if (!config.connectionString) {
+  if (!config.connectionstring) {
     // build connection string from configuration, values are already validated
     // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-    if (config.apiKey) {
-      config.connectionString = `sqlitecloud://${config.host}:${config.port}/${config.database || ''}?apiKey=${config.apiKey}`
+    if (config.apikey) {
+      config.connectionstring = `sqlitecloud://${config.host}:${config.port}/${config.database || ''}?apikey=${config.apikey}`
     } else {
-      config.connectionString = `sqlitecloud://${encodeURIComponent(config.username || '')}:${encodeURIComponent(config.password || '')}@${config.host}:${
+      config.connectionstring = `sqlitecloud://${encodeURIComponent(config.username || '')}:${encodeURIComponent(config.password || '')}@${config.host}:${
         config.port
       }/${config.database}`
     }
@@ -244,44 +244,24 @@ export function validateConfiguration(config: SQLiteCloudConfig): SQLiteCloudCon
 }
 
 /**
- * Parse connectionString like sqlitecloud://username:password@host:port/database?option1=xxx&option2=xxx
- * or sqlitecloud://host.sqlite.cloud:8860/chinook.sqlite?apiKey=mIiLARzKm9XBVllbAzkB1wqrgijJ3Gx0X5z1Agm3xBo
+ * Parse connectionstring like sqlitecloud://username:password@host:port/database?option1=xxx&option2=xxx
+ * or sqlitecloud://host.sqlite.cloud:8860/chinook.sqlite?apikey=mIiLARzKm9XBVllbAzkB1wqrgijJ3Gx0X5z1Agm3xBo
  * into its basic components.
  */
-export function parseConnectionString(connectionString: string): SQLiteCloudConfig {
+export function parseconnectionstring(connectionstring: string): SQLiteCloudConfig {
   try {
     // The URL constructor throws a TypeError if the URL is not valid.
     // in spite of having the same structure as a regular url
     // protocol://username:password@host:port/database?option1=xxx&option2=xxx)
     // the sqlitecloud: protocol is not recognized by the URL constructor in browsers
     // so we need to replace it with https: to make it work
-    const knownProtocolUrl = connectionString.replace('sqlitecloud:', 'https:')
+    const knownProtocolUrl = connectionstring.replace('sqlitecloud:', 'https:')
     const url = new URL(knownProtocolUrl)
+
+    // all lowecase options
     const options: { [key: string]: string } = {}
-
-    // properties that are mixed case in the connection string should be accepted even if the
-    // customer mistakenly write them in camelCase or kebab-case or whateverTheCase
-    const mixedCaseProperties = [
-      'connectionString',
-      'passwordHashed',
-      'apiKey',
-      'createDatabase',
-      'dbMemory',
-      'compression',
-      'noBlob',
-      'maxData',
-      'maxRows',
-      'maxRowset',
-      'tlsOptions',
-      'useWebsocket',
-      'gatewayUrl',
-      'clientId'
-    ]
-
     url.searchParams.forEach((value, key) => {
-      let normalizedKey = key.toLowerCase().replaceAll('-', '').replaceAll('_', '')
-      const mixedCaseKey = mixedCaseProperties.find(mixedCaseProperty => mixedCaseProperty.toLowerCase() == normalizedKey)
-      options[mixedCaseKey || normalizedKey] = value
+      options[key.toLowerCase().replaceAll('-', '_')] = value
     })
 
     const config: SQLiteCloudConfig = {
@@ -292,10 +272,10 @@ export function parseConnectionString(connectionString: string): SQLiteCloudConf
       ...options
     }
 
-    // either you use an apiKey or username and password
-    if (config.apiKey) {
+    // either you use an apikey or username and password
+    if (config.apikey) {
       if (config.username || config.password) {
-        console.warn('SQLiteCloudConnection.parseConnectionString - apiKey and username/password are both specified, using apiKey')
+        console.warn('SQLiteCloudConnection.parseconnectionstring - apikey and username/password are both specified, using apikey')
       }
       delete config.username
       delete config.password
@@ -308,7 +288,7 @@ export function parseConnectionString(connectionString: string): SQLiteCloudConf
 
     return config
   } catch (error) {
-    throw new SQLiteCloudError(`Invalid connection string: ${connectionString}`)
+    throw new SQLiteCloudError(`Invalid connection string: ${connectionstring}`)
   }
 }
 
@@ -318,4 +298,12 @@ export function parseBoolean(value: string | boolean | null | undefined): boolea
     return value.toLowerCase() === 'true' || value === '1'
   }
   return value ? true : false
+}
+
+/** Returns true if value is 1 or true */
+export function parseBooleanToZeroOne(value: string | boolean | null | undefined): 0 | 1 {
+  if (typeof value === 'string') {
+    return value.toLowerCase() === 'true' || value === '1' ? 1 : 0
+  }
+  return value ? 1 : 0
 }

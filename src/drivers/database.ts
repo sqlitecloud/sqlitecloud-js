@@ -34,7 +34,7 @@ export class Database extends EventEmitter {
   constructor(config: SQLiteCloudConfig | string, mode?: number, callback?: ErrorCallback)
   constructor(config: SQLiteCloudConfig | string, mode?: number | ErrorCallback, callback?: ErrorCallback) {
     super()
-    this.config = typeof config === 'string' ? { connectionString: config } : config
+    this.config = typeof config === 'string' ? { connectionstring: config } : config
 
     // mode is optional and so is callback
     // https://github.com/TryGhost/node-sqlite3/wiki/API#new-sqlite3databasefilename--mode--callback
@@ -70,7 +70,7 @@ export class Database extends EventEmitter {
       callback?.call(this, null, this.connections[0])
     } else {
       // connect using websocket if tls is not supported or if explicitly requested
-      const useWebsocket = isBrowser || this.config?.useWebsocket || this.config?.gatewayUrl
+      const useWebsocket = isBrowser || this.config?.usewebsocket || this.config?.gatewayurl
       if (useWebsocket) {
         // socket.io transport works in both node.js and browser environments and connects via SQLite Cloud Gateway
         import('./connection-ws')
