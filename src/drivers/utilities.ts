@@ -54,6 +54,9 @@ export function getInitializationCommands(config: SQLiteCloudConfig): string {
   if (config.compression) {
     commands += 'SET CLIENT KEY COMPRESSION TO 1; '
   }
+  if (config.zerotext) {
+    commands += 'SET CLIENT KEY ZEROTEXT TO 1; '
+  }
   if (config.non_linearizable) {
     commands += 'SET CLIENT KEY NONLINEARIZABLE TO 1; '
   }

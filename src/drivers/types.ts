@@ -37,11 +37,13 @@ export interface SQLiteCloudConfig {
   timeout?: number
   /** Name of database to open */
   database?: string
-
+  /** Flag to tell the server to zero-terminate strings */
+  zerotext?: boolean
   /** Create the database if it doesn't exist? */
   create?: boolean
   /** Database will be created in memory */
   memory?: boolean
+
   /* Enable compression */
   compression?: boolean
   /** Request for immediate responses from the server node without waiting for linerizability guarantees */
