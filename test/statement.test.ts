@@ -212,7 +212,8 @@ it('Statement.run - with insert results', done => {
     // @ts-ignore
     statement.run('John Wayne', 73, 'Horse Riding', (error, results) => {
       // this is an insert statement and the result will indicate number of changes, etc.
-      console.debug(`insert results: `, results)
+      // console.debug(`insert results: `, results)
+      // -> insert results:  { lastID: 21, changes: 1, totalChanges: 21, finalized: 1 }
 
       expect(results.lastID).toBeGreaterThan(1)
       expect(results.changes).toBe(1)
