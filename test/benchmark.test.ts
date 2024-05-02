@@ -101,7 +101,8 @@ describe('benchmark', () => {
         const startedOn = new Date()
         const result = await runScript(connection, database, testFile)
         const elapsedMs = new Date().getTime() - startedOn.getTime()
-        console.debug(`${testFile} on ${database} took ${elapsedMs}ms\n`, result)
+
+        // console.debug(`${testFile} on ${database} took ${elapsedMs}ms\n`, result)
       }
 
       await destroyDatabaseAsync(connection, database)

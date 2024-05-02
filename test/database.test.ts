@@ -14,13 +14,17 @@ describe('Database.run', () => {
   it(
     'simple update',
     done => {
-      //      const updateSql = "UPDATE people SET name = 'Charlie Brown' WHERE id = 3; UPDATE people SET name = 'David Bowie' WHERE id = 4; "
       const updateSql = "UPDATE people SET name = 'Charlie Brown' WHERE id = 3; UPDATE people SET name = 'David Bowie' WHERE id = 4; "
 
       // lambda callback would "hide" this
       function plainCallbackNotALambda(err: Error, results: any) {
         expect(err).toBeNull()
-        expect(results).toBeUndefined()
+        expect(results).toEqual({
+          lastID: 20,
+          changes: 1,
+          totalChanges: 22,
+          finalized: 1
+        })
 
         // Database.run should return number of rows modified and lastID
         // @ts-expect-error
@@ -74,7 +78,12 @@ describe('Database.run', () => {
       // lambda callback would "hide" this
       function plainCallbackNotALambdaTwo(err: Error, results: any) {
         expect(err).toBeNull()
-        expect(results).toBeUndefined()
+        expect(results).toEqual({
+          lastID: 22,
+          changes: 1,
+          totalChanges: 22,
+          finalized: 1
+        })
 
         // Database.run should return number of rows modified and lastID
         // @ts-expect-error
