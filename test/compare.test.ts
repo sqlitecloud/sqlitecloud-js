@@ -133,7 +133,14 @@ describe('Database.run', () => {
     // https://github.com/TryGhost/node-sqlite3/wiki/API#runsql--param---callback
     function onInsert(error: Error, results: any) {
       expect(error).toBeNull()
-      expect(results).toBeUndefined()
+
+      // same "insert results" as those in "context"
+      expect(results).toEqual({
+        lastID: 21,
+        changes: 1,
+        totalChanges: 21,
+        finalized: 1
+      })
 
       // @ts-expect-error
       expect(this.lastID).toBe(21)

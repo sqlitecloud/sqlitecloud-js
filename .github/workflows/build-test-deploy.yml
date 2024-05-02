@@ -54,6 +54,7 @@ jobs:
       - name: Jest Tests
         env:
           CHINOOK_DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
+          CHINOOK_API_KEY: ${{ secrets.CHINOOK_API_KEY }}
           GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
         run: npm test
       - name: Upload Code Coverage

@@ -53,7 +53,12 @@ describe('Database.run', () => {
       // lambda callback would "hide" this
       function plainCallbackNotALambdaOne(err: Error, results: any) {
         expect(err).toBeNull()
-        expect(results).toBeUndefined()
+        expect(results).toEqual({
+          lastID: 21,
+          changes: 1,
+          totalChanges: 21,
+          finalized: 1
+        })
 
         // Database.run should return number of rows modified and lastID
         // @ts-expect-error
