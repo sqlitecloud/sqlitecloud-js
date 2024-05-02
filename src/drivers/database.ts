@@ -214,7 +214,7 @@ export class Database extends EventEmitter {
           } else {
             // context may include id of last row inserted, total changes, etc...
             const context = this.processContext(results)
-            callback?.call(context || this, null, context ? undefined : results)
+            callback?.call(context || this, null, context ? context : results)
           }
         })
       }

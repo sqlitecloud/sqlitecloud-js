@@ -4,7 +4,7 @@
 
 import { SQLiteCloudRowset } from '../src'
 import { RowCallback, RowCountCallback, SQLiteCloudError } from '../src/drivers/types'
-import { getChinookDatabase } from './shared'
+import { getChinookDatabase, getTestingDatabase } from './shared'
 
 describe('Database.prepare', () => {
   it('without incorrect bindings', done => {
@@ -197,6 +197,26 @@ it('Statement.run', done => {
       expect(error).toBeNull()
 
       chinook.close()
+      done()
+    })
+  })
+})
+
+it('Statement.run - with insert results', done => {
+  // create simple "people" database that we can write in...
+  const database = getTestingDatabase(error => {
+    expect(error).toBeNull()
+
+    const statement = database.prepare('INSERT INTO people (name, hobby, age) VALUES (?, ?, ?); ')
+
+    // @ts-ignore
+    statement.run('John Wayne', 73, 'Horse Riding', (error, results) => {
+      // this is an insert statement and the result will indicate number of changes, etc.
+      console.debug(`insert results: `, results)
+
+      expect(results.lastID).toBeGreaterThan(1)
+      expect(results.changes).toBe(1)
+
       done()
     })
   })

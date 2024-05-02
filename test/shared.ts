@@ -195,7 +195,7 @@ export function getTestingDatabase(callback?: ResultsCallback): Database {
       }
       expect(results).toBeDefined()
       expect(results[0][42]).toBe(42)
-      callback?.call(database, null)
+      callback?.call(database, null, database)
     })
   })
 
