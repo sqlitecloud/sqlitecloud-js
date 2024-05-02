@@ -17,8 +17,8 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 21
       - name: Setup Dependencies
@@ -36,15 +36,15 @@ jobs:
       - name: Deploy Typedoc to GitHub Pages
         id: deployment
         # https://github.com/actions/deploy-pages
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v4
 
   test:
     name: 'Test'
     timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 21
       - name: Setup Dependencies
@@ -58,6 +58,6 @@ jobs:
           GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
         run: npm test
       - name: Upload Code Coverage
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
