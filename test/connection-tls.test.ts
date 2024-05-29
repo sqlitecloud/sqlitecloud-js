@@ -108,16 +108,26 @@ describe('connect', () => {
     // }
 
     const connection = new SQLiteCloudTlsConnection(CHINOOK_DATABASE_URL, error => {
-      expect(error).toBeNull()
-      expect(connection.connected).toBe(true)
-      connection.close()
+      try {
+        expect(error).toBeNull()
+        expect(connection.connected).toBe(true)
+        connection.close()
+      } catch (error) {
+        done(error)
+        return
+      }
 
       const chinook = getConnection()
       chinook.sendCommands('TEST STRING', (error, results) => {
-        expect(results).toBe('Hello World, this is a test string.')
-
-        done()
-        chinook.close()
+        let err = null
+        try { 
+          expect(results).toBe('Hello World, this is a test string.')
+        } catch (error) {
+          err = error
+        } finally {
+          chinook.close();
+          (err) ? done(err) : done()
+        }
       })
     })
     expect(connection).toBeDefined()
@@ -152,15 +162,18 @@ describe('connect', () => {
     try {
       const conn = new SQLiteCloudTlsConnection(testingConfig)
     } catch (error) {
-      expect(error).toBeDefined()
-      expect(error).toBeInstanceOf(SQLiteCloudError)
-      const sqliteCloudError = error as SQLiteCloudError
-      expect(sqliteCloudError.message).toBe('The user, password and host arguments or the ?apikey= must be specified.')
-      expect(sqliteCloudError.errorCode).toBe('ERR_MISSING_ARGS')
-      expect(sqliteCloudError.externalErrorCode).toBeUndefined()
-      expect(sqliteCloudError.offsetCode).toBeUndefined()
-
-      done()
+      try {
+        expect(error).toBeDefined()
+        expect(error).toBeInstanceOf(SQLiteCloudError)
+        const sqliteCloudError = error as SQLiteCloudError
+        expect(sqliteCloudError.message).toBe('The user, password and host arguments or the ?apikey= must be specified.')
+        expect(sqliteCloudError.errorCode).toBe('ERR_MISSING_ARGS')
+        expect(sqliteCloudError.externalErrorCode).toBeUndefined()
+        expect(sqliteCloudError.offsetCode).toBeUndefined()
+        done()
+      } catch (e) {
+        done(e)
+      }
     }
   })
 })
@@ -177,17 +190,20 @@ describe('send test commands', () => {
 
       const chinook = getConnection()
       chinook.sendCommands(`SELECT '${value}' 'VALUE'`, (error, results) => {
-        expect(error).toBeNull()
-        expect(results.numberOfRows).toBe(1)
-        expect(results.numberOfColumns).toBe(1)
-        expect(results.columnsNames).toEqual(['VALUE'])
-        expect(results[0].VALUE).toBe(value)
-
-        done()
-        chinook.close()
+        let err = null
+        try {
+          expect(error).toBeNull()
+          expect(results.numberOfRows).toBe(1)
+          expect(results.numberOfColumns).toBe(1)
+          expect(results.columnsNames).toEqual(['VALUE'])
+          expect(results[0].VALUE).toBe(value)
+        } catch (error) {
+          err = error
+        } finally {
+          chinook.close();
+          (err) ? done(err) : done()
+        }
       })
-
-      done()
     },
     LONG_TIMEOUT
   )
@@ -197,11 +213,16 @@ describe('send test commands', () => {
     done => {
       const chinook = getConnection()
       chinook.sendCommands('TEST INTEGER', (error, results) => {
-        expect(error).toBeNull()
-        expect(results).toBe(123456)
-
-        done()
-        chinook.close()
+        let err = null
+        try {
+          expect(error).toBeNull()
+          expect(results).toBe(123456)
+        } catch (error) {
+          err = error
+        } finally {
+          chinook.close();
+          (err) ? done(err) : done()
+        }
       })
     },
     LONG_TIMEOUT
@@ -210,22 +231,32 @@ describe('send test commands', () => {
   it('should test null', done => {
     const connection = getConnection()
     connection.sendCommands('TEST NULL', (error, results) => {
-      expect(error).toBeNull()
-      expect(results).toBeNull()
-
-      done()
-      connection.close()
+      let err = null
+      try {
+        expect(error).toBeNull()
+        expect(results).toBeNull()
+      } catch (error) {
+        err = error
+      } finally {
+        connection.close();
+        (err) ? done(err) : done()
+      }
     })
   })
 
   it('should test float', done => {
     const chinook = getConnection()
     chinook.sendCommands('TEST FLOAT', (error, results) => {
-      expect(error).toBeNull()
-      expect(results).toBe(3.1415926)
-
-      done()
-      chinook.close()
+      let err = null
+      try {
+        expect(error).toBeNull()
+        expect(results).toBe(3.1415926)
+      } catch (error) {
+        err = error
+      } finally {
+        chinook.close();
+        (err) ? done(err) : done()
+      }
     })
   })
 
@@ -234,11 +265,16 @@ describe('send test commands', () => {
     done => {
       const chinook = getConnection()
       chinook.sendCommands('TEST STRING', (error, results) => {
-        expect(error).toBeNull()
-        expect(results).toBe('Hello World, this is a test string.')
-
-        done()
-        chinook.close()
+        let err = null
+        try {
+          expect(error).toBeNull()
+          expect(results).toBe('Hello World, this is a test string.')
+        } catch (error) {
+          err = error
+        } finally {
+          chinook.close();
+          (err) ? done(err) : done()
+        }
       })
     },
     EXTRA_LONG_TIMEOUT
@@ -247,148 +283,198 @@ describe('send test commands', () => {
   it('should test zero string', done => {
     const chinook = getConnection()
     chinook.sendCommands('TEST ZERO_STRING', (error, results) => {
-      expect(error).toBeNull()
-      expect(results).toBe('Hello World, this is a zero-terminated test string.')
-
-      done()
-      chinook.close()
+      let err = null
+      try {
+        expect(error).toBeNull()
+        expect(results).toBe('Hello World, this is a zero-terminated test string.')
+      } catch (error) {
+        err = error
+      } finally {
+        chinook.close();
+        (err) ? done(err) : done()
+      }
     })
   })
 
   it('should test string0', done => {
     const chinook = getConnection()
     chinook.sendCommands('TEST STRING0', (error, results) => {
-      expect(error).toBeNull()
-      expect(results).toBe('')
-
-      done()
-      chinook.close()
+      let err = null
+      try {
+        expect(error).toBeNull()
+        expect(results).toBe('')
+      } catch (error) {
+        err = error
+      } finally {
+        chinook.close();
+        (err) ? done(err) : done()
+      }
     })
   })
 
   it('should test command', done => {
     const chinook = getConnection()
     chinook.sendCommands('TEST COMMAND', (error, results) => {
-      expect(error).toBeNull()
-      expect(results).toBe('PING')
-
-      done()
-      chinook.close()
+      let err = null
+      try {
+        expect(error).toBeNull()
+        expect(results).toBe('PING')
+      } catch (error) {
+        err = error
+      } finally {
+        chinook.close();
+        (err) ? done(err) : done()
+      }
     })
   })
 
   it('should test json', done => {
     const chinook = getConnection()
     chinook.sendCommands('TEST JSON', (error, results) => {
-      expect(error).toBeNull()
-      expect(results).toEqual({
-        'msg-from': { class: 'soldier', name: 'Wixilav' },
-        'msg-to': { class: 'supreme-commander', name: '[Redacted]' },
-        'msg-type': ['0xdeadbeef', 'irc log'],
-        'msg-log': [
-          'soldier: Boss there is a slight problem with the piece offering to humans',
-          'supreme-commander: Explain yourself soldier!',
-          "soldier: Well they don't seem to move anymore...",
-          'supreme-commander: Oh snap, I came here to see them twerk!'
-        ]
-      })
-
-      done()
-      chinook.close()
+      let err = null
+      try {
+        expect(error).toBeNull()
+        expect(results).toEqual({
+          'msg-from': { class: 'soldier', name: 'Wixilav' },
+          'msg-to': { class: 'supreme-commander', name: '[Redacted]' },
+          'msg-type': ['0xdeadbeef', 'irc log'],
+          'msg-log': [
+            'soldier: Boss there is a slight problem with the piece offering to humans',
+            'supreme-commander: Explain yourself soldier!',
+            "soldier: Well they don't seem to move anymore...",
+            'supreme-commander: Oh snap, I came here to see them twerk!'
+          ]
+        })
+      } catch (error) {
+        err = error
+      } finally {
+        chinook.close();
+        (err) ? done(err) : done()
+      }
     })
   })
 
   it('should test blob', done => {
     const chinook = getConnection()
     chinook.sendCommands('TEST BLOB', (error, results) => {
-      expect(error).toBeNull()
-      expect(typeof results).toBe('object')
-      expect(results).toBeInstanceOf(Buffer)
-      const bufferrowset = results as any as Buffer
-      expect(bufferrowset.length).toBe(1000)
-
-      done()
-      chinook.close()
+      let err = null
+      try {
+        expect(error).toBeNull()
+        expect(typeof results).toBe('object')
+        expect(results).toBeInstanceOf(Buffer)
+        const bufferrowset = results as any as Buffer
+        expect(bufferrowset.length).toBe(1000)
+      } catch (error) {
+        err = error
+      } finally {
+        chinook.close();
+        (err) ? done(err) : done()
+      }
     })
   })
 
   it('should test blob0', done => {
     const chinook = getConnection()
     chinook.sendCommands('TEST BLOB0', (error, results) => {
-      expect(error).toBeNull()
-      expect(typeof results).toBe('object')
-      expect(results).toBeInstanceOf(Buffer)
-      const bufferrowset = results as any as Buffer
-      expect(bufferrowset.length).toBe(0)
-
-      done()
-      chinook.close()
+      let err = null
+      try {
+        expect(error).toBeNull()
+        expect(typeof results).toBe('object')
+        expect(results).toBeInstanceOf(Buffer)
+        const bufferrowset = results as any as Buffer
+        expect(bufferrowset.length).toBe(0)
+      } catch (error) {
+        err = error
+      } finally {
+        chinook.close();
+        (err) ? done(err) : done()
+      }
     })
   })
 
   it('should test error', done => {
     const chinook = getConnection()
     chinook.sendCommands('TEST ERROR', (error, results) => {
-      expect(error).toBeDefined()
-      expect(error).toBeInstanceOf(SQLiteCloudError)
+      let err = null
+      try {
+        expect(error).toBeDefined()
+        expect(error).toBeInstanceOf(SQLiteCloudError)
 
-      const sqliteCloudError = error as SQLiteCloudError
-      expect(sqliteCloudError.message).toBe('This is a test error message with a devil error code.')
-      expect(sqliteCloudError.errorCode).toBe('66666')
-      expect(sqliteCloudError.externalErrorCode).toBe('0')
-      expect(sqliteCloudError.offsetCode).toBe(-1)
-
-      done()
-      chinook.close()
+        const sqliteCloudError = error as SQLiteCloudError
+        expect(sqliteCloudError.message).toBe('This is a test error message with a devil error code.')
+        expect(sqliteCloudError.errorCode).toBe('66666')
+        expect(sqliteCloudError.externalErrorCode).toBe('0')
+        expect(sqliteCloudError.offsetCode).toBe(-1)
+      } catch (error) {
+        err = error
+      } finally {
+        chinook.close();
+        (err) ? done(err) : done()
+      }
     })
   })
 
   it('should test exterror', done => {
     const chinook = getConnection()
     chinook.sendCommands('TEST EXTERROR', (error, results) => {
-      expect(error).toBeDefined()
-      expect(error).toBeInstanceOf(SQLiteCloudError)
+      let err = null
+      try {
+        expect(error).toBeDefined()
+        expect(error).toBeInstanceOf(SQLiteCloudError)
 
-      const sqliteCloudError = error as SQLiteCloudError
-      expect(sqliteCloudError.message).toBe('This is a test error message with an extcode and a devil error code.')
-      expect(sqliteCloudError.errorCode).toBe('66666')
-      expect(sqliteCloudError.externalErrorCode).toBe('333')
-      expect(sqliteCloudError.offsetCode).toBe(-1)
-
-      done()
-      chinook.close()
+        const sqliteCloudError = error as SQLiteCloudError
+        expect(sqliteCloudError.message).toBe('This is a test error message with an extcode and a devil error code.')
+        expect(sqliteCloudError.errorCode).toBe('66666')
+        expect(sqliteCloudError.externalErrorCode).toBe('333')
+        expect(sqliteCloudError.offsetCode).toBe(-1)
+      } catch (error) {
+        err = error
+      } finally {
+        chinook.close();
+        (err) ? done(err) : done()
+      }
     })
   })
 
   it('should test array', done => {
     const chinook = getConnection()
     chinook.sendCommands('TEST ARRAY', (error, results) => {
-      expect(error).toBeNull()
-      expect(Array.isArray(results)).toBe(true)
+      let err = null
+      try {
+        expect(error).toBeNull()
+        expect(Array.isArray(results)).toBe(true)
 
-      const arrayrowset = results as any as Array<any>
-      expect(arrayrowset.length).toBe(5)
-      expect(arrayrowset[0]).toBe('Hello World')
-      expect(arrayrowset[1]).toBe(123456)
-      expect(arrayrowset[2]).toBe(3.1415)
-      expect(arrayrowset[3]).toBeNull()
-
-      done()
-      chinook.close()
+        const arrayrowset = results as any as Array<any>
+        expect(arrayrowset.length).toBe(5)
+        expect(arrayrowset[0]).toBe('Hello World')
+        expect(arrayrowset[1]).toBe(123456)
+        expect(arrayrowset[2]).toBe(3.1415)
+        expect(arrayrowset[3]).toBeNull()
+      } catch (error) {
+        err = error
+      } finally {
+        chinook.close();
+        (err) ? done(err) : done()
+      }
     })
   })
 
   it('should test rowset', done => {
     const chinook = getConnection()
     chinook.sendCommands('TEST ROWSET', (error, results) => {
-      expect(error).toBeNull()
-      expect(results.numberOfRows).toBeGreaterThanOrEqual(30)
-      expect(results.numberOfColumns).toBe(2)
-      expect(results.version == 1 || results.version == 2).toBeTruthy()
-      expect(results.columnsNames).toEqual(['key', 'value'])
-
-      done()
-      chinook.close()
+      let err = null
+      try {
+        expect(error).toBeNull()
+        expect(results.numberOfRows).toBeGreaterThanOrEqual(30)
+        expect(results.numberOfColumns).toBe(2)
+        expect(results.version == 1 || results.version == 2).toBeTruthy()
+        expect(results.columnsNames).toEqual(['key', 'value'])
+      } catch (error) {
+        err = error
+      } finally {
+        chinook.close();
+        (err) ? done(err) : done()
+      }
     })
   })
 
@@ -398,19 +484,24 @@ describe('send test commands', () => {
       // this operation sends 150 packets, so we need to increase the timeout
       const database = getChinookTlsConnection(undefined, { timeout: 60 * 1000 })
       database.sendCommands('TEST ROWSET_CHUNK', (error, results) => {
-        expect(error).toBeNull()
-        expect(results.numberOfRows).toBe(147)
-        expect(results.numberOfColumns).toBe(1)
-        expect(results.columnsNames).toEqual(['key'])
+        let err = null
+        try {
+          expect(error).toBeNull()
+          expect(results.numberOfRows).toBe(147)
+          expect(results.numberOfColumns).toBe(1)
+          expect(results.columnsNames).toEqual(['key'])
 
-        expect(results[0]['key']).toBe('REINDEX')
-        expect(results[1]['key']).toBe('INDEXED')
-        expect(results[2]['key']).toBe('INDEX')
-        expect(results[3]['key']).toBe('DESC')
-        expect(results[146]['key']).toBe('PRIMARY')
-
-        done()
-        database.close()
+          expect(results[0]['key']).toBe('REINDEX')
+          expect(results[1]['key']).toBe('INDEXED')
+          expect(results[2]['key']).toBe('INDEX')
+          expect(results[3]['key']).toBe('DESC')
+          expect(results[146]['key']).toBe('PRIMARY')
+        } catch (error) {
+          err = error
+        } finally {
+          database.close();
+          (err) ? done(err) : done()
+        }
       })
     },
     LONG_TIMEOUT
@@ -422,16 +513,7 @@ describe('send test commands', () => {
       // this operation sends 150 packets, so we need to increase the timeout
       const database = getChinookTlsConnection(undefined, { timeout: 60 * 1000 })
       database.sendCommands('TEST ROWSET_CHUNK', (error, results) => {
-        expect(error).toBeNull()
-        expect(results.numberOfRows).toBe(147)
-        expect(results.numberOfColumns).toBe(1)
-        expect(results.columnsNames).toEqual(['key'])
-        expect(results[0]['key']).toBe('REINDEX')
-        expect(results[1]['key']).toBe('INDEXED')
-        expect(results[2]['key']).toBe('INDEX')
-        expect(results[3]['key']).toBe('DESC')
-
-        database.sendCommands('TEST ROWSET_CHUNK', (error, results) => {
+        try {
           expect(error).toBeNull()
           expect(results.numberOfRows).toBe(147)
           expect(results.numberOfColumns).toBe(1)
@@ -440,13 +522,39 @@ describe('send test commands', () => {
           expect(results[1]['key']).toBe('INDEXED')
           expect(results[2]['key']).toBe('INDEX')
           expect(results[3]['key']).toBe('DESC')
+        } catch (e) {
+          database.close();
+          done(e)
+          return
+        }
+
+        database.sendCommands('TEST ROWSET_CHUNK', (error, results) => {
+          try {
+            expect(error).toBeNull()
+            expect(results.numberOfRows).toBe(147)
+            expect(results.numberOfColumns).toBe(1)
+            expect(results.columnsNames).toEqual(['key'])
+            expect(results[0]['key']).toBe('REINDEX')
+            expect(results[1]['key']).toBe('INDEXED')
+            expect(results[2]['key']).toBe('INDEX')
+            expect(results[3]['key']).toBe('DESC')
+          } catch (e) {
+            database.close();
+            done(e)
+            return
+          }
 
           database.sendCommands('SELECT 1', (error, results) => {
-            expect(error).toBeNull()
-            expect(results.numberOfRows).toBe(1)
-
-            done()
-            database.close()
+            let err = null
+            try {
+              expect(error).toBeNull()
+              expect(results.numberOfRows).toBe(1)
+            } catch (error) {
+              err = error
+            } finally {
+              database.close();
+              (err) ? done(err) : done()
+            }
           })
         })
       })
@@ -465,16 +573,22 @@ describe('operations', () => {
       const chinook = getConnection()
       for (let i = 0; i < numQueries; i++) {
         chinook.sendCommands(`select ${i} as "count", 'hello' as 'string'`, (error, results) => {
+          try {
           expect(error).toBeNull()
           expect(results.numberOfColumns).toBe(2)
           expect(results.numberOfRows).toBe(1)
           expect(results.version == 1 || results.version == 2).toBeTruthy()
           expect(results.columnsNames).toEqual(['count', 'string'])
           expect(results.getItem(0, 0)).toBe(i)
+          } catch (error) {
+            chinook.close()
+            done()
+            return
+          }
 
           if (++completed >= numQueries) {
-            done()
             chinook.close()
+            done()
           }
         })
       }
@@ -575,95 +689,130 @@ describe('send select commands', () => {
   it('should LIST METADATA', done => {
     const chinook = getConnection()
     chinook.sendCommands('LIST METADATA;', (error, results) => {
-      expect(error).toBeNull()
-      expect(results.numberOfColumns).toBe(8)
-      expect(results.numberOfRows).toBeGreaterThanOrEqual(32)
-
-      done()
-      chinook.close()
+      let err = null
+      try {
+        expect(error).toBeNull()
+        expect(results.numberOfColumns).toBe(8)
+        expect(results.numberOfRows).toBeGreaterThanOrEqual(32)
+      } catch (error) {
+        err = error
+      } finally {
+        chinook.close();
+        (err) ? done(err) : done()
+      }
     })
   })
 
   it('should select results with no colum names', done => {
     const chinook = getConnection()
     chinook.sendCommands("select 42, 'hello'", (error, results) => {
-      expect(error).toBeNull()
-      expect(results.numberOfColumns).toBe(2)
-      expect(results.numberOfRows).toBe(1)
-      expect(results.version == 1 || results.version == 2).toBeTruthy()
-      expect(results.columnsNames).toEqual(['42', "'hello'"]) // column name should be hello, not 'hello'
-      expect(results.getItem(0, 0)).toBe(42)
-      expect(results.getItem(0, 1)).toBe('hello')
-
-      done()
-      chinook.close()
+      let err = null
+      try {
+        expect(error).toBeNull()
+        expect(results.numberOfColumns).toBe(2)
+        expect(results.numberOfRows).toBe(1)
+        expect(results.version == 1 || results.version == 2).toBeTruthy()
+        expect(results.columnsNames).toEqual(['42', "'hello'"]) // column name should be hello, not 'hello'
+        expect(results.getItem(0, 0)).toBe(42)
+        expect(results.getItem(0, 1)).toBe('hello')
+      } catch (error) {
+        err = error
+      } finally {
+        chinook.close();
+        (err) ? done(err) : done()
+      }
     })
   })
 
   it('should select long formatted string', done => {
     const chinook = getConnection()
     chinook.sendCommands("USE DATABASE :memory:; select printf('%.*c', 1000, 'x') AS DDD", (error, results) => {
-      expect(error).toBeNull()
-      expect(results.numberOfColumns).toBe(1)
-      expect(results.numberOfRows).toBe(1)
-      expect(results.version == 1 || results.version == 2).toBeTruthy()
+      let err = null 
+      try {
+        expect(error).toBeNull()
+        expect(results.numberOfColumns).toBe(1)
+        expect(results.numberOfRows).toBe(1)
+        expect(results.version == 1 || results.version == 2).toBeTruthy()
 
-      const stringrowset = results.getItem(0, 0) as string
-      expect(stringrowset.startsWith('xxxxxxxxxxxxx')).toBeTruthy()
-      expect(stringrowset).toHaveLength(1000)
-
-      done()
-      chinook.close()
+        const stringrowset = results.getItem(0, 0) as string
+        expect(stringrowset.startsWith('xxxxxxxxxxxxx')).toBeTruthy()
+        expect(stringrowset).toHaveLength(1000)
+      } catch (error) {
+        err = error
+      } finally {
+        chinook.close();
+        (err) ? done(err) : done()
+      }
     })
   })
 
   it('should select database', done => {
     const chinook = getConnection()
     chinook.sendCommands('USE DATABASE chinook.sqlite;', (error, results) => {
-      expect(error).toBeNull()
-      expect(results.numberOfColumns).toBeUndefined()
-      expect(results.numberOfRows).toBeUndefined()
-      expect(results.version).toBeUndefined()
-
-      done()
-      chinook.close()
+      let err = null 
+      try {
+        expect(error).toBeNull()
+        expect(results.numberOfColumns).toBeUndefined()
+        expect(results.numberOfRows).toBeUndefined()
+        expect(results.version).toBeUndefined()
+      } catch (error) {
+        err = error
+      } finally {
+        chinook.close();
+        (err) ? done(err) : done()
+      }
     })
   })
 
   it('should select * from tracks limit 10 (no chunks)', done => {
     const chinook = getConnection()
     chinook.sendCommands('SELECT * FROM tracks LIMIT 10;', (error, results) => {
-      expect(error).toBeNull()
-      expect(results.numberOfColumns).toBe(9)
-      expect(results.numberOfRows).toBe(10)
-
-      done()
-      chinook.close()
+      let err = null
+      try {
+        expect(error).toBeNull()
+        expect(results.numberOfColumns).toBe(9)
+        expect(results.numberOfRows).toBe(10)
+      } catch (error) {
+        err = error
+      } finally {
+        chinook.close();
+        (err) ? done(err) : done()
+      }
     })
   })
 
   it('should select * from tracks (with chunks)', done => {
     const chinook = getConnection()
     chinook.sendCommands('SELECT * FROM tracks;', (error, results) => {
-      expect(error).toBeNull()
-      expect(results.numberOfColumns).toBe(9)
-      expect(results.numberOfRows).toBeGreaterThan(3000) // 3503 tracks but we sometimes test deleting rows
-
-      done()
-      chinook.close()
+      let err = null
+      try {
+        expect(error).toBeNull()
+        expect(results.numberOfColumns).toBe(9)
+        expect(results.numberOfRows).toBeGreaterThan(3000) // 3503 tracks but we sometimes test deleting rows
+      } catch (error) {
+        err = error
+      } finally {
+        chinook.close();
+        (err) ? done(err) : done()
+      }
     })
   })
 
   it('should select * from albums', done => {
     const chinook = getConnection()
     chinook.sendCommands('SELECT * FROM albums;', (error, results) => {
-      expect(error).toBeNull()
-      expect(results.numberOfColumns).toBe(3)
-      expect(results.numberOfRows).toBe(347)
-      expect(results.version == 1 || results.version == 2).toBeTruthy()
-
-      done()
-      chinook.close()
+      let err = null 
+      try {
+        expect(error).toBeNull()
+        expect(results.numberOfColumns).toBe(3)
+        expect(results.numberOfRows).toBe(347)
+        expect(results.version == 1 || results.version == 2).toBeTruthy()
+      } catch (error) {
+        err = error
+      } finally {
+        chinook.close();
+        (err) ? done(err) : done()
+      }
     })
   })
 })
@@ -679,8 +828,15 @@ describe('connection stress testing', () => {
 
       for (let i = 0; i < numQueries; i++) {
         chinook.sendCommands('TEST STRING', (error, results) => {
-          expect(error).toBeNull()
-          expect(results).toBe('Hello World, this is a test string.')
+          try {
+            expect(error).toBeNull()
+            expect(results).toBe('Hello World, this is a test string.')
+          } catch (e) {
+            chinook.close();
+            done(e)
+            return
+          }
+
           if (++completed >= numQueries) {
             const queryMs = (Date.now() - startTime) / numQueries
             if (queryMs > WARN_SPEED_MS) {
@@ -688,8 +844,8 @@ describe('connection stress testing', () => {
               expect(queryMs).toBeLessThan(EXPECT_SPEED_MS)
             }
 
-            done()
             chinook.close()
+            done()
           }
         })
       }
@@ -707,9 +863,16 @@ describe('connection stress testing', () => {
 
       for (let i = 0; i < numQueries; i++) {
         chinook.sendCommands('SELECT * FROM albums ORDER BY RANDOM() LIMIT 4;', (error, results) => {
-          expect(error).toBeNull()
-          expect(results.numberOfColumns).toBe(3)
-          expect(results.numberOfRows).toBe(4)
+          try {
+            expect(error).toBeNull()
+            expect(results.numberOfColumns).toBe(3)
+            expect(results.numberOfRows).toBe(4)
+          } catch (e) {
+            chinook.close();
+            done(e)
+            return
+          }
+
           if (++completed >= numQueries) {
             const queryMs = (Date.now() - startTime) / numQueries
             if (queryMs > WARN_SPEED_MS) {
@@ -717,8 +880,8 @@ describe('connection stress testing', () => {
               expect(queryMs).toBeLessThan(EXPECT_SPEED_MS)
             }
 
-            done()
             chinook.close()
+            done()
           }
         })
       }
@@ -738,10 +901,17 @@ describe('connection stress testing', () => {
         chinook.sendCommands(
           'SELECT * FROM albums ORDER BY RANDOM() LIMIT 16; SELECT * FROM albums ORDER BY RANDOM() LIMIT 12; SELECT * FROM albums ORDER BY RANDOM() LIMIT 8; SELECT * FROM albums ORDER BY RANDOM() LIMIT 4;',
           (error, results) => {
-            expect(error).toBeNull()
-            // server only returns the last rowset?
-            expect(results.numberOfColumns).toBe(3)
-            expect(results.numberOfRows).toBe(4)
+            try {
+              expect(error).toBeNull()
+              // server only returns the last rowset?
+              expect(results.numberOfColumns).toBe(3)
+              expect(results.numberOfRows).toBe(4)
+            } catch (e) {
+              chinook.close();
+              done(e)
+              return
+            }
+
             if (++completed >= numQueries) {
               const queryMs = (Date.now() - startTime) / numQueries
               if (queryMs > WARN_SPEED_MS) {
