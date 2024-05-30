@@ -50,7 +50,7 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
     const connectionOptions = {
       host: config.host,
       port: config.port as number,
-      rejectUnauthorized: true,
+      rejectUnauthorized: config.host != 'localhost',
       // Server name for the SNI (Server Name Indication) TLS extension.
       // https://r2.nodejs.org/docs/v6.11.4/api/tls.html#tls_class_tls_tlssocket
       servername: config.host
