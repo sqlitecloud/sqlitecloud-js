@@ -39,6 +39,10 @@ export function getInitializationCommands(config: SQLiteCloudConfig): string {
   // first user authentication, then all other commands
   let commands = ''
 
+  if (config.non_linearizable) {
+    commands += 'SET CLIENT KEY NONLINEARIZABLE TO 1; '
+  }
+
   if (config.apikey) {
     commands = `AUTH APIKEY ${config.apikey}; `
   } else {
@@ -56,9 +60,6 @@ export function getInitializationCommands(config: SQLiteCloudConfig): string {
   }
   if (config.zerotext) {
     commands += 'SET CLIENT KEY ZEROTEXT TO 1; '
-  }
-  if (config.non_linearizable) {
-    commands += 'SET CLIENT KEY NONLINEARIZABLE TO 1; '
   }
   if (config.noblob) {
     commands += 'SET CLIENT KEY NOBLOB TO 1; '

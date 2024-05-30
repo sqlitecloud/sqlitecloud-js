@@ -21,7 +21,7 @@ import {
 import * as tls from 'tls'
 
 /**
- * Implementation of SQLiteCloudConnection that connects to the database using specific Bun APIs
+ * Implementation of SQLiteCloudConnection that connects to the database using specific tls APIs
  * that connect to native sockets or tls sockets and communicates via raw, binary protocol.
  */
 export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
@@ -50,7 +50,7 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
     const connectionOptions = {
       host: config.host,
       port: config.port as number,
-      rejectUnauthorized: false,
+      rejectUnauthorized: true,
       // Server name for the SNI (Server Name Indication) TLS extension.
       // https://r2.nodejs.org/docs/v6.11.4/api/tls.html#tls_class_tls_tlssocket
       servername: config.host
