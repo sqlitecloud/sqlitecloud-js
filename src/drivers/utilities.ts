@@ -44,9 +44,9 @@ export function getInitializationCommands(config: SQLiteCloudConfig): string {
   }
 
   if (config.apikey) {
-    commands = `AUTH APIKEY ${config.apikey}; `
+    commands += `AUTH APIKEY ${config.apikey}; `
   } else {
-    commands = `AUTH USER ${config.username || ''} ${config.password_hashed ? 'HASH' : 'PASSWORD'} ${config.password || ''}; `
+    commands += `AUTH USER ${config.username || ''} ${config.password_hashed ? 'HASH' : 'PASSWORD'} ${config.password || ''}; `
   }
 
   if (config.database) {
