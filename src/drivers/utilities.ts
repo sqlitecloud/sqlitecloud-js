@@ -36,25 +36,17 @@ export function anonimizeError(error: Error): Error {
 
 /** Initialization commands sent to database when connection is established */
 export function getInitializationCommands(config: SQLiteCloudConfig): string {
+  // we check the credentials using non linearizable so we're quicker
+  // then we bring back linearizability unless specified otherwise
+  let commands = 'SET CLIENT KEY NONLINEARIZABLE TO 1; '
+
   // first user authentication, then all other commands
-  let commands = ''
-
-  if (config.non_linearizable) {
-    commands += 'SET CLIENT KEY NONLINEARIZABLE TO 1; '
-  }
-
   if (config.apikey) {
     commands += `AUTH APIKEY ${config.apikey}; `
   } else {
     commands += `AUTH USER ${config.username || ''} ${config.password_hashed ? 'HASH' : 'PASSWORD'} ${config.password || ''}; `
   }
 
-  if (config.database) {
-    if (config.create && !config.memory) {
-      commands += `CREATE DATABASE ${config.database} IF NOT EXISTS; `
-    }
-    commands += `USE DATABASE ${config.database}; `
-  }
   if (config.compression) {
     commands += 'SET CLIENT KEY COMPRESSION TO 1; '
   }
@@ -72,6 +64,19 @@ export function getInitializationCommands(config: SQLiteCloudConfig): string {
   }
   if (config.maxrowset) {
     commands += `SET CLIENT KEY MAXROWSET TO ${config.maxrowset}; `
+  }
+
+  // we ALWAYS set non linearizable to 1 when we start so we can be quicker on login
+  // but then we need to put it back to its default value if "linearizable" unless set
+  if (!config.non_linearizable) {
+    commands += 'SET CLIENT KEY NONLINEARIZABLE TO 0; '
+  }
+
+  if (config.database) {
+    if (config.create && !config.memory) {
+      commands += `CREATE DATABASE ${config.database} IF NOT EXISTS; `
+    }
+    commands += `USE DATABASE ${config.database}; `
   }
 
   return commands
