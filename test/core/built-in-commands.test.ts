@@ -776,7 +776,7 @@ describe.each([
   [
     100,
     'os',
-    '',
+    'MEMORY',
     _,
     'main',
     'employees',
@@ -788,7 +788,7 @@ describe.each([
     true
   ],
   ['', '', '', ' ' /*NOT_EXIST waiting for the strtol fix*/, _, _, _, _, randomDate(), _, _, false],
-  [0, 'sqlitecloud_version', '', 1, '', 'albums', _, _, _, '', '', true],
+  [0, 'sqlitecloud_version', 'MEMORY', 1, '', 'albums', _, _, _, '', '', true],
   [0, 'sqlitecloud_version', 'MEMORY', 1, '', '', _, randomDate(new Date(new Date().getTime() - 24 * 60 * 60 * 1000).getTime()), randomDate(), '', '', true],
   [0, _, _, 999, _, 'NOT_EXIST', 'NOT_EXIST', 'NOT_EXIST', 'NOT_EXIST', _, 'NOT_EXIST', false]
 ])('general', (sleep, key, memory, node, database, table, column, from, to, detailed, pubsub, ok) => {
