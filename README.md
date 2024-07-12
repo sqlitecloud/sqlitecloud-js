@@ -32,6 +32,34 @@ We aim for full compatibility with the established [sqlite3 API](https://www.npm
 
 The package is developed entirely in TypeScript and is fully compatible with JavaScript. It doesn't require any native libraries. This makes it a straightforward and effective tool for managing cloud-based databases in a familiar SQLite environment.
 
+## Publish / Subscribe (Pub/Sub)
+
+```ts
+import { Database } from '@sqlitecloud/drivers'
+import { PubSub, PUBSUB_ENTITY_TYPE } from '@sqlitecloud/drivers/lib/drivers/pubsub'
+
+let database = new Database('sqlitecloud://user:password@xxx.sqlite.cloud:8860/chinook.sqlite')
+// or use sqlitecloud://xxx.sqlite.cloud:8860?apikey=xxxxxxx
+
+const pubSub: PubSub = await database.getPubSub()
+
+await pubSub.listen(PUBSUB_ENTITY_TYPE.TABLE, 'albums', (error, results, data) => {
+  if (results) {
+    // Changes on albums table will be received here as JSON object
+    console.log('Received message:', results)
+  }
+})
+
+await database.sql`INSERT INTO albums (Title, ArtistId) values ('Brand new song', 1)`
+
+// Stop listening changes on the table
+await pubSub.unlisten(PUBSUB_ENTITY_TYPE.TABLE, 'albums')
+```
+
+Pub/Sub is a messaging pattern that allows multiple applications to communicate with each other asynchronously. In the context of SQLiteCloud, Pub/Sub can be used to provide real-time updates and notifications to subscribed applications whenever data changes in the database or it can be used to send payloads (messages) to anyone subscribed to a channel.
+
+Pub/Sub Documentation: [https://docs.sqlitecloud.io/docs/pub-sub](https://docs.sqlitecloud.io/docs/pub-sub)
+
 ## More
 
 How do I deploy SQLite in the cloud?  

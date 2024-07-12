@@ -129,6 +129,7 @@ export type ResultsCallback<T = any> = (error: Error | null, results?: T) => voi
 export type RowsCallback<T = Record<string, any>> = (error: Error | null, rows?: T[]) => void
 export type RowCallback<T = Record<string, any>> = (error: Error | null, row?: T) => void
 export type RowCountCallback = (error: Error | null, rowCount?: number) => void
+export type PubSubCallback<T = any> = (error: Error | null, results?: T, extraData?: T) => void
 
 /**
  * Certain responses include arrays with various types of metadata.

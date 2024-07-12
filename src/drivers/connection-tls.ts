@@ -207,8 +207,9 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
 
     if (this.processCallback) {
       this.processCallback(error, result)
-      //      this.processCallback = undefined
     }
+
+    this.buffer = Buffer.alloc(0)
   }
 
   /** Disconnect immediately, release connection, no events. */

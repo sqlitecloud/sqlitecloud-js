@@ -25,7 +25,7 @@ export const CMD_COMPRESSED = '%'
 export const CMD_COMMAND = '^'
 export const CMD_ARRAY = '='
 // const CMD_RAWJSON = '{'
-// const CMD_PUBSUB = '|'
+export const CMD_PUBSUB = '|'
 // const CMD_RECONNECT = '@'
 
 // To mark the end of the Rowset, the special string /LEN 0 0 0   is sent (LEN is always 6 in this case)
@@ -297,6 +297,8 @@ export function popData(buffer: Buffer): { data: SQLiteCloudDataTypes | SQLiteCl
     case CMD_ZEROSTRING:
       return popResults(buffer.subarray(spaceIndex + 1, commandEnd - 1).toString('utf8'))
     case CMD_COMMAND:
+      return popResults(buffer.subarray(spaceIndex + 1, commandEnd).toString('utf8'))
+    case CMD_PUBSUB:
       return popResults(buffer.subarray(spaceIndex + 1, commandEnd).toString('utf8'))
     case CMD_JSON:
       return popResults(JSON.parse(buffer.subarray(spaceIndex + 1, commandEnd).toString('utf8')))
