@@ -3,7 +3,6 @@
  */
 
 import { SQLiteCloudError, SQLiteCloudRowset } from '../src/index'
-import { SQLiteCloudConnection } from '../src/drivers/connection'
 import { SQLiteCloudTlsConnection } from '../src/drivers/connection-tls'
 import { anonimizeCommand } from '../src/drivers/utilities'
 import {
@@ -20,8 +19,6 @@ import {
   EXPECT_SPEED_MS,
   EXTRA_LONG_TIMEOUT
 } from './shared'
-
-import fs from 'fs'
 
 function getConnection() {
   return new SQLiteCloudTlsConnection({ connectionstring: CHINOOK_DATABASE_URL }, error => {
@@ -56,6 +53,7 @@ describe('connect', () => {
     expect(remoteConfig.tlsOptions).toBeFalsy()
   })
 */
+
   it(
     'should connect with config object string',
     done => {
@@ -120,13 +118,13 @@ describe('connect', () => {
       const chinook = getConnection()
       chinook.sendCommands('TEST STRING', (error, results) => {
         let err = null
-        try { 
+        try {
           expect(results).toBe('Hello World, this is a test string.')
         } catch (error) {
           err = error
         } finally {
-          chinook.close();
-          (err) ? done(err) : done()
+          chinook.close()
+          err ? done(err) : done()
         }
       })
     })
@@ -179,6 +177,94 @@ describe('connect', () => {
 })
 
 describe('send test commands', () => {
+  it('should test rowset chunk', done => {
+    const chinook = getConnection()
+    chinook.sendCommands('TEST ROWSET_CHUNK', (error, results) => {
+      let err = null
+      try {
+        expect(error).toBeNull()
+        expect(Array.isArray(results)).toBe(true)
+        expect(results).toHaveLength(147)
+        // console.debug(results)
+      } catch (error) {
+        err = error
+      } finally {
+        chinook.close()
+        err ? done(err) : done()
+      }
+    })
+  })
+
+  it('should test rowset nochunk', done => {
+    const chinook = getConnection()
+    chinook.sendCommands('TEST ROWSET_NOCHUNK', (error, results) => {
+      let err = null
+      try {
+        expect(error).toBeNull()
+        expect(Array.isArray(results)).toBe(true)
+        expect(results).toHaveLength(147)
+        // console.debug(results)
+      } catch (error) {
+        err = error
+      } finally {
+        chinook.close()
+        err ? done(err) : done()
+      }
+    })
+  })
+
+  it('should test rowset nochunk compressed', done => {
+    const chinook = getConnection()
+    chinook.sendCommands('TEST ROWSET_NOCHUNK_COMPRESSED', (error, results) => {
+      let err = null
+      try {
+        expect(error).toBeNull()
+        expect(Array.isArray(results)).toBe(true)
+        expect(results).toHaveLength(147)
+        // console.debug(results)
+      } catch (error) {
+        err = error
+      } finally {
+        chinook.close()
+        err ? done(err) : done()
+      }
+    })
+  })
+
+  it('should test rowset chunk compressed', done => {
+    const chinook = getConnection()
+    chinook.sendCommands('TEST ROWSET_CHUNK_COMPRESSED', (error, results) => {
+      let err = null
+      try {
+        expect(error).toBeNull()
+        expect(Array.isArray(results)).toBe(true)
+        expect(results).toHaveLength(147)
+        // console.debug(results)
+      } catch (error) {
+        err = error
+      } finally {
+        chinook.close()
+        err ? done(err) : done()
+      }
+    })
+  })
+
+  it('should test string0', done => {
+    const chinook = getConnection()
+    chinook.sendCommands('TEST STRING0', (error, results) => {
+      let err = null
+      try {
+        expect(error).toBeNull()
+        expect(results).toBe('')
+      } catch (error) {
+        err = error
+      } finally {
+        chinook.close()
+        err ? done(err) : done()
+      }
+    })
+  })
+
   test(
     'should test long string',
     done => {
@@ -200,8 +286,8 @@ describe('send test commands', () => {
         } catch (error) {
           err = error
         } finally {
-          chinook.close();
-          (err) ? done(err) : done()
+          chinook.close()
+          err ? done(err) : done()
         }
       })
     },
@@ -220,8 +306,8 @@ describe('send test commands', () => {
         } catch (error) {
           err = error
         } finally {
-          chinook.close();
-          (err) ? done(err) : done()
+          chinook.close()
+          err ? done(err) : done()
         }
       })
     },
@@ -238,8 +324,8 @@ describe('send test commands', () => {
       } catch (error) {
         err = error
       } finally {
-        connection.close();
-        (err) ? done(err) : done()
+        connection.close()
+        err ? done(err) : done()
       }
     })
   })
@@ -254,8 +340,8 @@ describe('send test commands', () => {
       } catch (error) {
         err = error
       } finally {
-        chinook.close();
-        (err) ? done(err) : done()
+        chinook.close()
+        err ? done(err) : done()
       }
     })
   })
@@ -272,8 +358,8 @@ describe('send test commands', () => {
         } catch (error) {
           err = error
         } finally {
-          chinook.close();
-          (err) ? done(err) : done()
+          chinook.close()
+          err ? done(err) : done()
         }
       })
     },
@@ -290,8 +376,8 @@ describe('send test commands', () => {
       } catch (error) {
         err = error
       } finally {
-        chinook.close();
-        (err) ? done(err) : done()
+        chinook.close()
+        err ? done(err) : done()
       }
     })
   })
@@ -306,8 +392,8 @@ describe('send test commands', () => {
       } catch (error) {
         err = error
       } finally {
-        chinook.close();
-        (err) ? done(err) : done()
+        chinook.close()
+        err ? done(err) : done()
       }
     })
   })
@@ -322,8 +408,8 @@ describe('send test commands', () => {
       } catch (error) {
         err = error
       } finally {
-        chinook.close();
-        (err) ? done(err) : done()
+        chinook.close()
+        err ? done(err) : done()
       }
     })
   })
@@ -348,8 +434,8 @@ describe('send test commands', () => {
       } catch (error) {
         err = error
       } finally {
-        chinook.close();
-        (err) ? done(err) : done()
+        chinook.close()
+        err ? done(err) : done()
       }
     })
   })
@@ -367,8 +453,8 @@ describe('send test commands', () => {
       } catch (error) {
         err = error
       } finally {
-        chinook.close();
-        (err) ? done(err) : done()
+        chinook.close()
+        err ? done(err) : done()
       }
     })
   })
@@ -386,8 +472,8 @@ describe('send test commands', () => {
       } catch (error) {
         err = error
       } finally {
-        chinook.close();
-        (err) ? done(err) : done()
+        chinook.close()
+        err ? done(err) : done()
       }
     })
   })
@@ -408,8 +494,8 @@ describe('send test commands', () => {
       } catch (error) {
         err = error
       } finally {
-        chinook.close();
-        (err) ? done(err) : done()
+        chinook.close()
+        err ? done(err) : done()
       }
     })
   })
@@ -430,8 +516,8 @@ describe('send test commands', () => {
       } catch (error) {
         err = error
       } finally {
-        chinook.close();
-        (err) ? done(err) : done()
+        chinook.close()
+        err ? done(err) : done()
       }
     })
   })
@@ -453,8 +539,8 @@ describe('send test commands', () => {
       } catch (error) {
         err = error
       } finally {
-        chinook.close();
-        (err) ? done(err) : done()
+        chinook.close()
+        err ? done(err) : done()
       }
     })
   })
@@ -472,8 +558,8 @@ describe('send test commands', () => {
       } catch (error) {
         err = error
       } finally {
-        chinook.close();
-        (err) ? done(err) : done()
+        chinook.close()
+        err ? done(err) : done()
       }
     })
   })
@@ -499,8 +585,8 @@ describe('send test commands', () => {
         } catch (error) {
           err = error
         } finally {
-          database.close();
-          (err) ? done(err) : done()
+          database.close()
+          err ? done(err) : done()
         }
       })
     },
@@ -522,8 +608,8 @@ describe('send test commands', () => {
           expect(results[1]['key']).toBe('INDEXED')
           expect(results[2]['key']).toBe('INDEX')
           expect(results[3]['key']).toBe('DESC')
-        } catch (e) {
-          database.close();
+        } catch (e) {
+          database.close()
           done(e)
           return
         }
@@ -539,7 +625,7 @@ describe('send test commands', () => {
             expect(results[2]['key']).toBe('INDEX')
             expect(results[3]['key']).toBe('DESC')
           } catch (e) {
-            database.close();
+            database.close()
             done(e)
             return
           }
@@ -552,8 +638,8 @@ describe('send test commands', () => {
             } catch (error) {
               err = error
             } finally {
-              database.close();
-              (err) ? done(err) : done()
+              database.close()
+              err ? done(err) : done()
             }
           })
         })
@@ -574,12 +660,12 @@ describe('operations', () => {
       for (let i = 0; i < numQueries; i++) {
         chinook.sendCommands(`select ${i} as "count", 'hello' as 'string'`, (error, results) => {
           try {
-          expect(error).toBeNull()
-          expect(results.numberOfColumns).toBe(2)
-          expect(results.numberOfRows).toBe(1)
-          expect(results.version == 1 || results.version == 2).toBeTruthy()
-          expect(results.columnsNames).toEqual(['count', 'string'])
-          expect(results.getItem(0, 0)).toBe(i)
+            expect(error).toBeNull()
+            expect(results.numberOfColumns).toBe(2)
+            expect(results.numberOfRows).toBe(1)
+            expect(results.version == 1 || results.version == 2).toBeTruthy()
+            expect(results.columnsNames).toEqual(['count', 'string'])
+            expect(results.getItem(0, 0)).toBe(i)
           } catch (error) {
             chinook.close()
             done()
@@ -697,8 +783,8 @@ describe('send select commands', () => {
       } catch (error) {
         err = error
       } finally {
-        chinook.close();
-        (err) ? done(err) : done()
+        chinook.close()
+        err ? done(err) : done()
       }
     })
   })
@@ -718,8 +804,8 @@ describe('send select commands', () => {
       } catch (error) {
         err = error
       } finally {
-        chinook.close();
-        (err) ? done(err) : done()
+        chinook.close()
+        err ? done(err) : done()
       }
     })
   })
@@ -727,7 +813,7 @@ describe('send select commands', () => {
   it('should select long formatted string', done => {
     const chinook = getConnection()
     chinook.sendCommands("USE DATABASE :memory:; select printf('%.*c', 1000, 'x') AS DDD", (error, results) => {
-      let err = null 
+      let err = null
       try {
         expect(error).toBeNull()
         expect(results.numberOfColumns).toBe(1)
@@ -740,8 +826,8 @@ describe('send select commands', () => {
       } catch (error) {
         err = error
       } finally {
-        chinook.close();
-        (err) ? done(err) : done()
+        chinook.close()
+        err ? done(err) : done()
       }
     })
   })
@@ -749,7 +835,7 @@ describe('send select commands', () => {
   it('should select database', done => {
     const chinook = getConnection()
     chinook.sendCommands('USE DATABASE chinook.sqlite;', (error, results) => {
-      let err = null 
+      let err = null
       try {
         expect(error).toBeNull()
         expect(results.numberOfColumns).toBeUndefined()
@@ -758,8 +844,8 @@ describe('send select commands', () => {
       } catch (error) {
         err = error
       } finally {
-        chinook.close();
-        (err) ? done(err) : done()
+        chinook.close()
+        err ? done(err) : done()
       }
     })
   })
@@ -775,8 +861,8 @@ describe('send select commands', () => {
       } catch (error) {
         err = error
       } finally {
-        chinook.close();
-        (err) ? done(err) : done()
+        chinook.close()
+        err ? done(err) : done()
       }
     })
   })
@@ -792,8 +878,8 @@ describe('send select commands', () => {
       } catch (error) {
         err = error
       } finally {
-        chinook.close();
-        (err) ? done(err) : done()
+        chinook.close()
+        err ? done(err) : done()
       }
     })
   })
@@ -801,7 +887,7 @@ describe('send select commands', () => {
   it('should select * from albums', done => {
     const chinook = getConnection()
     chinook.sendCommands('SELECT * FROM albums;', (error, results) => {
-      let err = null 
+      let err = null
       try {
         expect(error).toBeNull()
         expect(results.numberOfColumns).toBe(3)
@@ -810,8 +896,8 @@ describe('send select commands', () => {
       } catch (error) {
         err = error
       } finally {
-        chinook.close();
-        (err) ? done(err) : done()
+        chinook.close()
+        err ? done(err) : done()
       }
     })
   })
@@ -832,7 +918,7 @@ describe('connection stress testing', () => {
             expect(error).toBeNull()
             expect(results).toBe('Hello World, this is a test string.')
           } catch (e) {
-            chinook.close();
+            chinook.close()
             done(e)
             return
           }
@@ -868,7 +954,7 @@ describe('connection stress testing', () => {
             expect(results.numberOfColumns).toBe(3)
             expect(results.numberOfRows).toBe(4)
           } catch (e) {
-            chinook.close();
+            chinook.close()
             done(e)
             return
           }
@@ -907,7 +993,7 @@ describe('connection stress testing', () => {
               expect(results.numberOfColumns).toBe(3)
               expect(results.numberOfRows).toBe(4)
             } catch (e) {
-              chinook.close();
+              chinook.close()
               done(e)
               return
             }
