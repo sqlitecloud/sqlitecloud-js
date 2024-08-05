@@ -20,6 +20,8 @@ import {
 
 import * as tls from 'tls'
 
+import fs from 'fs'
+
 /**
  * Implementation of SQLiteCloudConnection that connects to the database using specific tls APIs
  * that connect to native sockets or tls sockets and communicates via raw, binary protocol.
@@ -140,11 +142,14 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
   // callback to be called when a command is finished processing
   private processCallback?: ResultsCallback
 
+  private pendingChunks: Buffer[] = []
+
   /** Handles data received in response to an outbound command sent by processCommands */
   private processCommandsData(data: Buffer) {
     try {
       // append data to buffer as it arrives
       if (data.length && data.length > 0) {
+        // console.debug(`processCommandsData - received ${data.length} bytes`)
         this.buffer = Buffer.concat([this.buffer, data])
       }
 
@@ -160,22 +165,31 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
               bufferString = bufferString.substring(0, 100) + '...' + bufferString.substring(bufferString.length - 40)
             }
             const elapsedMs = new Date().getTime() - this.startedOn.getTime()
-            console.debug(`<- ${bufferString} (${elapsedMs}ms)`)
+            console.debug(`<- ${bufferString} (${bufferString.length} bytes, ${elapsedMs}ms)`)
           }
 
           // need to decompress this buffer before decoding?
           if (dataType === CMD_COMPRESSED) {
-            ;({ buffer: this.buffer, dataType } = decompressBuffer(this.buffer))
-          }
-
-          if (dataType !== CMD_ROWSET_CHUNK) {
-            const { data } = popData(this.buffer)
-            this.processCommandsFinish?.call(this, null, data)
+            const decompressResults = decompressBuffer(this.buffer)
+            if (decompressResults.dataType === CMD_ROWSET_CHUNK) {
+              this.pendingChunks.push(decompressResults.buffer)
+              this.buffer = decompressResults.remainingBuffer
+              this.processCommandsData(Buffer.alloc(0))
+              return
+            } else {
+              const { data } = popData(decompressResults.buffer)
+              this.processCommandsFinish?.call(this, null, data)
+            }
           } else {
-            // check if rowset received the ending chunk in which case it can be unpacked
-            if (bufferEndsWith(this.buffer, ROWSET_CHUNKS_END)) {
-              const parsedData = parseRowsetChunks([this.buffer])
-              this.processCommandsFinish?.call(this, null, parsedData)
+            if (dataType !== CMD_ROWSET_CHUNK) {
+              const { data } = popData(this.buffer)
+              this.processCommandsFinish?.call(this, null, data)
+            } else {
+              const completeChunk = bufferEndsWith(this.buffer, ROWSET_CHUNKS_END)
+              if (completeChunk) {
+                const parsedData = parseRowsetChunks([...this.pendingChunks, this.buffer])
+                this.processCommandsFinish?.call(this, null, parsedData)
+              }
             }
           }
         }
@@ -188,7 +202,8 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
         }
       }
     } catch (error) {
-      console.assert(error instanceof Error)
+      console.error(`processCommandsData - error: ${error}`)
+      console.assert(error instanceof Error, 'An error occoured while processing data')
       if (error instanceof Error) {
         this.processCommandsFinish?.call(this, error)
       }
@@ -210,6 +225,7 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
     }
 
     this.buffer = Buffer.alloc(0)
+    this.pendingChunks = []
   }
 
   /** Disconnect immediately, release connection, no events. */

@@ -5,7 +5,10 @@
 import { SQLiteCloudError, type SQLCloudRowsetMetadata, type SQLiteCloudDataTypes } from './types'
 import { SQLiteCloudRowset } from './rowset'
 
+import fs from 'fs'
 const lz4 = require('lz4js')
+
+import lz4bis from 'lz4'
 
 // The server communicates with clients via commands defined in
 // SQLiteCloud Server Protocol (SCSP), see more at:
@@ -47,32 +50,39 @@ export function parseCommandLength(data: Buffer): number {
 }
 
 /** Receive a compressed buffer, decompress with lz4, return buffer and datatype */
-export function decompressBuffer(buffer: Buffer): { buffer: Buffer; dataType: string } {
+export function decompressBuffer(buffer: Buffer): { buffer: Buffer; dataType: string; remainingBuffer: Buffer } {
+  // https://github.com/sqlitecloud/sdk/blob/master/PROTOCOL.md#scsp-compression
+  // jest test/database.test.ts -t "select large result set"
+
+  // starts with %<commandLength> <compressed> <uncompressed>
   const spaceIndex = buffer.indexOf(' ')
-  buffer = buffer.subarray(spaceIndex + 1)
+  const commandLength = parseInt(buffer.subarray(1, spaceIndex).toString('utf8'))
 
-  // extract compressed size
-  const compressedSize = parseInt(buffer.subarray(0, buffer.indexOf(' ') + 1).toString('utf8'))
-  buffer = buffer.subarray(buffer.indexOf(' ') + 1)
+  let commandBuffer = buffer.subarray(spaceIndex + 1, spaceIndex + 1 + commandLength)
+  const remainingBuffer = buffer.subarray(spaceIndex + 1 + commandLength)
 
-  // extract decompressed size
-  const decompressedSize = parseInt(buffer.subarray(0, buffer.indexOf(' ') + 1).toString('utf8'))
-  buffer = buffer.subarray(buffer.indexOf(' ') + 1)
+  // extract compressed + decompressed  size
+  const compressedSize = parseInt(commandBuffer.subarray(0, commandBuffer.indexOf(' ') + 1).toString('utf8'))
+  commandBuffer = commandBuffer.subarray(commandBuffer.indexOf(' ') + 1)
+  const decompressedSize = parseInt(commandBuffer.subarray(0, commandBuffer.indexOf(' ') + 1).toString('utf8'))
+  commandBuffer = commandBuffer.subarray(commandBuffer.indexOf(' ') + 1)
 
   // extract compressed dataType
-  const dataType = buffer.subarray(0, 1).toString('utf8')
-  const decompressedBuffer = Buffer.alloc(decompressedSize)
-  const compressedBuffer = buffer.subarray(buffer.length - compressedSize)
+  const dataType = commandBuffer.subarray(0, 1).toString('utf8')
+  let decompressedBuffer = Buffer.alloc(decompressedSize)
+  const compressedBuffer = commandBuffer.subarray(commandBuffer.length - compressedSize)
 
   // lz4js library is javascript and doesn't have types so we silence the type check
   // eslint-disable-next-line
   const decompressionResult: number = lz4.decompressBlock(compressedBuffer, decompressedBuffer, 0, compressedSize, 0)
-  buffer = Buffer.concat([buffer.subarray(0, buffer.length - compressedSize), decompressedBuffer])
+  // the entire command is composed of the header (which is not compressed) + the decompressed block
+  decompressedBuffer = Buffer.concat([commandBuffer.subarray(0, commandBuffer.length - compressedSize), decompressedBuffer])
+
   if (decompressionResult <= 0 || decompressionResult !== decompressedSize) {
     throw new Error(`lz4 decompression error at offset ${decompressionResult}`)
   }
 
-  return { buffer, dataType }
+  return { buffer: decompressedBuffer, dataType, remainingBuffer }
 }
 
 /** Parse error message or extended error message */
@@ -136,7 +146,7 @@ export function parseRowsetHeader(buffer: Buffer): { index: number; metadata: SQ
   // extract rowset header
   const { data, fwdBuffer } = popIntegers(buffer, 3)
 
-  return {
+  const result = {
     index,
     metadata: {
       version: data[0],
@@ -146,6 +156,9 @@ export function parseRowsetHeader(buffer: Buffer): { index: number; metadata: SQ
     },
     fwdBuffer
   }
+
+  // console.debug(`parseRowsetHeader`, result)
+  return result
 }
 
 /** Extract column names and, optionally, more metadata out of a rowset's header */
@@ -218,7 +231,7 @@ export function parseRowsetChunks(buffers: Buffer[]): SQLiteCloudRowset {
 
   // validate and skip data type
   const dataType = buffer.subarray(0, 1).toString()
-  console.assert(dataType === CMD_ROWSET_CHUNK)
+  if (dataType !== CMD_ROWSET_CHUNK) throw new Error(`parseRowsetChunks - dataType: ${dataType} should be CMD_ROWSET_CHUNK`)
   buffer = buffer.subarray(buffer.indexOf(' ') + 1)
 
   while (buffer.length > 0 && !bufferStartsWith(buffer, ROWSET_CHUNKS_END)) {
@@ -268,23 +281,25 @@ export function popData(buffer: Buffer): { data: SQLiteCloudDataTypes | SQLiteCl
 
   // first character is the data type
   console.assert(buffer && buffer instanceof Buffer)
-  const dataType: string = buffer.subarray(0, 1).toString('utf8')
-  console.assert(dataType !== CMD_COMPRESSED, "Compressed data shouldn't be decompressed before parsing")
-  console.assert(dataType !== CMD_ROWSET_CHUNK, 'Chunked data should be parsed by parseRowsetChunks')
+  let dataType: string = buffer.subarray(0, 1).toString('utf8')
+  if (dataType == CMD_COMPRESSED) throw new Error('Compressed data should be decompressed before parsing')
+  if (dataType == CMD_ROWSET_CHUNK) throw new Error('Chunked data should be parsed by parseRowsetChunks')
 
   let spaceIndex = buffer.indexOf(' ')
   if (spaceIndex === -1) {
     spaceIndex = buffer.length - 1
   }
 
-  let commandEnd = -1
+  let commandEnd = -1,
+    commandLength = -1
   if (dataType === CMD_INT || dataType === CMD_FLOAT || dataType === CMD_NULL) {
     commandEnd = spaceIndex + 1
   } else {
-    const commandLength = parseInt(buffer.subarray(1, spaceIndex).toString())
+    commandLength = parseInt(buffer.subarray(1, spaceIndex).toString())
     commandEnd = spaceIndex + 1 + commandLength
   }
 
+  // console.debug(`popData - dataType: ${dataType}, spaceIndex: ${spaceIndex}, commandLength: ${commandLength}, commandEnd: ${commandEnd}`)
   switch (dataType) {
     case CMD_INT:
       return popResults(parseInt(buffer.subarray(1, spaceIndex).toString()))
@@ -313,7 +328,9 @@ export function popData(buffer: Buffer): { data: SQLiteCloudDataTypes | SQLiteCl
       break
   }
 
-  throw new TypeError(`Data type: ${dataType} is not defined in SCSP`)
+  const msg = `popData - Data type: ${Number(dataType)} '${dataType}'  is not defined in SCSP, spaceIndex: ${spaceIndex}, commandLength: ${commandLength}, commandEnd: ${commandEnd}`
+  console.error(msg)
+  throw new TypeError(msg)
 }
 
 /** Format a command to be sent via SCSP protocol */
