@@ -226,7 +226,8 @@ export function validateConfiguration(config: SQLiteCloudConfig): SQLiteCloudCon
 
   config.verbose = parseBoolean(config.verbose)
   config.noblob = parseBoolean(config.noblob)
-  config.compression = parseBoolean(config.compression)
+  config.compression = config.compression != undefined && config.compression != null ? parseBoolean(config.compression) : true // default: true
+
   config.create = parseBoolean(config.create)
   config.non_linearizable = parseBoolean(config.non_linearizable)
   config.insecure = parseBoolean(config.insecure)

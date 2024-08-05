@@ -44,7 +44,7 @@ export interface SQLiteCloudConfig {
   /** Database will be created in memory */
   memory?: boolean
 
-  /* Enable compression */
+  /* Enable compression, default: true */
   compression?: boolean
   /** Request for immediate responses from the server node without waiting for linerizability guarantees */
   non_linearizable?: boolean
