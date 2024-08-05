@@ -12,5 +12,18 @@ module.exports = {
         isolatedModules: true
       }
     ]
-  }
+  },
+  // Other Jest configuration options
+  reporters: [
+    'default',
+    [
+      'jest-html-reporter',
+      {
+        pageTitle: 'SQLite Cloud Driver Test Report',
+        outputPath: 'reports/test-report.html',
+        includeFailureMsg: true,
+        includeConsoleLog: true
+      }
+    ]
+  ]
 }
