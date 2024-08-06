@@ -6,8 +6,9 @@ import tls from 'tls'
 
 /** Default timeout value for queries */
 export const DEFAULT_TIMEOUT = 300 * 1000
+
 /** Default tls connection port */
-export const DEFAULT_PORT = 9960
+export const DEFAULT_PORT = 8860
 
 /**
  * Configuration for SQLite cloud connection
