@@ -5,10 +5,8 @@
 import { SQLiteCloudError, type SQLCloudRowsetMetadata, type SQLiteCloudDataTypes } from './types'
 import { SQLiteCloudRowset } from './rowset'
 
-import fs from 'fs'
+// https://www.npmjs.com/package/lz4js
 const lz4 = require('lz4js')
-
-import lz4bis from 'lz4'
 
 // The server communicates with clients via commands defined in
 // SQLiteCloud Server Protocol (SCSP), see more at:
