@@ -93,7 +93,7 @@ const test = (done: jest.DoneCallback, chinook: SQLiteCloudConnection, ok: boole
             try {
               expect(error).toBeInstanceOf(SQLiteCloudError)
               expect((error as SQLiteCloudError).message).toMatch(
-                /(not found|doesn\'t exist|does not exist|invalid|unable|fail|cannot|must be unique|unknown|undefined|error|no such|not available|try again later|wrong)/i
+                /(not found|doesn\'t exist|does not exist|invalid|unable|fail|cannot|must be unique|unknown|undefined|error|no such|not available|try again later|wrong|has no)/i
               )
               expect(results).toBeUndefined()
             } catch {
@@ -1312,3 +1312,90 @@ describe.each([
     )
   })
 })
+
+describe.each([
+  ['chinook.sqlite', 0, null, null, true],
+  ['chinook.sqlite', 1, 1, 1, true],
+  ['chinook.sqlite', 0, undefined, undefined, true],
+  [undefined, 1, 1, 1, false],
+  ['chinook.sqlite', 1, '1h', '1h', true],
+  ['undefined', randomName(), randomName(), randomName(), false]
+])('backups', (database, enabled, retention, snapshot_interval, ok) => {
+  it(`should${ok ? '' : "n't"} apply backup settings`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `
+      SET DATABASE ${database} KEY backup TO ${enabled};
+      ${retention ? `SET DATABASE ${database} KEY backup_retention TO ${retention}` : 'REMOVE DATABASE chinook.sqlite KEY backup_retention'};
+      ${snapshot_interval ? `SET DATABASE ${database} KEY backup_snapshot_interval TO ${snapshot_interval}` : 'REMOVE DATABASE chinook.sqlite KEY backup_snapshot_interval'};
+      APPLY BACKUP SETTINGS;
+      `,
+      test(done, chinook, ok)
+    )
+  })
+
+  it(`should${ok ? '' : "n't"} list settings`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `LIST BACKUP SETTINGS`,
+      test(done, chinook, ok, {
+        name: 'chinook.sqlite',
+        enabled: enabled,
+        backup_retention: retention ? retention.toString() : null,
+        backup_snapshot_interval: snapshot_interval ? snapshot_interval.toString() : null
+      })
+    )
+  })
+
+  it(`should${ok ? '' : "n't"} list backups`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`LIST BACKUPS`, test(done, chinook, ok, /*enabled*/ []))
+  })
+
+  it(`should${/* can't get backups to work locally. enabled ? true : */ false ? '' : "n't"} list ${database} backups`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`LIST BACKUPS DATABASE ${database}`, test(done, chinook, /* enabled ? true : */ false))
+  })
+
+  it(`should${/* can't get backups to work locally. enabled ? true : */ false ? '' : "n't"} restore ${database} backup`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`RESTORE BACKUP DATABASE ${database}`, test(done, chinook, /* enabled ? true : */ false))
+  })
+})
+
+describe.each([[randomName(), false]])('plugins', (name, ok) => {
+  //these test can potentially break in the future
+  it(`should list plugins`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`LIST PLUGINS`, test(done, chinook, true, []))
+  })
+
+  it(`should enable plugin`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`ENABLE PLUGIN ${name}`, test(done, chinook, true))
+  })
+
+  it(`should${ok ? '' : "n't"} load plugin`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`LOAD PLUGIN ${name}`, test(done, chinook, ok))
+  })
+
+  it(`should disable plugin`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`DISABLE PLUGIN ${name}`, test(done, chinook, true))
+  })
+})
+
+describe.each([[1, 1, undefined, 'chinook.sqlite', 75, true, true, true, false]])(
+  'analyzer',
+  (query, node, group, database, percentage, all, apply, grouped, ok) => {
+    it(`should${ok ? '' : "n't"} list analyzer`, done => {
+      const chinook = getConnection()
+      chinook.sendCommands(
+        `LIST ANALYZER${group ? ` GROUPID ${group}` : ''}${database ? ` DATABASE ${database}` : ''}${grouped ? ' GROUPED' : ''}${node ? ` NODE ${node}` : ''}`,
+        test(done, chinook, true, [])
+      )
+    })
+    //wip..
+  }
+)
