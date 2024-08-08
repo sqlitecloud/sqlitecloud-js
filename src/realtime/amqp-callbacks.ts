@@ -7,13 +7,12 @@ import crypto from 'crypto' // Import the crypto module
 // https://amqp-node.github.io/amqplib/
 import amqplib from 'amqplib/callback_api'
 
-const rabbit_url = process.env.SQLITECLOUD_AMQP as string //  'amqp://user:cKZWUkrGMOrdcsqZ@rabbitmq.aws-eu1.sqlite.tech'
+const rabbit_url = process.env.SQLITECLOUD_AMQP as string
+// eg. amqp://user:password@rabbitmq.aws-eu1.sqlite.tech
 
 // docker run -it --rm --name rabbitmq -p 5672:5672 -p 15672:15672 -e RABBITMQ_DEFAULT_USER=user -e RABBITMQ_DEFAULT_PASS=xxx rabbitmq:3.13-management
 
 // https://rabbitmq.aws-eu1.sqlite.tech:15672/#/
-
-const topic = 'messaggini'
 
 const queue = 'jsontasks'
 
