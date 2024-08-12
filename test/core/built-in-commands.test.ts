@@ -34,9 +34,11 @@ const randomDate = (fromTime = new Date(new Date().getTime() + 4 * 60 * 60 * 100
 const randomBool = (): boolean => Math.random() < 0.5
 const date = () => expect.stringMatching(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
 const ip = () => expect.stringMatching(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)
+const uuid = () => expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
 const bool = () => expect.any(Number)
 const colseq = () => expect.stringMatching(/^(BINARY|RTRIM|NOCASE)$/)
 const screaming_snake_case = () => expect.stringMatching(/^[A-Z]+[_]*[A-Z]*$/)
+const regex_IP_UUID_N = /(^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$)|(^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$)|[0-9]/
 
 /* const sqlOk = async (command: string, database: SQLiteCloudTlsConnection, done: jest.DoneCallback, ok: boolean) => { //testing with .sql
   try {
@@ -93,7 +95,7 @@ const test = (done: jest.DoneCallback, chinook: SQLiteCloudConnection, ok: boole
             try {
               expect(error).toBeInstanceOf(SQLiteCloudError)
               expect((error as SQLiteCloudError).message).toMatch(
-                /(not found|doesn\'t exist|does not exist|invalid|unable|fail|cannot|must be unique|unknown|undefined|error|no such|not available|try again later|wrong|has no)/i
+                /(not found|doesn\'t exist|does not exist|invalid|unable|fail|cannot|must be unique|unknown|undefined|error|no such|not available|try again later|wrong|has no|is read-only)/i
               )
               expect(results).toBeUndefined()
             } catch {
@@ -1386,16 +1388,179 @@ describe.each([[randomName(), false]])('plugins', (name, ok) => {
   })
 })
 
-describe.each([[1, 1, undefined, 'chinook.sqlite', 75, true, true, true, false]])(
-  'analyzer',
-  (query, node, group, database, percentage, all, apply, grouped, ok) => {
-    it(`should${ok ? '' : "n't"} list analyzer`, done => {
-      const chinook = getConnection()
-      chinook.sendCommands(
-        `LIST ANALYZER${group ? ` GROUPID ${group}` : ''}${database ? ` DATABASE ${database}` : ''}${grouped ? ' GROUPED' : ''}${node ? ` NODE ${node}` : ''}`,
-        test(done, chinook, true, [])
+describe.each([
+  [1, undefined, 'chinook.sqlite', 75, true, true, false, true],
+  [1, undefined, undefined, undefined, false, false, false, true],
+  [1, undefined, undefined, undefined, true, true, false, true],
+  [_, undefined, undefined, undefined, true, true, false, true],
+  ['\0\0\0\0', 'undefined', '\0\0\0\0', undefined, true, true, true, false]
+])('analyzer', (node, group, database, percentage, all, apply, grouped, ok) => {
+  it(`enables query analyzer`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`SET KEY query_analyzer_enabled TO 1; SET KEY query_analyzer_threshold TO 0;`, test(done, chinook, ok))
+  })
+
+  it(`executes a query to analyze`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`SELECT * FROM customers`, test(done, chinook, true, expect.anything()))
+  })
+
+  let query: string
+
+  it(`should${ok ? '' : "n't"} list analyzer`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `LIST ANALYZER${group ? ` GROUPID ${group}` : ''}${database ? ` DATABASE ${database}` : ''}${grouped ? ' GROUPED' : ''}${node ? ` NODE ${node}` : ''}`,
+      test(
+        done,
+        chinook,
+        ok,
+        grouped
+          ? {
+              group_id: expect.any(Number),
+              sql: expect.any(String),
+              database: database ?? expect.any(String),
+              'AVG(query_time)': expect.any(Number),
+              'MAX(query_time)': expect.any(Number),
+              'COUNT(query_time)': expect.any(Number)
+            }
+          : {
+              id: expect.any(Number),
+              sql: expect.any(String),
+              database: database ?? expect.any(String),
+              query_time: expect.anything(),
+              datetime: expect.anything()
+            },
+        (res: any) => (ok ? (query = res[0].id) : undefined)
       )
-    })
-    //wip..
-  }
-)
+    )
+  })
+
+  it(`should${ok ? '' : "n't"} suggest`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `ANALYZER SUGGEST ID ${query}${percentage ? ` PERCENTAGE ${percentage}` : ''}${apply ? ' APPLY' : ''}${node ? ` NODE ${node}` : ''}`,
+      test(done, chinook, ok, {
+        statement: expect.any(Number),
+        type: expect.any(Number),
+        report: expect.any(String)
+      })
+    )
+  })
+
+  it(`should${ok ? '' : "n't"} plan`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `ANALYZER PLAN ID ${query}${node ? ` NODE ${node}` : ''}`,
+      test(done, chinook, ok, {
+        id: expect.any(Number),
+        parent: expect.any(Number),
+        notused: 0,
+        detail: expect.any(String)
+      })
+    )
+  })
+
+  it(`should${ok ? '' : "n't"} reset analyzer`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `ANALYZER RESET${query ? ` ID ${query}` : group ? ` GROUPID ${group}` : database ? ` DATABASE ${database}` : all ? ' ALL' : ''}${node ? ` NODE ${node}` : ''}`,
+      test(done, chinook, ok)
+    )
+  })
+
+  it(`disables query analyzer`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`REMOVE KEY query_analyzer_enabled; REMOVE KEY query_analyzer_threshold;`, test(done, chinook, ok))
+  })
+})
+
+describe.each([
+  ['ID', 'autocheckpoint', true, true, false, true],
+  ['IP', 'backlog', false, true, false, true],
+  ['UUID', 'cluster_port', false, false, false, true],
+  ['MAXROWS', 'newcluster', true, false, true, true],
+  [undefined, undefined, false, false, false, false],
+  ['\0\0\\\\', '\0\0\\\\', true, true, true, false],
+  [99, 99, false, true, false, false]
+])('settings', (client_key, cluster_key, detailed, no_read_only, client_editable, ok) => {
+  it(`should${ok ? '' : "n't"} get client key`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`GET CLIENT KEY ${client_key}`, test(done, chinook, ok, regex_IP_UUID_N))
+  })
+
+  it(`shouldn't get database key`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`GET DATABASE chinook.sqlite KEY ${client_key}`, test(done, chinook, false /* fails everytime in ci */))
+  })
+
+  it(`should${ok ? '' : "n't"} get cluster key`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`GET KEY ${cluster_key}`, test(done, chinook, ok, /[0-9]/))
+  })
+
+  it(`should${ok ? '' : "n't"} list client keys`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `LIST CLIENT KEYS`,
+      test(done, chinook, ok, {
+        key: client_key,
+        value: expect.stringMatching(regex_IP_UUID_N)
+      })
+    )
+  })
+
+  it(`should${ok ? '' : "n't"} list cluster keys`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `LIST KEYS${detailed ? ' DETAILED' : ''}${no_read_only ? ' NOREADONLY' : ''}`,
+      test(
+        done,
+        chinook,
+        ok,
+        detailed
+          ? {
+              key: cluster_key,
+              value: expect.anything(),
+              default_value: no_read_only ? expect.anything() : null,
+              readonly: no_read_only ? 0 : expect.any(Number),
+              description: expect.any(String)
+            }
+          : {
+              key: cluster_key,
+              value: expect.anything()
+            }
+      )
+    )
+  })
+
+  it(`should${ok ? '' : "n't"} set client key`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`SET CLIENT KEY ${client_key} TO 10`, test(done, chinook, client_editable && ok))
+  })
+
+  it(`should${ok ? '' : "n't"} set database key`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`SET DATABASE chinook.sqlite KEY ${client_key} TO 10`, test(done, chinook, ok))
+  })
+
+  it(`should${ok ? '' : "n't"} set cluster key`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`SET KEY ${cluster_key} TO 1001`, test(done, chinook, no_read_only ? ok : false))
+  })
+
+  it(`should${ok ? '' : "n't"} remove client key`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`REMOVE CLIENT KEY ${client_key}`, test(done, chinook, ok))
+  })
+
+  it(`should remove database key`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`REMOVE DATABASE chinook.sqlite KEY ${client_key}`, test(done, chinook, ok))
+  })
+
+  it(`should${ok ? '' : "n't"} remove cluster key`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`REMOVE KEY ${cluster_key}`, test(done, chinook, no_read_only ? ok : false))
+  })
+})
