@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@sqlitecloud/drivers": "*",
+    "@sqlitecloud/drivers": "file:../../",
     "knex": "^3.1.0"
   },
   "devDependencies": {
