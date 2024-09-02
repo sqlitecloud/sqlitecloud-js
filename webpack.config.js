@@ -26,8 +26,7 @@ const productionConfig = {
   resolve: {
     fallback: {
       net: false, // tell Webpack to ignore "net"
-      tls: false, // tell Webpack to ignore "tls"
-      url: false
+      tls: false // tell Webpack to ignore "tls"
     }
   }
 }

@@ -48,7 +48,8 @@
     "lz4js": "^0.2.0",
     "react-native-url-polyfill": "^2.0.0",
     "socket.io": "^4.7.5",
-    "socket.io-client": "^4.7.5"
+    "socket.io-client": "^4.7.5",
+    "whatwg-url": "^14.0.0"
   },
   "devDependencies": {
     "@types/bun": "^1.1.1",
@@ -56,6 +57,7 @@
     "@types/jest": "^29.5.12",
     "@types/lz4": "^0.6.4",
     "@types/node": "^12.20.55",
+    "@types/whatwg-url": "^11.0.5",
     "@typescript-eslint/eslint-plugin": "^4.33.0",
     "@typescript-eslint/parser": "^4.33.0",
     "dotenv": "^16.4.5",
@@ -91,7 +93,7 @@
     "printWidth": 160
   },
   "react-native": {
-    "url": "react-native-url-polyfill"
+    "whatwg-url": "react-native-url-polyfill"
   },
   "browser": {
     "tls": false

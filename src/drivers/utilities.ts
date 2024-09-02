@@ -4,7 +4,7 @@
 
 import { SQLiteCloudConfig, SQLiteCloudError, SQLiteCloudDataTypes, DEFAULT_PORT, DEFAULT_TIMEOUT } from './types'
 import { SQLiteCloudArrayType } from './types'
-import { URL } from 'url'
+import { URL } from 'whatwg-url'
 
 //
 // determining running environment, thanks to browser-or-node
