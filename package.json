@@ -55,7 +55,8 @@
   },
   "peerDependencies": {
     "react-native": "0.74.5",
-    "react-native-tcp-socket": "^6.2.0"
+    "react-native-tcp-socket": "^6.2.0",
+    "react-native-fast-base64": "*"
   },
   "devDependencies": {
     "@types/bun": "^1.1.1",
