@@ -18,6 +18,9 @@ import {
   ROWSET_CHUNKS_END
 } from './protocol'
 
+// explicitly importing buffer library to allow cross-platform support by replacing it
+import { Buffer } from 'buffer'
+
 import * as tls from 'tls'
 
 import fs from 'fs'
@@ -58,7 +61,15 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
       servername: config.host
     }
 
-    this.socket = tls.connect(connectionOptions, () => {
+    // tls.connect in the react-native-tcp-socket library is tls.connectTLS
+    let connector = tls.connect
+    // @ts-ignore
+    if (typeof tls.connectTLS !== 'undefined') {
+      // @ts-ignore
+      connector = tls.connectTLS
+    }
+
+    this.socket = connector(connectionOptions, () => {
       if (this.config.verbose) {
         console.debug(`SQLiteCloudTlsConnection - connected to ${this.config.host}, authorized: ${this.socket?.authorized}`)
       }

@@ -4,7 +4,10 @@
 
 import { SQLiteCloudConfig, SQLiteCloudError, SQLiteCloudDataTypes, DEFAULT_PORT, DEFAULT_TIMEOUT } from './types'
 import { SQLiteCloudArrayType } from './types'
+
+// explicitly importing these libraries to allow cross-platform support by replacing them
 import { URL } from 'whatwg-url'
+import { Buffer } from 'buffer'
 
 //
 // determining running environment, thanks to browser-or-node

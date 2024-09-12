@@ -5,6 +5,9 @@
 import { SQLiteCloudError, type SQLCloudRowsetMetadata, type SQLiteCloudDataTypes } from './types'
 import { SQLiteCloudRowset } from './rowset'
 
+// explicitly importing buffer library to allow cross-platform support by replacing it
+import { Buffer } from 'buffer'
+
 // https://www.npmjs.com/package/lz4js
 const lz4 = require('lz4js')
 
