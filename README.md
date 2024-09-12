@@ -12,6 +12,38 @@
 npm install @sqlitecloud/drivers
 ```
 
+## React Native / Expo Install
+
+You also have to install Peer Dependencies
+
+```bash
+npm install @sqlitecloud/drivers react-native-tcp-socket react-native-fast-base64
+```
+
+React Native run IOS
+
+```bash
+cd ios && pod install && cd .. && npm run ios
+```
+
+React Native run Android (without ./ in Windows)
+
+```bash
+cd android && ./gradlew clean build && cd .. && npm run android
+```
+
+Expo run IOS
+
+```bash
+npx expo prebuild && npx expo run:ios
+```
+
+Expo run Android
+
+```bash
+npx expo prebuild && npx expo run:android
+```
+
 ## Usage
 
 ```ts
@@ -59,6 +91,10 @@ await pubSub.unlisten(PUBSUB_ENTITY_TYPE.TABLE, 'albums')
 Pub/Sub is a messaging pattern that allows multiple applications to communicate with each other asynchronously. In the context of SQLiteCloud, Pub/Sub can be used to provide real-time updates and notifications to subscribed applications whenever data changes in the database or it can be used to send payloads (messages) to anyone subscribed to a channel.
 
 Pub/Sub Documentation: [https://docs.sqlitecloud.io/docs/pub-sub](https://docs.sqlitecloud.io/docs/pub-sub)
+
+## Examples
+
+Check out all the supported platforms with related examples [here](https://github.com/sqlitecloud/sqlitecloud-js/tree/main/examples)!
 
 ## More
 
