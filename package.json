@@ -54,7 +54,6 @@
     "whatwg-url": "^14.0.0"
   },
   "peerDependencies": {
-    "react-native": "0.74.5",
     "react-native-tcp-socket": "^6.2.0",
     "react-native-fast-base64": "*"
   },
