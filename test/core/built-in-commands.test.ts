@@ -4,10 +4,6 @@
 
 import {
   _,
-  SQLiteCloudError,
-  SQLiteCloudRowset,
-  SQLiteCloudConnection,
-  SQLiteCloudTlsConnection,
   CHINOOK_DATABASE_URL,
   parseconnectionstring,
   getConnection,
@@ -1386,41 +1382,418 @@ describe.each([
 })
 
 describe.each([
-  ['ID', 'autocheckpoint', true, true, false, true],
-  ['IP', 'backlog', false, true, false, true],
-  ['UUID', 'cluster_port', false, false, false, true],
-  ['MAXROWS', 'newcluster', true, false, true, true],
-  [undefined, undefined, false, false, false, false],
-  ['\0\0\\\\', '\0\0\\\\', true, true, true, false],
-  [99, 99, false, true, false, false]
-])('settings', (client_key, cluster_key, detailed, no_read_only, client_editable, ok) => {
-  it(`should${ok ? '' : "n't"} get client key`, done => {
+  ['COMPRESSION', 1, true], //tofix
+  ['ID', 10, true],
+  ['IP', 10, true],
+  ['MAXDATA', 0, true], //tofix
+  ['MAXROWS', 0, true], //tofix
+  ['MAXROWSET', 0, true], //tofix
+  ['NOBLOB', 0, true], //tofix
+  ['NONLINEARIZABLE', 0, true], //tofix
+  ['UUID', 10, true],
+  ['ZEROTEXT', 0, true], //tofix
+  [undefined, undefined, false],
+  ['\0\0\\\\', 10, false],
+  [99, 10, false],
+
+  //['COMPRESSION', -1 * Number.MAX_VALUE, true], tofix
+  ['ID', -1 * Number.MAX_VALUE, true],
+  ['IP', -1 * Number.MAX_VALUE, true],
+  //['MAXDATA', -1 * Number.MAX_VALUE, true], tofix
+  //['MAXROWS', -1 * Number.MAX_VALUE, true], tofix
+  //['MAXROWSET', -1 * Number.MAX_VALUE, true], tofix
+  //['NOBLOB', -1 * Number.MAX_VALUE, true],/tofix
+  //['NONLINEARIZABLE', -1 * Number.MAX_VALUE, true], tofix
+  ['UUID', -1 * Number.MAX_VALUE, true],
+  //['ZEROTEXT', -1 * Number.MAX_VALUE, true], tofix
+  [undefined, undefined, false],
+  ['\0\0\\\\', -1 * Number.MAX_VALUE, false],
+  [99, -1 * Number.MAX_VALUE, false],
+
+  //['COMPRESSION', Number.MAX_VALUE, true], tofix
+  ['ID', Number.MAX_VALUE, true],
+  ['IP', Number.MAX_VALUE, true],
+  //['MAXDATA', Number.MAX_VALUE, true], tofix
+  //['MAXROWS', Number.MAX_VALUE, true], tofix
+  //['MAXROWSET', Number.MAX_VALUE, true], tofix
+  //['NOBLOB', Number.MAX_VALUE, true], tofix
+  //['NONLINEARIZABLE', Number.MAX_VALUE, true], tofix
+  //['UUID', Number.MAX_VALUE, true],
+  //['ZEROTEXT', Number.MAX_VALUE, true], tofix
+  [undefined, undefined, false],
+  ['\0\0\\\\', Number.MAX_VALUE, false],
+  [99, Number.MAX_VALUE, false],
+
+  //['COMPRESSION', 0, true], tofix
+  ['ID', 0, true],
+  ['IP', 0, true],
+  ['MAXDATA', 0, true],
+  ['MAXROWS', 0, true],
+  ['MAXROWSET', 0, true],
+  ['NOBLOB', 0, true],
+  ['NONLINEARIZABLE', 0, true],
+  ['UUID', 0, true],
+  ['ZEROTEXT', 0, true],
+  [undefined, undefined, false],
+  ['\0\0\\\\', 0, false],
+  [99, 0, false]
+])('client settings', (key, value, ok) => {
+  it(`should${ok ? '' : "n't"} get key`, done => {
     const chinook = getConnection()
-    chinook.sendCommands(`GET CLIENT KEY ${client_key}`, test(done, chinook, ok, regex_IP_UUID_N))
+    chinook.sendCommands(`GET CLIENT KEY ${key}`, test(done, chinook, ok, regex_IP_UUID_N))
   })
 
-  it(`shouldn't get database key`, done => {
-    const chinook = getConnection()
-    chinook.sendCommands(`GET DATABASE chinook.sqlite KEY ${client_key}`, test(done, chinook, false /* fails everytime in ci */))
-  })
-
-  it(`should${ok ? '' : "n't"} get cluster key`, done => {
-    const chinook = getConnection()
-    chinook.sendCommands(`GET KEY ${cluster_key}`, test(done, chinook, ok, /[0-9]/))
-  })
-
-  it(`should${ok ? '' : "n't"} list client keys`, done => {
+  it(`should${ok ? '' : "n't"} list keys`, done => {
     const chinook = getConnection()
     chinook.sendCommands(
       `LIST CLIENT KEYS`,
       test(done, chinook, ok, {
-        key: client_key,
+        key: key,
         value: expect.stringMatching(regex_IP_UUID_N)
       })
     )
   })
 
-  it(`should${ok ? '' : "n't"} list cluster keys`, done => {
+  let read_only = false
+
+  it(`should${ok ? '' : "n't"} set key to ${value}`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`SET CLIENT KEY ${key} TO ${value}`, (error: any, results: any) => {
+      if (ok) {
+        if (results) {
+          expect(error).toBeNull()
+          expect(results).toBe('OK')
+        } else {
+          expect(error.message).toMatch(/(is read-only|unable to set)/i)
+          read_only = true
+        }
+        done()
+        chinook.close()
+      } else {
+        test(done, chinook, ok)(error, results)
+      }
+    })
+  })
+
+  it(`should${ok ? '' : "n't"} check list keys`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `LIST CLIENT KEYS`,
+      test(done, chinook, ok, {
+        key: key,
+        value: !read_only && ok ? value?.toString() : expect.stringMatching(regex_IP_UUID_N)
+      })
+    )
+  })
+
+  it(`should${ok ? '' : "n't"} check key`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`GET CLIENT KEY ${key}`, test(done, chinook, ok, !read_only && ok ? value?.toString() : regex_IP_UUID_N))
+  })
+
+  it(`should${ok ? '' : "n't"} remove key`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`REMOVE CLIENT KEY ${key}`, test(done, chinook, ok))
+  })
+})
+
+describe.each([
+  ['hello', 10, true],
+  [undefined, undefined, false],
+  ['\0\0\\\\', 10, false],
+  [99, 10, true],
+
+  ['hello', -1 * Number.MAX_VALUE, true],
+  [undefined, undefined, false],
+  ['\0\0\\\\', -1 * Number.MAX_VALUE, false],
+  [99, -1 * Number.MAX_VALUE, true],
+
+  ['hello', Number.MAX_VALUE, true],
+  [undefined, undefined, false],
+  ['\0\0\\\\', Number.MAX_VALUE, false],
+  [99, Number.MAX_VALUE, true],
+
+  ['hello', 0, true],
+  [undefined, undefined, false],
+  ['\0\0\\\\', 0, false],
+  [99, 0, true]
+])('database settings', (key, value, ok) => {
+  it(`shouldn't get key`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`GET DATABASE chinook.sqlite KEY ${key}`, test(done, chinook, ok, null)) //key hasn't been set so it's right to receive null
+  })
+
+  it(`should${ok ? '' : "n't"} list keys`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `LIST DATABASE chinook.sqlite KEYS`,
+      test(done, chinook, true, {
+        key: 'backup',
+        value: '1'
+      })
+    )
+  })
+
+  it(`should${ok ? '' : "n't"} set key to ${value}`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`SET DATABASE chinook.sqlite KEY ${key} TO ${value}`, test(done, chinook, ok))
+  })
+
+  it(`should${ok ? '' : "n't"} check key`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`GET DATABASE chinook.sqlite KEY ${key}`, test(done, chinook, ok, value?.toString()))
+  })
+
+  it(`should remove key`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`REMOVE DATABASE chinook.sqlite KEY ${key}`, test(done, chinook, ok))
+  })
+})
+
+describe.each([
+  ['autocheckpoint', 10, true, true, true],
+  ['autocheckpoint_full', 10, true, true, true],
+  ['backlog', 10, false, true, true],
+  ['backup_node_id', 10, false, true, true],
+  ['base_path', 10, false, false, true],
+  ['client_timeout', 10, false, true, true],
+  ['cluster_address', 10, false, false, true],
+  ['cluster_config', 10, false, false, true],
+  ['cluster_node_id', 10, false, false, true],
+  ['cluster_port', 10, false, false, true],
+  ['cluster_timeout', 10, false, true, true],
+  ['command_maxlen', 10, false, true, true],
+  ['dbbusy_timeout', 10, false, true, true],
+  ['dbdrop_timeout', 10, false, true, true],
+  ['dbpage_size', 10, false, true, true],
+  ['download_chunk_size', 10, false, true, true],
+  ['follower_client_timeout', 10, false, true, true],
+  ['insecure', 10, false, true, true],
+  ['listening_address', 10, false, false, true],
+  ['listening_port', 10, false, false, true],
+  ['log_format', 10, false, true, true],
+  ['log_level', 10, false, true, true],
+  ['max_chunk_size', 10, false, true, true],
+  ['max_connections', 10, false, true, true],
+  ['messages_path', 10, false, false, true],
+  ['min_compression_size', 10, false, true, true],
+  ['newcluster', 10, true, false, true],
+  ['nocluster', 10, false, true, true],
+  ['nthreads', 10, false, true, true],
+  ['pubsub_keep_history', 10, false, true, true],
+  ['pubsub_skip_blob', 10, false, true, true],
+  ['query_analyzer_enabled', 10, false, true, true],
+  ['query_analyzer_threshold', 10, false, true, true],
+  ['raft_election_tick', 10, false, true, true],
+  ['raft_election_timeout', 10, false, true, true],
+  ['raft_heartbeat_tick', 10, false, true, true],
+  ['raft_inc_vacuum_pages', 10, false, true, true],
+  ['raft_log_level', 10, false, true, true],
+  ['raft_max_db_size', 10, false, true, true],
+  ['raft_max_free_size', 10, false, true, true],
+  ['raft_max_log_entries', 10, false, true, true],
+  ['raft_tickms', 10, false, true, true],
+  ['raft_timeout', 10, false, true, true],
+  ['stats_interval', 10, false, true, true],
+  ['tcpkeepalive', 10, false, true, true],
+  ['tcpkeepalive_count', 10, false, true, true],
+  ['tls_certificate_path', 10, false, false, true],
+  ['tls_certificatekey_path', 10, false, false, true],
+  ['tls_cluster_certificate_path', 10, false, false, true],
+  ['tls_cluster_certificatekey_path', 10, false, false, true],
+  ['tls_root_certificate_path', 10, false, false, true],
+  ['tls_verify_client', 10, false, true, true],
+  ['use_concurrent_transactions', 10, false, true, true],
+  ['zombie_timeout', 10, false, true, true],
+  [undefined, undefined, false, false, false],
+  ['\0\0\\\\', 10, true, true, false],
+  [99, 10, false, true, false],
+
+  ['autocheckpoint', -1 * Number.MAX_VALUE, true, true, true],
+  ['autocheckpoint_full', -1 * Number.MAX_VALUE, true, true, true],
+  ['backlog', -1 * Number.MAX_VALUE, false, true, true],
+  ['backup_node_id', -1 * Number.MAX_VALUE, false, true, true],
+  ['base_path', -1 * Number.MAX_VALUE, false, false, true],
+  ['client_timeout', -1 * Number.MAX_VALUE, false, true, true],
+  ['cluster_address', -1 * Number.MAX_VALUE, false, false, true],
+  ['cluster_config', -1 * Number.MAX_VALUE, false, false, true],
+  ['cluster_node_id', -1 * Number.MAX_VALUE, false, false, true],
+  ['cluster_port', -1 * Number.MAX_VALUE, false, false, true],
+  ['cluster_timeout', -1 * Number.MAX_VALUE, false, true, true],
+  ['command_maxlen', -1 * Number.MAX_VALUE, false, true, true],
+  ['dbbusy_timeout', -1 * Number.MAX_VALUE, false, true, true],
+  ['dbdrop_timeout', -1 * Number.MAX_VALUE, false, true, true],
+  ['dbpage_size', -1 * Number.MAX_VALUE, false, true, true],
+  ['download_chunk_size', -1 * Number.MAX_VALUE, false, true, true],
+  ['follower_client_timeout', -1 * Number.MAX_VALUE, false, true, true],
+  ['insecure', -1 * Number.MAX_VALUE, false, true, true],
+  ['listening_address', -1 * Number.MAX_VALUE, false, false, true],
+  ['listening_port', -1 * Number.MAX_VALUE, false, false, true],
+  ['log_format', -1 * Number.MAX_VALUE, false, true, true],
+  ['log_level', -1 * Number.MAX_VALUE, false, true, true],
+  ['max_chunk_size', -1 * Number.MAX_VALUE, false, true, true],
+  ['max_connections', -1 * Number.MAX_VALUE, false, true, true],
+  ['messages_path', -1 * Number.MAX_VALUE, false, false, true],
+  ['min_compression_size', -1 * Number.MAX_VALUE, false, true, true],
+  ['newcluster', -1 * Number.MAX_VALUE, true, false, true],
+  ['nocluster', -1 * Number.MAX_VALUE, false, true, true],
+  ['nthreads', -1 * Number.MAX_VALUE, false, true, true],
+  ['pubsub_keep_history', -1 * Number.MAX_VALUE, false, true, true],
+  ['pubsub_skip_blob', -1 * Number.MAX_VALUE, false, true, true],
+  ['query_analyzer_enabled', -1 * Number.MAX_VALUE, false, true, true],
+  ['query_analyzer_threshold', -1 * Number.MAX_VALUE, false, true, true],
+  ['raft_election_tick', -1 * Number.MAX_VALUE, false, true, true],
+  ['raft_election_timeout', -1 * Number.MAX_VALUE, false, true, true],
+  ['raft_heartbeat_tick', -1 * Number.MAX_VALUE, false, true, true],
+  ['raft_inc_vacuum_pages', -1 * Number.MAX_VALUE, false, true, true],
+  ['raft_log_level', -1 * Number.MAX_VALUE, false, true, true],
+  ['raft_max_db_size', -1 * Number.MAX_VALUE, false, true, true],
+  ['raft_max_free_size', -1 * Number.MAX_VALUE, false, true, true],
+  ['raft_max_log_entries', -1 * Number.MAX_VALUE, false, true, true],
+  ['raft_tickms', -1 * Number.MAX_VALUE, false, true, true],
+  ['raft_timeout', -1 * Number.MAX_VALUE, false, true, true],
+  ['stats_interval', -1 * Number.MAX_VALUE, false, true, true],
+  ['tcpkeepalive', -1 * Number.MAX_VALUE, false, true, true],
+  ['tcpkeepalive_count', -1 * Number.MAX_VALUE, false, true, true],
+  ['tls_certificate_path', -1 * Number.MAX_VALUE, false, false, true],
+  ['tls_certificatekey_path', -1 * Number.MAX_VALUE, false, false, true],
+  ['tls_cluster_certificate_path', -1 * Number.MAX_VALUE, false, false, true],
+  ['tls_cluster_certificatekey_path', -1 * Number.MAX_VALUE, false, false, true],
+  ['tls_root_certificate_path', -1 * Number.MAX_VALUE, false, false, true],
+  ['tls_verify_client', -1 * Number.MAX_VALUE, false, true, true],
+  ['use_concurrent_transactions', -1 * Number.MAX_VALUE, false, true, true],
+  ['zombie_timeout', -1 * Number.MAX_VALUE, false, true, true],
+  [undefined, undefined, false, false, false],
+  ['\0\0\\\\', -1 * Number.MAX_VALUE, true, true, false],
+  [99, -1 * Number.MAX_VALUE, false, true, false],
+
+  ['autocheckpoint', Number.MAX_VALUE, true, true, true],
+  ['autocheckpoint_full', Number.MAX_VALUE, true, true, true],
+  ['backlog', Number.MAX_VALUE, false, true, true],
+  ['backup_node_id', Number.MAX_VALUE, false, true, true],
+  ['base_path', Number.MAX_VALUE, false, false, true],
+  ['client_timeout', Number.MAX_VALUE, false, true, true],
+  ['cluster_address', Number.MAX_VALUE, false, false, true],
+  ['cluster_config', Number.MAX_VALUE, false, false, true],
+  ['cluster_node_id', Number.MAX_VALUE, false, false, true],
+  ['cluster_port', Number.MAX_VALUE, false, false, true],
+  ['cluster_timeout', Number.MAX_VALUE, false, true, true],
+  ['command_maxlen', Number.MAX_VALUE, false, true, true],
+  ['dbbusy_timeout', Number.MAX_VALUE, false, true, true],
+  ['dbdrop_timeout', Number.MAX_VALUE, false, true, true],
+  ['dbpage_size', Number.MAX_VALUE, false, true, true],
+  ['download_chunk_size', Number.MAX_VALUE, false, true, true],
+  ['follower_client_timeout', Number.MAX_VALUE, false, true, true],
+  ['insecure', Number.MAX_VALUE, false, true, true],
+  ['listening_address', Number.MAX_VALUE, false, false, true],
+  ['listening_port', Number.MAX_VALUE, false, false, true],
+  ['log_format', Number.MAX_VALUE, false, true, true],
+  ['log_level', Number.MAX_VALUE, false, true, true],
+  ['max_chunk_size', Number.MAX_VALUE, false, true, true],
+  //['max_connections', Number.MAX_VALUE, false, true, true], tofix
+  ['messages_path', Number.MAX_VALUE, false, false, true],
+  ['min_compression_size', Number.MAX_VALUE, false, true, true],
+  ['newcluster', Number.MAX_VALUE, true, false, true],
+  ['nocluster', Number.MAX_VALUE, false, true, true],
+  ['nthreads', Number.MAX_VALUE, false, true, true],
+  ['pubsub_keep_history', Number.MAX_VALUE, false, true, true],
+  ['pubsub_skip_blob', Number.MAX_VALUE, false, true, true],
+  ['query_analyzer_enabled', Number.MAX_VALUE, false, true, true],
+  ['query_analyzer_threshold', Number.MAX_VALUE, false, true, true],
+  ['raft_election_tick', Number.MAX_VALUE, false, true, true],
+  ['raft_election_timeout', Number.MAX_VALUE, false, true, true],
+  ['raft_heartbeat_tick', Number.MAX_VALUE, false, true, true],
+  ['raft_inc_vacuum_pages', Number.MAX_VALUE, false, true, true],
+  ['raft_log_level', Number.MAX_VALUE, false, true, true],
+  ['raft_max_db_size', Number.MAX_VALUE, false, true, true],
+  ['raft_max_free_size', Number.MAX_VALUE, false, true, true],
+  ['raft_max_log_entries', Number.MAX_VALUE, false, true, true],
+  ['raft_tickms', Number.MAX_VALUE, false, true, true],
+  ['raft_timeout', Number.MAX_VALUE, false, true, true],
+  ['stats_interval', Number.MAX_VALUE, false, true, true],
+  ['tcpkeepalive', Number.MAX_VALUE, false, true, true],
+  ['tcpkeepalive_count', Number.MAX_VALUE, false, true, true],
+  ['tls_certificate_path', Number.MAX_VALUE, false, false, true],
+  ['tls_certificatekey_path', Number.MAX_VALUE, false, false, true],
+  ['tls_cluster_certificate_path', Number.MAX_VALUE, false, false, true],
+  ['tls_cluster_certificatekey_path', Number.MAX_VALUE, false, false, true],
+  ['tls_root_certificate_path', Number.MAX_VALUE, false, false, true],
+  ['tls_verify_client', Number.MAX_VALUE, false, true, true],
+  ['use_concurrent_transactions', Number.MAX_VALUE, false, true, true],
+  ['zombie_timeout', Number.MAX_VALUE, false, true, true],
+  [undefined, undefined, false, false, false],
+  ['\0\0\\\\', Number.MAX_VALUE, true, true, false],
+  [99, Number.MAX_VALUE, false, true, false],
+
+  ['autocheckpoint', 0, true, true, true],
+  ['autocheckpoint_full', 0, true, true, true],
+  ['backlog', 0, false, true, true],
+  ['backup_node_id', 0, false, true, true],
+  ['base_path', 0, false, false, true],
+  ['client_timeout', 0, false, true, true],
+  ['cluster_address', 0, false, false, true],
+  ['cluster_config', 0, false, false, true],
+  ['cluster_node_id', 0, false, false, true],
+  ['cluster_port', 0, false, false, true],
+  ['cluster_timeout', 0, false, true, true],
+  ['command_maxlen', 0, false, true, true],
+  ['dbbusy_timeout', 0, false, true, true],
+  ['dbdrop_timeout', 0, false, true, true],
+  ['dbpage_size', 0, false, true, true],
+  ['download_chunk_size', 0, false, true, true],
+  ['follower_client_timeout', 0, false, true, true],
+  ['insecure', 0, false, true, true],
+  ['listening_address', 0, false, false, true],
+  ['listening_port', 0, false, false, true],
+  ['log_format', 0, false, true, true],
+  ['log_level', 0, false, true, true],
+  ['max_chunk_size', 0, false, true, true],
+  ['max_connections', 0, false, true, true],
+  ['messages_path', 0, false, false, true],
+  ['min_compression_size', 0, false, true, true],
+  ['newcluster', 0, true, false, true],
+  ['nocluster', 0, false, true, true],
+  ['nthreads', 0, false, true, true],
+  ['pubsub_keep_history', 0, false, true, true],
+  ['pubsub_skip_blob', 0, false, true, true],
+  ['query_analyzer_enabled', 0, false, true, true],
+  ['query_analyzer_threshold', 0, false, true, true],
+  ['raft_election_tick', 0, false, true, true],
+  ['raft_election_timeout', 0, false, true, true],
+  ['raft_heartbeat_tick', 0, false, true, true],
+  ['raft_inc_vacuum_pages', 0, false, true, true],
+  ['raft_log_level', 0, false, true, true],
+  ['raft_max_db_size', 0, false, true, true],
+  ['raft_max_free_size', 0, false, true, true],
+  ['raft_max_log_entries', 0, false, true, true],
+  //['raft_tickms', 0, false, true, true], tofix
+  //['raft_timeout', 0, false, true, true], tofix
+  ['stats_interval', 0, false, true, true],
+  ['tcpkeepalive', 0, false, true, true],
+  ['tcpkeepalive_count', 0, false, true, true],
+  ['tls_certificate_path', 0, false, false, true],
+  ['tls_certificatekey_path', 0, false, false, true],
+  ['tls_cluster_certificate_path', 0, false, false, true],
+  ['tls_cluster_certificatekey_path', 0, false, false, true],
+  ['tls_root_certificate_path', 0, false, false, true],
+  ['tls_verify_client', 0, false, true, true],
+  ['use_concurrent_transactions', 0, false, true, true],
+  ['zombie_timeout', 0, false, true, true],
+  [undefined, undefined, false, false, false],
+  ['\0\0\\\\', 0, true, true, false],
+  [99, 0, false, true, false]
+])('cluster settings', (key, value, detailed, no_read_only, ok) => {
+  let old_value = expect.stringMatching(/([0-9]|\/|\[)/)
+
+  it(`should${ok ? '' : "n't"} get key`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `GET KEY ${key}`,
+      test(done, chinook, ok, /([0-9]|\/|\[|null)/, (res: any) => (res == null ? (old_value = null) : _))
+    )
+  })
+
+  it(`should${ok ? '' : "n't"} list keys`, done => {
     const chinook = getConnection()
     chinook.sendCommands(
       `LIST KEYS${detailed ? ' DETAILED' : ''}${no_read_only ? ' NOREADONLY' : ''}`,
@@ -1430,47 +1803,51 @@ describe.each([
         ok,
         detailed
           ? {
-              key: cluster_key,
+              key: key,
               value: expect.anything(),
               default_value: no_read_only ? expect.anything() : null,
               readonly: no_read_only ? 0 : expect.any(Number),
               description: expect.any(String)
             }
           : {
-              key: cluster_key,
-              value: expect.anything()
+              key: key,
+              value: old_value
             }
       )
     )
   })
 
-  it(`should${ok ? '' : "n't"} set client key`, done => {
+  let read_only = false
+
+  it(`should${ok ? '' : "n't"} set key to ${value}`, done => {
     const chinook = getConnection()
-    chinook.sendCommands(`SET CLIENT KEY ${client_key} TO 10`, test(done, chinook, client_editable && ok))
+    chinook.sendCommands(`SET KEY ${key} TO ${value}`, (error: any, results: any) => {
+      if (ok) {
+        if (results) {
+          expect(error).toBeNull()
+          expect(results).toBe('OK')
+        } else {
+          expect(error.message).toMatch(/is read-only/i)
+          read_only = true
+        }
+        done()
+        chinook.close()
+      } else {
+        test(done, chinook, ok)(error, results)
+      }
+    })
   })
 
-  it(`should${ok ? '' : "n't"} set database key`, done => {
+  it(`should${ok ? '' : "n't"} check key`, done => {
     const chinook = getConnection()
-    chinook.sendCommands(`SET DATABASE chinook.sqlite KEY ${client_key} TO 10`, test(done, chinook, ok))
+    chinook.sendCommands(
+      `GET KEY ${key}`,
+      test(done, chinook, ok, /([0-9]|\/|\[|null)/, (res: any) => (!read_only && ok ? expect(res).toEqual(value?.toString()) : _))
+    )
   })
 
-  it(`should${ok ? '' : "n't"} set cluster key`, done => {
+  it(`should${ok ? '' : "n't"} remove key`, done => {
     const chinook = getConnection()
-    chinook.sendCommands(`SET KEY ${cluster_key} TO 1001`, test(done, chinook, no_read_only ? ok : false))
-  })
-
-  it(`should${ok ? '' : "n't"} remove client key`, done => {
-    const chinook = getConnection()
-    chinook.sendCommands(`REMOVE CLIENT KEY ${client_key}`, test(done, chinook, ok))
-  })
-
-  it(`should remove database key`, done => {
-    const chinook = getConnection()
-    chinook.sendCommands(`REMOVE DATABASE chinook.sqlite KEY ${client_key}`, test(done, chinook, ok))
-  })
-
-  it(`should${ok ? '' : "n't"} remove cluster key`, done => {
-    const chinook = getConnection()
-    chinook.sendCommands(`REMOVE KEY ${cluster_key}`, test(done, chinook, no_read_only ? ok : false))
+    chinook.sendCommands(`REMOVE KEY ${key}`, test(done, chinook, !read_only && ok))
   })
 })

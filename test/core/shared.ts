@@ -79,7 +79,11 @@ const test = (done: jest.DoneCallback, chinook: SQLiteCloudConnection, ok: boole
               expect(results).toBe(expectedResult)
           }
         } else {
-          expect(results).toBe(expectedResult)
+          if (expectedResult && expectedResult.source.includes('null')) {
+            expect(results).toBeNull()
+          } else {
+            expect(results).toBe(expectedResult)
+          }
         }
       } else {
         try {
@@ -113,10 +117,6 @@ const test = (done: jest.DoneCallback, chinook: SQLiteCloudConnection, ok: boole
 
 export {
   _,
-  SQLiteCloudError,
-  SQLiteCloudRowset,
-  SQLiteCloudConnection,
-  SQLiteCloudTlsConnection,
   CHINOOK_DATABASE_URL,
   parseconnectionstring,
   getConnection,
