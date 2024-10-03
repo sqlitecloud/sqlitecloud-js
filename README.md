@@ -17,10 +17,10 @@ npm install @sqlitecloud/drivers
 You also have to install Peer Dependencies
 
 ```bash
-npm install @sqlitecloud/drivers react-native-tcp-socket react-native-fast-base64
+npm install @sqlitecloud/drivers react-native-tcp-socket react-native-quick-base64
 ```
 
-React Native run IOS
+React Native run iOS
 
 ```bash
 cd ios && pod install && cd .. && npm run ios
@@ -32,7 +32,7 @@ React Native run Android (without ./ in Windows)
 cd android && ./gradlew clean build && cd .. && npm run android
 ```
 
-Expo run IOS
+Expo run iOS
 
 ```bash
 npx expo prebuild && npx expo run:ios

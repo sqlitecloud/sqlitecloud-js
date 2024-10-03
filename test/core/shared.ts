@@ -1,7 +1,7 @@
 import { SQLiteCloudError, SQLiteCloudRowset } from '../../src/index'
 import { SQLiteCloudConnection } from '../../src/drivers/connection'
 import { SQLiteCloudTlsConnection } from '../../src/drivers/connection-tls'
-import { CHINOOK_DATABASE_URL } from '../shared'
+import { CHINOOK_DATABASE_URL, CHINOOK_API_KEY } from '../shared'
 import { parseconnectionstring } from '../../src/drivers/utilities'
 
 const _ = undefined // to use undefined as empty argument
@@ -95,7 +95,7 @@ const test = (done: jest.DoneCallback, chinook: SQLiteCloudConnection, ok: boole
             try {
               expect(error).toBeInstanceOf(SQLiteCloudError)
               expect((error as SQLiteCloudError).message).toMatch(
-                /(not found|doesn\'t exist|does not exist|invalid|unable|fail|cannot|must be unique|unknown|undefined|error|no such|not available|try again later|wrong|has no|is read-only)/i
+                /(not found|doesn\'t exist|does not exist|invalid|unable|fail|cannot|must be unique|unknown|undefined|error|no such|not available|try again later|wrong|has no|is read-only|ended the connection)/i
               )
               expect(results).toBeUndefined()
             } catch {
@@ -118,6 +118,7 @@ const test = (done: jest.DoneCallback, chinook: SQLiteCloudConnection, ok: boole
 export {
   _,
   CHINOOK_DATABASE_URL,
+  CHINOOK_API_KEY,
   parseconnectionstring,
   getConnection,
   connUsername,

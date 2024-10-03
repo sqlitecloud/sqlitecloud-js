@@ -2,6 +2,7 @@
  * built-in-commands.test.ts - test sqlitecloud built-in commands
  */
 
+import { createHash } from 'crypto'
 import {
   _,
   CHINOOK_DATABASE_URL,
@@ -18,7 +19,8 @@ import {
   colseq,
   screaming_snake_case,
   regex_IP_UUID_N,
-  test
+  test,
+  CHINOOK_API_KEY
 } from './shared'
 
 describe.each([
@@ -194,18 +196,19 @@ describe.each([
 })
 
 describe.each([
-  ['admin', randomName(), randomDate(), true],
-  ['admin', randomName(), 'WRONG_DATE', false],
-  ['NOT_EXIST', randomName(), randomDate(), false],
-  ['admin', '', randomDate(), false]
-])('api key', (username, keyName, expiration, ok) => {
-  let key: string
+  ['admin', randomName(), randomDate(), _, true],
+  ['admin', randomName(), randomDate(), randomName(), true],
+  ['admin', randomName(), 'WRONG_DATE', _, false],
+  ['NOT_EXIST', randomName(), randomDate(), randomName(), false],
+  ['admin', '', randomDate(), _, false]
+])('api key', (username, keyName, expiration, key, ok) => {
+  let generated_key: string
 
   it(`should${ok ? '' : "n't"} create`, done => {
     const chinook = getConnection()
     chinook.sendCommands(
-      `CREATE APIKEY USER ${username} NAME ${keyName} EXPIRATION "${expiration}"`,
-      test(done, chinook, ok, /^[a-zA-Z0-9]{43}$/, (res: string) => (key = res))
+      `CREATE APIKEY USER ${username} NAME ${keyName} EXPIRATION "${expiration}"${key ? ` KEY ${key}` : ''}`,
+      test(done, chinook, ok, key ? key : /^[a-zA-Z0-9]{43}$/, (res: string) => (generated_key = res))
     )
   })
 
@@ -213,7 +216,7 @@ describe.each([
     const chinook = getConnection()
     chinook.sendCommands(
       `LIST APIKEYS USER ${username} ${username == 'admin' ? '; LIST MY APIKEYS' : ''}`,
-      test(done, chinook, ok, { creation_date: date(), expiration_date: expiration, key: key, name: keyName })
+      test(done, chinook, ok, { creation_date: date(), expiration_date: expiration, key: generated_key, name: keyName })
     )
   })
 
@@ -224,8 +227,8 @@ describe.each([
     expiration = randomDate()
     const chinook = getConnection()
     chinook.sendCommands(
-      `SET APIKEY ${key} NAME ${keyName} EXPIRATION "${expiration}"; LIST APIKEYS USER ${username}`,
-      test(done, chinook, false, { creation_date: date(), expiration_date: prevExpiration, key: key, name: prevKeyName })
+      `SET APIKEY ${generated_key} NAME ${keyName} EXPIRATION "${expiration}"; LIST APIKEYS USER ${username}`,
+      test(done, chinook, false, { creation_date: date(), expiration_date: prevExpiration, key: generated_key, name: prevKeyName })
     )
   })
 
@@ -233,20 +236,20 @@ describe.each([
     const chinook = getConnection()
     chinook.sendCommands(
       `LIST APIKEYS USER ${username} ${username == 'admin' ? '; LIST MY APIKEYS' : ''}`,
-      test(done, chinook, ok, { creation_date: date(), expiration_date: expiration, key: key, name: keyName })
+      test(done, chinook, ok, { creation_date: date(), expiration_date: expiration, key: generated_key, name: keyName })
     )
   })
 
   it(`should${ok ? '' : "n't"} remove`, done => {
     const chinook = getConnection()
-    chinook.sendCommands(`REMOVE APIKEY ${key}`, test(done, chinook, ok))
+    chinook.sendCommands(`REMOVE APIKEY ${generated_key}`, test(done, chinook, ok))
   })
 
   it(`should${ok ? '' : "n't"} list empty`, done => {
     const chinook = getConnection()
     chinook.sendCommands(
       `LIST APIKEYS USER ${username} ${username == 'admin' ? '; LIST MY APIKEYS' : ''}`,
-      test(done, chinook, false, { creation_date: date(), expiration_date: expiration, key: key, name: keyName })
+      test(done, chinook, false, { creation_date: date(), expiration_date: expiration, key: generated_key, name: keyName })
     )
   })
 })
@@ -347,14 +350,14 @@ describe.each([
 })
 
 describe.each([
-  [randomName(), randomName(), 'READ', 'chinook.sqlite', 'artists', true],
-  [randomName(), randomName(), '', '', '', true],
-  [randomName(), randomName(), 'READ', '', '', true],
-  [randomName(), randomName(), 'NOT_EXIST', '', '', false],
-  [randomName(), randomName(), '', 'chinook.sqlite', 'artists', true]
+  [randomName(), randomName(), 'READ', 'chinook.sqlite', 'artists', CHINOOK_API_KEY, true],
+  [randomName(), randomName(), '', '', '', CHINOOK_API_KEY, true],
+  [randomName(), randomName(), 'READ', '', '', CHINOOK_API_KEY, true],
+  [randomName(), randomName(), 'NOT_EXIST', '', '', randomName(), false],
+  [randomName(), randomName(), '', 'chinook.sqlite', 'artists', CHINOOK_API_KEY, true]
   //[randomName(), randomName(), 'READ', 'NOT_EXIST', '', false],
   //[randomName(), randomName(), 'READ', '', 'NOT_EXIST', false] core not checking if database or table exists
-])('user', (username, password, role, database, table, ok) => {
+])('user', (username, password, role, database, table, key, ok) => {
   it(`should${ok ? '' : "n't"} create`, done => {
     const chinook = getConnection()
     chinook.sendCommands(
@@ -382,6 +385,16 @@ describe.each([
   it(`should${ok ? '' : "n't"} auth`, done => {
     const chinook = getConnection()
     chinook.sendCommands(`AUTH USER ${username} PASSWORD ${password}`, test(done, chinook, ok))
+  })
+
+  it(`should${ok ? '' : "n't"} auth with apikey`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`AUTH APIKEY ${key}`, test(done, chinook, ok))
+  })
+
+  it(`should${ok ? '' : "n't"} auth with hash`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`AUTH USER ${username} HASH ${createHash('sha256').update(password).digest('base64')}`, test(done, chinook, ok))
   })
 
   it(`should${ok ? '' : "n't"} revoke role`, done => {
@@ -603,14 +616,44 @@ describe.each([
     chinook.sendCommands(`CREATE CHANNEL ${name} IF NOT EXISTS`, test(done, chinook, ok))
   })
 
-  /* it(`should${ok ? '' : "n't"} listen`, done => { //ERROR Data type: | is not defined in SCSP, it isn't supported yet
+  it(`should${ok ? '' : "n't"} listen`, done => {
+    //ERROR Data type: | is not defined in SCSP, it isn't supported yet
     const chinook = getConnection()
-    chinook.sendCommands(`LISTEN ${name}`, test(done, chinook, ok))
+    chinook.sendCommands(
+      `LISTEN ${name}`,
+      test(
+        done,
+        chinook,
+        ok,
+        /^PAUTH\s([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})\s([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/
+      )
+    )
   })
   it(`should${ok ? '' : "n't"} listen table`, done => {
     const chinook = getConnection()
-    chinook.sendCommands(`LISTEN TABLE ${table} ${database ? `DATABASE ${database}` : ''}`, test(done, chinook, ok))
-  }) */
+    chinook.sendCommands(
+      `LISTEN TABLE ${table} ${database ? `DATABASE ${database}` : ''}`,
+      test(
+        done,
+        chinook,
+        ok,
+        /^PAUTH\s([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})\s([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/
+      )
+    )
+  })
+
+  it.skip(`should${ok ? '' : "n't"} list pubsub connections`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `LIST PUBSUB CONNECTIONS`,
+      test(done, chinook, ok, {
+        id: expect.any(Number),
+        dbname: database,
+        chname: table,
+        client_uuid: uuid()
+      })
+    )
+  })
 
   it(`should${ok ? '' : "n't"} notify`, done => {
     const chinook = getConnection()
