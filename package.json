@@ -1,6 +1,6 @@
 {
   "name": "@sqlitecloud/drivers",
-  "version": "1.0.255",
+  "version": "1.0.276",
   "description": "SQLiteCloud drivers for Typescript/Javascript in edge, web and node clients",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
@@ -43,19 +43,19 @@
   },
   "homepage": "https://github.com/sqlitecloud/sqlitecloud-js#readme",
   "dependencies": {
+    "@craftzdog/react-native-buffer": "^6.0.5",
     "buffer": "^6.0.3",
     "eventemitter3": "^5.0.1",
     "jest-html-reporter": "^3.10.2",
     "lz4js": "^0.2.0",
-    "react-native-buffer": "^6.0.3",
     "react-native-url-polyfill": "^2.0.0",
     "socket.io": "^4.7.5",
     "socket.io-client": "^4.7.5",
     "whatwg-url": "^14.0.0"
   },
   "peerDependencies": {
-    "react-native-tcp-socket": "^6.2.0",
-    "react-native-fast-base64": "*"
+    "react-native-quick-base64": "*",
+    "react-native-tcp-socket": "^6.2.0"
   },
   "devDependencies": {
     "@types/bun": "^1.1.1",
@@ -101,7 +101,7 @@
   "react-native": {
     "whatwg-url": "react-native-url-polyfill",
     "tls": "react-native-tcp-socket",
-    "buffer": "react-native-buffer"
+    "buffer": "@craftzdog/react-native-buffer"
   },
   "browser": {
     "tls": false
