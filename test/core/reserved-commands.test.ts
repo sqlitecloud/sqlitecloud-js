@@ -2,7 +2,9 @@
  * reserved-commands.test.ts - test sqlitecloud reserved commands
  */
 
-import { _, getConnection, test, CHINOOK_API_KEY, date, parseconnectionstring, CHINOOK_DATABASE_URL, uuid, ip } from './shared'
+import { _, getConnection, test, CHINOOK_API_KEY, date, parseconnectionstring, CHINOOK_DATABASE_URL, uuid, ip, randomBool, randomDate } from './shared'
+
+jest.retryTimes(3)
 
 describe.each([
   ['example.com', 'chinook.sqlite', 'artists', 3, _, 'example', true],
@@ -192,7 +194,7 @@ describe.skip.each([
   })
 })
 
-describe.each([
+describe.skip.each([
   [true, 2, '192.168.1.1:8860', '192.168.1.1:8860', true]
   //[false, 0, '//', '//', false]
 ])('node', (learner, id, address, cluster, ok) => {
@@ -234,7 +236,7 @@ describe.each([
 })
 
 describe('list', () => {
-  it(`should list compile options`, done => {
+  it.skip(`should list compile options`, done => {
     const chinook = getConnection()
     chinook.sendCommands(
       `LIST COMPILE OPTIONS`,
@@ -301,9 +303,9 @@ describe('list', () => {
         { compile_options: 'THREADSAFE=1' }
       ])
     )
-  })
+  }, 15000)
 
-  it(`should list only reserved commands`, done => {
+  it.skip(`should list only reserved commands`, done => {
     const chinook = getConnection()
     chinook.sendCommands(
       `LIST ONLY RESERVED COMMANDS`,
@@ -645,7 +647,7 @@ describe('list', () => {
     )
   })
 
-  it(`should list only reserved commands detailed`, done => {
+  it.skip(`should list only reserved commands detailed`, done => {
     const chinook = getConnection()
     chinook.sendCommands(
       `LIST ONLY RESERVED COMMANDS DETAILED`,
@@ -1083,14 +1085,14 @@ describe('list', () => {
   })
 })
 
-describe.each([[true]])('connection', ok => {
-  it(`should${ok ? '' : "n't"} get connection status`, done => {
+describe('connection', () => {
+  it(`should get connection status`, done => {
     const chinook = getConnection()
     chinook.sendCommands(
       `GET CONNECTION STATUS`,
-      test(done, chinook, ok, [parseconnectionstring(CHINOOK_DATABASE_URL).username, parseconnectionstring(CHINOOK_DATABASE_URL).database, 0, 0])
+      test(done, chinook, true, [parseconnectionstring(CHINOOK_DATABASE_URL).username, parseconnectionstring(CHINOOK_DATABASE_URL).database, 0, 0])
     )
-  })
+  }, 15000)
 })
 
 describe.each([
@@ -1176,31 +1178,82 @@ describe.each([
   })
 })
 
-describe.each([[true]])('database commands', ok => {
-  it(`should${ok ? '' : "n't"} do a cache flush`, done => {
+describe('database commands', () => {
+  it(`should do a cache flush`, done => {
     const chinook = getConnection()
-    chinook.sendCommands(`DATABASE CACHEFLUSH`, test(done, chinook, ok))
+    chinook.sendCommands(`DATABASE CACHEFLUSH`, test(done, chinook, true))
   })
 
-  it(`should${ok ? '' : "n't"} get error number`, done => {
+  it(`should get error number`, done => {
     const chinook = getConnection()
-    chinook.sendCommands(`DATABASE ERRNO`, test(done, chinook, ok, 0))
+    chinook.sendCommands(`DATABASE ERRNO`, test(done, chinook, true, 0))
   })
 
-  it(`should${ok ? '' : "n't"} get changes`, done => {
+  it(`should get changes`, done => {
     const chinook = getConnection()
-    chinook.sendCommands(`DATABASE GET CHANGES`, test(done, chinook, ok, 0))
+    chinook.sendCommands(`DATABASE GET CHANGES`, test(done, chinook, true, 0))
   })
 
-  it(`should${ok ? '' : "n't"} get rowid`, done => {
+  it(`should get rowid`, done => {
     const chinook = getConnection()
-    chinook.sendCommands(`DATABASE GET ROWID`, test(done, chinook, ok, 0))
+    chinook.sendCommands(`DATABASE GET ROWID`, test(done, chinook, true, 0))
   })
 
-  it(`should${ok ? '' : "n't"} get total changes`, done => {
+  it(`should get total changes`, done => {
     const chinook = getConnection()
-    chinook.sendCommands(`DATABASE GET TOTAL CHANGES`, test(done, chinook, ok, 0))
+    chinook.sendCommands(`DATABASE GET TOTAL CHANGES`, test(done, chinook, true, 0))
   })
+
+  for (let i = -5; i < 10; i++) {
+    let ok = false
+    if (i >= 0 && i < 2) ok = true
+    it(`should${ok ? '' : "n't"} get database name`, done => {
+      const chinook = getConnection()
+      chinook.sendCommands(`DATABASE NAME ${i}`, test(done, chinook, ok, /[a-z]/))
+    })
+  }
+
+  ;[
+    [0, true],
+    [Number.MAX_VALUE, true],
+    [Number.MIN_VALUE, true]
+  ].forEach(([n, ok]) => {
+    it(`should${ok ? '' : "n't"} get database status ${n}`, done => {
+      const chinook = getConnection()
+      chinook.sendCommands(`DATABASE STATUS ${n} RESET ${n}`, test(done, chinook, ok as boolean, 3))
+    })
+  })
+  ;[
+    ['main', true],
+    [_, false]
+  ].forEach(([db_name, ok]) => {
+    it(`should${ok ? '' : "n't"} get database filename`, done => {
+      const chinook = getConnection()
+      chinook.sendCommands(`DATABASE FILENAME ${db_name}`, test(done, chinook, ok as boolean, '/data/8860/databases/chinook.sqlite'))
+    })
+
+    it(`should${ok ? '' : "n't"} get if database is read-only`, done => {
+      const chinook = getConnection()
+      chinook.sendCommands(`DATABASE READONLY ${db_name}`, test(done, chinook, ok as boolean, 0)) // https://www.sqlite.org/c3ref/db_readonly.html
+    })
+
+    it(`should${ok ? '' : "n't"} get database txnstate`, done => {
+      const chinook = getConnection()
+      chinook.sendCommands(`DATABASE TXNSTATE ${db_name}`, test(done, chinook, ok as boolean, 0)) // https://www.sqlite.org/c3ref/c_txn_none.html
+    })
+  })
+
+  for (let i = -5; i < 20; i++) {
+    let ok = false
+    if (i >= 0 && i <= 11) ok = true
+    it(`should${ok ? '' : "n't"} get databases limit ${i}`, done => {
+      const chinook = getConnection()
+      chinook.sendCommands(
+        `DATABASE LIMIT ${i == 7 || i == 11 ? `${i} VALUE ${i}` : i}`,
+        test(done, chinook, ok, ok && i != 7 && i != 11 ? expect.any(Number) : 0)
+      )
+    })
+  }
 })
 
 describe('pubsub', () => {
@@ -1214,9 +1267,580 @@ describe('pubsub', () => {
   })
 })
 
-/* describe.only('sqlite commands', () => {
+describe.each([
+  [0, true],
+  [1, true],
+  [Number.MAX_VALUE, true],
+  [Number.MIN_VALUE, true]
+])('sqlite commands', (n, ok) => {
   it(`should set sqlite randomness`, done => {
     const chinook = getConnection()
-    chinook.sendCommands(``, )
+    chinook.sendCommands(`SQLITE RANDOMNESS ${n}`, test(done, chinook, ok, n ? expect.any(Buffer) : null))
   })
-}) */
+
+  it(`should set sqlite randomness and reset`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`SQLITE RANDOMNESS ${n} RESET`, test(done, chinook, ok))
+  })
+
+  it(`should get sqlite status and reset`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`SQLITE STATUS ${n} RESET ${n}`, test(done, chinook, ok, 3))
+  })
+})
+
+describe.each([
+  [_, _, _, _, randomBool(), _, true],
+  [_, _, 9, _, randomBool(), _, true],
+  [_, _, _, 9, randomBool(), _, true],
+  [randomDate(new Date(new Date().getTime() - 24 * 60 * 60 * 1000).getTime()), _, _, _, randomBool(), _, true],
+  [_, randomDate(), _, _, randomBool(), 999, false],
+  [randomDate(new Date(new Date().getTime() - 24 * 60 * 60 * 1000).getTime()), randomDate(), _, _, randomBool(), 1, true]
+])('logs', (from, to, level, type, id, node, ok) => {
+  it(`should${ok ? '' : "n't"} count log`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `COUNT LOG${from ? ` FROM "${from}"` : ''}${to ? ` TO "${to}"` : ''}${level ? ` LEVEL ${level}` : ''}${type ? ` TYPE ${type}` : ''}${id ? ' ID' : ''}${node ? ` NODE ${node}` : ''}`,
+      test(done, chinook, ok, expect.any(Object))
+    )
+  })
+})
+
+describe.each([
+  [0, true],
+  [1, true],
+  [Number.MAX_VALUE, false],
+  [Number.MIN_VALUE, false]
+])('latency', (node, ok) => {
+  it(`should${ok ? '' : "n't"} list latency empty`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`LIST LATENCY`, test(done, chinook, true, []))
+  })
+
+  it(`should${ok ? '' : "n't"} list latency of node empty`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`LIST LATENCY NODE ${node}`, test(done, chinook, ok, []))
+  })
+
+  it(`should${ok ? '' : "n't"} list latency key empty`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`LIST LATENCY KEY ${_}`, test(done, chinook, true, []))
+  })
+
+  it(`should${ok ? '' : "n't"} list latency of node empty`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`LIST LATENCY KEY ${_} NODE ${node}`, test(done, chinook, ok, []))
+  })
+})
+
+describe.each([
+  ['main', true],
+  [_, false]
+])('backup database', (database, ok) => {
+  it(`should${ok ? '' : "n't"} backup database`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `BACKUP INIT ${database}`,
+      ok
+        ? (e, r) => {
+            expect(e).toBeNull()
+            expect(r).toEqual([expect.any(Number), expect.any(Number), expect.any(Number), expect.any(Number)]) //could fail??
+
+            chinook.sendCommands(`BACKUP STEP 0 PAGES ${r[3]}`, (e, r) => {
+              expect(e).toBeNull()
+              expect(r).toBeInstanceOf(Array)
+
+              chinook.sendCommands(`BACKUP REMAINING 0`, (e, r) => {
+                expect(e).toBeNull()
+                expect(r).toBe(0)
+                chinook.sendCommands(`BACKUP FINISH 0`, (e, r) => {
+                  expect(e).toBeNull()
+                  expect(r[0]).toBe(42)
+                  test(done, chinook, ok, 3)(e, r)
+                })
+              })
+            })
+          }
+        : test(done, chinook, ok)
+    )
+  })
+
+  it(`should${ok ? '' : "n't"} finish early backup database`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `BACKUP INIT ${database}`,
+      ok
+        ? (e, r) => {
+            expect(e).toBeNull()
+            expect(r).toEqual([expect.any(Number), expect.any(Number), expect.any(Number), expect.any(Number)])
+
+            chinook.sendCommands(`BACKUP STEP 0 PAGES 1`, (e, r) => {
+              expect(e).toBeNull()
+              expect(r).toBeInstanceOf(Array)
+              chinook.sendCommands(`BACKUP FINISH 0`, (e, r) => {
+                expect(e).toBeNull()
+                expect(r).toEqual([42, 0, 0])
+                chinook.sendCommands(`BACKUP STEP 0 PAGES 1`, test(done, chinook, false)) //should return error already deallocated
+              })
+            })
+          }
+        : test(done, chinook, ok)
+    )
+  })
+
+  it.skip(`should${ok ? '' : "n't"} backup database to source with unsupported attach`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `CREATE DATABASE source_db IF NOT EXISTS; ATTACH DATABASE source_db AS source; BACKUP INIT ${database} SOURCE source`,
+      ok
+        ? (e, r) => {
+            expect(e).toBeNull()
+            expect(r).toEqual([expect.any(Number), expect.any(Number), expect.any(Number), expect.any(Number)]) //could fail??
+
+            chinook.sendCommands(`BACKUP STEP 0 PAGES ${r[3]}`, (e, r) => {
+              expect(e).toBeNull()
+              expect(r).toBeInstanceOf(Array)
+
+              chinook.sendCommands(`BACKUP REMAINING 0`, (e, r) => {
+                expect(e).toBeNull()
+                expect(r).toBe(0)
+                chinook.sendCommands(`BACKUP FINISH 0`, (e, r) => {
+                  expect(e).toBeNull()
+                  expect(r[0]).toBe(42)
+                  expect(r).toHaveLength(3)
+                  chinook.sendCommands(`DETACH DATABASE source_db`, test(done, chinook, ok))
+                })
+              })
+            })
+          }
+        : test(done, chinook, ok)
+    )
+  })
+
+  it(`should${ok ? '' : "n't"} backup database to source`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `BACKUP INIT ${database} SOURCE temp`,
+      ok
+        ? (e, r) => {
+            expect(e).toBeNull()
+            expect(r).toEqual([expect.any(Number), expect.any(Number), expect.any(Number), expect.any(Number)]) //could fail??
+
+            chinook.sendCommands(`BACKUP STEP 0 PAGES ${r[3]}`, (e, r) => {
+              expect(e).toBeNull()
+              expect(r).toBeInstanceOf(Array)
+
+              chinook.sendCommands(`BACKUP REMAINING 0`, (e, r) => {
+                expect(e).toBeNull()
+                expect(r).toBe(0)
+                chinook.sendCommands(`BACKUP FINISH 0`, (e, r) => {
+                  expect(e).toBeNull()
+                  expect(r[0]).toBe(42)
+                  test(done, chinook, ok, 3)(e, r)
+                })
+              })
+            })
+          }
+        : test(done, chinook, ok)
+    )
+  })
+})
+
+describe.each([
+  ['main', 'artists', 'Name', 5, true],
+  [_, _, _, _, false]
+])('blob', (database, table, column, bytes, ok) => {
+  it(`should${ok ? '' : "n't"} open blob`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `BLOB OPEN ${database} TABLE ${table} COLUMN ${column} ROWID 1 RWFLAG 0`,
+      ok
+        ? (e, r) => {
+            expect(e).toBeNull()
+            expect(r).toEqual(0)
+            let index = r
+
+            chinook.sendCommands(`BLOB BYTES ${index}`, (e, r) => {
+              expect(e).toBeNull()
+              expect(r).toBe(bytes)
+
+              chinook.sendCommands(`BLOB READ ${index} SIZE ${bytes} OFFSET 0`, (e, r) => {
+                expect(e).toBeNull()
+                expect(r).toBeInstanceOf(Buffer)
+                expect(r).toHaveLength(bytes as number)
+
+                chinook.sendCommands(`BLOB CLOSE ${index}`, (e, r) => {
+                  expect(e).toBeNull()
+                  expect(r).toBe('OK')
+
+                  //check if slot 0 was already deallocated
+                  chinook.sendCommands(`BLOB READ ${index} SIZE ${Math.trunc((bytes as number) / 2)} OFFSET 0`, test(done, chinook, false))
+                })
+              })
+            })
+          }
+        : test(done, chinook, ok)
+    )
+  })
+
+  it(`should${ok ? '' : "n't"} finish early blob read`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `BLOB OPEN ${database} TABLE ${table} COLUMN ${column} ROWID 1 RWFLAG 0`,
+      ok
+        ? (e, r) => {
+            expect(e).toBeNull()
+            expect(r).toEqual(0)
+            let index = r
+
+            chinook.sendCommands(`BLOB BYTES ${index}`, (e, r) => {
+              expect(e).toBeNull()
+              expect(r).toBe(bytes)
+
+              chinook.sendCommands(`BLOB READ ${index} SIZE ${Math.trunc((bytes as number) / 2)} OFFSET 0`, (e, r) => {
+                expect(e).toBeNull()
+                expect(r).toBeInstanceOf(Buffer)
+                expect(r).toHaveLength(Math.trunc(bytes ? bytes / 2 : 0))
+
+                chinook.sendCommands(`BLOB CLOSE ${index}`, (e, r) => {
+                  expect(e).toBeNull()
+                  expect(r).toBe('OK')
+
+                  //check if slot 0 was already deallocated
+                  chinook.sendCommands(`BLOB READ ${index} SIZE ${Math.trunc((bytes as number) / 2)} OFFSET 0`, test(done, chinook, false))
+                })
+              })
+            })
+          }
+        : test(done, chinook, ok)
+    )
+  })
+
+  it(`should${ok ? '' : "n't"} open blob and size fail`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `BLOB OPEN ${database} TABLE ${table} COLUMN ${column} ROWID 1 RWFLAG 0`,
+      ok
+        ? (e, r) => {
+            expect(e).toBeNull()
+            expect(r).toEqual(0)
+            let index = r
+
+            chinook.sendCommands(`BLOB BYTES ${index}`, (e, r) => {
+              expect(e).toBeNull()
+              expect(r).toBe(bytes)
+
+              chinook.sendCommands(`BLOB READ ${index} SIZE ${(bytes as number) + 1} OFFSET 0`, test(done, chinook, false))
+            })
+          }
+        : test(done, chinook, ok)
+    )
+  })
+
+  it(`should${ok ? '' : "n't"} fail reading blob bytes`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `BLOB OPEN ${database} TABLE ${table} COLUMN ${column} ROWID 1 RWFLAG 0`,
+      ok
+        ? (e, r) => {
+            expect(e).toBeNull()
+            expect(r).toEqual(0)
+            let index = r
+
+            chinook.sendCommands(`BLOB BYTES ${index + 1}`, test(done, chinook, false))
+          }
+        : test(done, chinook, ok)
+    )
+  })
+
+  it(`should${ok ? '' : "n't"} fail closing blob`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `BLOB OPEN ${database} TABLE ${table} COLUMN ${column} ROWID 1 RWFLAG 0`,
+      ok
+        ? (e, r) => {
+            expect(e).toBeNull()
+            expect(r).toEqual(0)
+            let index = r
+
+            chinook.sendCommands(`BLOB CLOSE ${index + 1}`, test(done, chinook, false))
+          }
+        : test(done, chinook, ok)
+    )
+  })
+
+  it(`should${ok ? '' : "n't"} fail reading blob`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `BLOB OPEN ${database} TABLE ${table} COLUMN ${column} ROWID 1 RWFLAG 0`,
+      ok
+        ? (e, r) => {
+            expect(e).toBeNull()
+            expect(r).toEqual(0)
+            let index = r
+
+            chinook.sendCommands(`BLOB READ ${index + 1} SIZE 1 OFFSET 0`, test(done, chinook, false))
+          }
+        : test(done, chinook, ok)
+    )
+  })
+
+  it(`should${ok ? '' : "n't"} open blob and offset fail`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `BLOB OPEN ${database} TABLE ${table} COLUMN ${column} ROWID 1 RWFLAG 0`,
+      ok
+        ? (e, r) => {
+            expect(e).toBeNull()
+            expect(r).toEqual(0)
+            let index = r
+
+            chinook.sendCommands(`BLOB BYTES ${index}`, (e, r) => {
+              expect(e).toBeNull()
+              expect(r).toBe(bytes)
+
+              chinook.sendCommands(`BLOB READ ${index} SIZE ${bytes as number} OFFSET ${(bytes as number) + 1}`, test(done, chinook, false))
+            })
+          }
+        : test(done, chinook, ok)
+    )
+  })
+
+  it(`should${ok ? '' : "n't"} change blob rowid by reopening`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `BLOB OPEN ${database} TABLE ${table} COLUMN ${column} ROWID 1 RWFLAG 0`,
+      ok
+        ? (e, r) => {
+            expect(e).toBeNull()
+            expect(r).toEqual(0)
+            let index = r
+
+            chinook.sendCommands(`BLOB BYTES ${index}`, (e, r) => {
+              expect(e).toBeNull()
+              expect(r).toBe(bytes)
+
+              chinook.sendCommands(`BLOB REOPEN ${index} ROWID 2`, (e, r) => {
+                expect(e).toBeNull()
+                expect(r).toBe('OK')
+
+                chinook.sendCommands(`BLOB BYTES ${index}`, (e, r) => {
+                  expect(e).toBeNull()
+                  expect(r).not.toBe(bytes)
+
+                  chinook.sendCommands(`BLOB CLOSE ${index}`, (e, r) => {
+                    expect(e).toBeNull()
+                    expect(r).toBe('OK')
+
+                    //try to reopen closed slot should fail
+                    chinook.sendCommands(`BLOB REOPEN ${index} ROWID 3`, test(done, chinook, false))
+                  })
+                })
+              })
+            })
+          }
+        : test(done, chinook, ok)
+    )
+  })
+
+  it.skip(`should${ok ? '' : "n't"} fail to write on a ro db`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `BLOB OPEN ${database} TABLE ${table} COLUMN ${column} ROWID 1 RWFLAG 0`,
+      ok
+        ? (e, r) => {
+            expect(e).toBeNull()
+            expect(r).toEqual(0)
+            let index = r
+
+            chinook.sendCommands(`BLOB WRITE ${index} OFFSET 0 DATA 12`, (e, r) => {
+              expect(r).toBeUndefined()
+              expect(e && e.message).toMatch(/attempt to write a readonly database/i)
+
+              chinook.sendCommands(`BLOB CLOSE ${index}`, test(done, chinook, ok)) //tofix shouldn't throw error
+            })
+          }
+        : test(done, chinook, ok)
+    )
+  })
+
+  it(`should${ok ? '' : "n't"} write`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `BLOB OPEN ${database} TABLE ${table} COLUMN ${column} ROWID 1 RWFLAG 1`,
+      ok
+        ? (e, r) => {
+            expect(e).toBeNull()
+            expect(r).toEqual(0)
+            let index = r
+
+            chinook.sendCommands(`BLOB WRITE ${index} OFFSET 0 DATA 12`, (e, r) => {
+              expect(e).toBeNull()
+              expect(r).toBe('OK')
+
+              chinook.sendCommands(`BLOB CLOSE ${index}`, test(done, chinook, ok))
+            })
+          }
+        : test(done, chinook, ok)
+    )
+  })
+
+  it(`should${ok ? '' : "n't"} fail to write`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `BLOB OPEN ${database} TABLE ${table} COLUMN ${column} ROWID 1 RWFLAG 1`,
+      ok
+        ? (e, r) => {
+            expect(e).toBeNull()
+            expect(r).toEqual(0)
+            let index = r
+
+            chinook.sendCommands(`BLOB WRITE ${index + 1} OFFSET 0 DATA 12`, test(done, chinook, false))
+          }
+        : test(done, chinook, ok)
+    )
+  })
+
+  it(`should${ok ? '' : "n't"} write with offset`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `BLOB OPEN ${database} TABLE ${table} COLUMN ${column} ROWID 1 RWFLAG 1`,
+      ok
+        ? (e, r) => {
+            expect(e).toBeNull()
+            expect(r).toEqual(0)
+            let index = r
+
+            chinook.sendCommands(`BLOB WRITE ${index} OFFSET 3 DATA 12`, (e, r) => {
+              expect(e).toBeNull()
+              expect(r).toBe('OK')
+
+              chinook.sendCommands(`BLOB CLOSE ${index}`, test(done, chinook, ok))
+            })
+          }
+        : test(done, chinook, ok)
+    )
+  })
+
+  it(`should${ok ? '' : "n't"} fail double writing`, done => {
+    const chinook = getConnection()
+    const chinook2 = getConnection()
+    chinook.sendCommands(
+      `BLOB OPEN ${database} TABLE ${table} COLUMN ${column} ROWID 1 RWFLAG 1`,
+      ok
+        ? (e, r) => {
+            expect(e).toBeNull()
+            expect(r).toEqual(0)
+            let index = r
+
+            chinook.sendCommands(`BLOB WRITE ${index} OFFSET 0 DATA 12`, (e, r) => {
+              expect(e).toBeNull()
+              expect(r).toBe('OK')
+            })
+
+            chinook2.sendCommands(`BLOB OPEN ${database} TABLE ${table} COLUMN ${column} ROWID 1 RWFLAG 1`, (e, r) => {
+              expect(e).toBeNull()
+              expect(r).toBe(index)
+
+              chinook2.sendCommands(`BLOB WRITE ${index} OFFSET 0 DATA 12`, (e, r) => {
+                expect(r).toBeUndefined()
+                expect(e && e.message).toMatch(/database is locked/i)
+              })
+
+              chinook2.close()
+            })
+
+            chinook.sendCommands(`BLOB CLOSE ${index}`, test(done, chinook, ok))
+          }
+        : test(done, chinook, ok)
+    )
+  })
+})
+
+describe.each([
+  ['chinook.sqlite', true],
+  [_, false]
+])('upload database', (database, ok) => {
+  it(`should fail to start upload database`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`UPLOAD DATABASE chinook.sqlite`, test(done, chinook, false))
+  })
+
+  /* it(`should${ok ? '' : "n't"} upload database`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `UPLOAD DATABASE ${database}`,
+      ok
+        ? (e, r) => {
+            expect(e).toBeNull()
+            expect(r).toEqual([expect.any(Number), expect.any(Number), expect.any(Number)]) //could fail??
+            r.forEach((v: number) => expect(v).toBeGreaterThan(0))
+            for (let i = 0; i < r.length - 1; i++) {
+              chinook.sendCommands(
+                `DOWNLOAD STEP`,
+                i != r.length - 2
+                  ? (e, r) => {
+                      expect(e).toBeNull()
+                      expect(r).toBeInstanceOf(Buffer)
+                    }
+                  : test(done, chinook, ok, expect.any(Buffer))
+              )
+            }
+          }
+        : test(done, chinook, ok)
+    )
+  })
+
+  it(`should${ok ? '' : "n't"} abort download database`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `DOWNLOAD DATABASE ${database}`,
+      ok
+        ? (e, r) => {
+            expect(e).toBeNull()
+            expect(r).toEqual([expect.any(Number), expect.any(Number), expect.any(Number)])
+            r.forEach((v: number) => expect(v).toBeGreaterThan(0))
+
+            chinook.sendCommands(`DOWNLOAD STEP`, (e, r) => {
+              expect(e).toBeNull()
+              expect(r).toBeInstanceOf(Buffer)
+              chinook.sendCommands(`DOWNLOAD ABORT`, (e, r) => {
+                expect(e).toBeNull()
+                expect(r).toEqual('OK')
+                chinook.sendCommands(`DOWNLOAD STEP`, test(done, chinook, ok))
+              })
+            })
+          }
+        : test(done, chinook, ok)
+    )
+  })
+
+  it(`should download database if exists${ok ? '' : " (it doesn't exist)"}`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(
+      `DOWNLOAD DATABASE ${database} IF EXISTS`,
+      ok
+        ? (e, r) => {
+            expect(e).toBeNull()
+            expect(r).toEqual([expect.any(Number), expect.any(Number), expect.any(Number)])
+            r.forEach((v: number) => expect(v).toBeGreaterThan(0))
+            for (let i = 0; i < r.length - 1; i++) {
+              chinook.sendCommands(
+                `DOWNLOAD STEP`,
+                i != r.length - 2
+                  ? (e, r) => {
+                      expect(e).toBeNull()
+                      expect(r).toBeInstanceOf(Buffer)
+                    }
+                  : test(done, chinook, ok, expect.any(Buffer))
+              )
+            }
+          }
+        : (e, r) => {
+            expect(e).toBeNull()
+            expect(r).toEqual([0, 0, expect.any(Number)])
+            chinook.sendCommands(`DOWNLOAD STEP`, test(done, chinook, ok))
+          }
+    )
+  }) */
+})

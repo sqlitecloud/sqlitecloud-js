@@ -79,7 +79,7 @@ const test = (done: jest.DoneCallback, chinook: SQLiteCloudConnection, ok: boole
               expect(results).toBe(expectedResult)
           }
         } else {
-          if (expectedResult && expectedResult.source.includes('null')) {
+          if (expectedResult && expectedResult.source && expectedResult.source.includes('null')) {
             expect(results).toBeNull()
           } else {
             expect(results).toBe(expectedResult)
@@ -95,7 +95,7 @@ const test = (done: jest.DoneCallback, chinook: SQLiteCloudConnection, ok: boole
             try {
               expect(error).toBeInstanceOf(SQLiteCloudError)
               expect((error as SQLiteCloudError).message).toMatch(
-                /(not found|doesn\'t exist|does not exist|invalid|unable|fail|cannot|must be unique|unknown|undefined|error|no such|not available|try again later|wrong|has no|is read-only|ended the connection)/i
+                /(not found|doesn\'t exist|does not exist|invalid|unable|fail|cannot|must be unique|unknown|undefined|error|no such|not available|try again later|wrong|has no|is read-only|ended the connection|was already deallocted|already exists)/i
               )
               expect(results).toBeUndefined()
             } catch {

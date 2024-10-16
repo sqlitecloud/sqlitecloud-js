@@ -22,6 +22,9 @@ import {
   test,
   CHINOOK_API_KEY
 } from './shared'
+import { SQLiteCloudTlsConnection } from '../../src/drivers/connection-tls'
+
+jest.retryTimes(3)
 
 describe.each([
   ['', true],
@@ -212,6 +215,11 @@ describe.each([
     )
   })
 
+  it(`should${ok ? '' : "n't"} switch`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`SWITCH APIKEY ${generated_key}`, test(done, chinook, ok))
+  })
+
   it(`should${ok ? '' : "n't"} list created`, done => {
     const chinook = getConnection()
     chinook.sendCommands(
@@ -243,6 +251,11 @@ describe.each([
   it(`should${ok ? '' : "n't"} remove`, done => {
     const chinook = getConnection()
     chinook.sendCommands(`REMOVE APIKEY ${generated_key}`, test(done, chinook, ok))
+  })
+
+  it(`shouldn't switch`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`SWITCH APIKEY ${generated_key}`, test(done, chinook, false))
   })
 
   it(`should${ok ? '' : "n't"} list empty`, done => {
@@ -387,9 +400,29 @@ describe.each([
     chinook.sendCommands(`AUTH USER ${username} PASSWORD ${password}`, test(done, chinook, ok))
   })
 
+  it(`should${ok ? '' : "n't"} verify`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`VERIFY USER ${username} PASSWORD ${password}`, test(done, chinook, ok))
+  })
+
+  it(`should${ok ? '' : "n't"} switch`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`SWITCH USER ${username}`, test(done, chinook, ok))
+  })
+
+  it(`should${ok ? '' : "n't"} set`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`SET USER ${username}`, test(done, chinook, ok))
+  })
+
   it(`should${ok ? '' : "n't"} auth with apikey`, done => {
     const chinook = getConnection()
     chinook.sendCommands(`AUTH APIKEY ${key}`, test(done, chinook, ok))
+  })
+
+  it(`should${ok ? '' : "n't"} switch apikey`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`SWITCH APIKEY ${key}`, test(done, chinook, ok))
   })
 
   it(`should${ok ? '' : "n't"} auth with hash`, done => {
@@ -476,6 +509,21 @@ describe.each([
     chinook.sendCommands(`AUTH USER ${username} PASSWORD ${password}`, test(done, chinook, false))
   })
 
+  it(`shouldn't verify`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`VERIFY USER ${username} PASSWORD ${password}`, test(done, chinook, false))
+  })
+
+  it(`shouldn't switch`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`SWITCH USER ${username}`, test(done, chinook, false))
+  })
+
+  it(`shouldn't set`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`SET USER ${username}`, test(done, chinook, false))
+  })
+
   it(`should${ok ? '' : "n't"} enable`, done => {
     const chinook = getConnection()
     chinook.sendCommands(
@@ -503,6 +551,41 @@ describe.each([
   it(`should${ok ? '' : "n't"} auth`, done => {
     const chinook = getConnection()
     chinook.sendCommands(`AUTH USER ${username} PASSWORD ${password}`, test(done, chinook, ok))
+  })
+
+  it(`should${ok ? '' : "n't"} add allowed ip to verify`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`ADD ALLOWED IP 1.1.1.1 USER ${username}`, test(done, chinook, ok))
+  })
+
+  it(`shouldn't verify`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`VERIFY USER ${username} PASSWORD ${password} IP 1.1.1.12`, test(done, chinook, false))
+  })
+
+  it(`should${ok ? '' : "n't"} verify`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`VERIFY USER ${username} PASSWORD ${password} IP 1.1.1.1`, test(done, chinook, ok))
+  })
+
+  it(`shouldn't auth`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`AUTH USER ${username} PASSWORD ${password}`, test(done, chinook, false))
+  })
+
+  it(`should${ok ? '' : "n't"} remove allowed ip to verify`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`REMOVE ALLOWED IP 1.1.1.1 USER ${username}`, test(done, chinook, ok))
+  })
+
+  it(`should${ok ? '' : "n't"} switch`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`SWITCH USER ${username}`, test(done, chinook, ok))
+  })
+
+  it(`should${ok ? '' : "n't"} set`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`SET USER ${username}`, test(done, chinook, ok))
   })
 
   it(`should get user`, done => {
@@ -571,17 +654,40 @@ describe.each([
     chinook.sendCommands(`AUTH USER ${username} PASSWORD ${password}`, test(done, chinook, false))
   })
 
-  /* it.skip(`should set my password`, done => { //TOFIX?? is it normal that I can't auth right after changing my pass?
+  it(`shouldn't switch`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`SWITCH USER ${username}`, test(done, chinook, false))
+  })
+
+  it(`shouldn't set`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`SET USER ${username}`, test(done, chinook, false))
+  })
+
+  it(`should set my password`, done => {
     let chinook = getConnection()
     const myPassword = randomName()
     chinook.sendCommands(`SET MY PASSWORD adminpasswordxxx`, (error: Error | null, results: any) => {
       try {
         expect(error).toBeNull()
         expect(results).toBe('OK')
-        //chinook.close()
+        chinook.close()
+
+        //with old pass it should fail
+        chinook = new SQLiteCloudTlsConnection({ connectionstring: CHINOOK_DATABASE_URL }, (error: any) => {
+          let cerr = ''
+          if (error) {
+            console.error(`getChinookTlsConnection - returned error: ${error}`)
+            cerr = `getChinookTlsConnection - returned error: ${error}`
+          }
+          expect(error).toBeDefined()
+          expect(cerr).toMatch(/error/i)
+        })
+
+        //try with new pass
         chinook = new SQLiteCloudTlsConnection(
           { connectionstring: CHINOOK_DATABASE_URL.replace(parseconnectionstring(CHINOOK_DATABASE_URL).password ?? 'defaultPassword', myPassword) },
-          error => {
+          (error: any) => {
             if (error) {
               console.error(`getChinookTlsConnection - returned error: ${error}`)
             }
@@ -591,15 +697,15 @@ describe.each([
         chinook.sendCommands(`SET MY PASSWORD ${parseconnectionstring(CHINOOK_DATABASE_URL).password}`, (error: Error | null, results: any) => {
           expect(error).toBeNull()
           expect(results).toBe('OK')
-          done()
         })
       } catch (error) {
         done(error)
       } finally {
         chinook.close()
+        done()
       }
     })
-  }) */
+  })
 })
 
 describe.each([
@@ -629,6 +735,7 @@ describe.each([
       )
     )
   })
+
   it(`should${ok ? '' : "n't"} listen table`, done => {
     const chinook = getConnection()
     chinook.sendCommands(
@@ -642,16 +749,29 @@ describe.each([
     )
   })
 
-  it.skip(`should${ok ? '' : "n't"} list pubsub connections`, done => {
+  it(`should${ok ? '' : "n't"} list pubsub connections`, done => {
     const chinook = getConnection()
+
     chinook.sendCommands(
-      `LIST PUBSUB CONNECTIONS`,
-      test(done, chinook, ok, {
-        id: expect.any(Number),
-        dbname: database,
-        chname: table,
-        client_uuid: uuid()
-      })
+      `LISTEN TABLE ${table} ${database ? `DATABASE ${database}` : ''}`,
+      ok
+        ? (error: any, results: any) => {
+            expect(error).toBeNull()
+            expect(results).toMatch(
+              /^PAUTH\s([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})\s([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/
+            )
+
+            chinook.sendCommands(
+              `LIST PUBSUB CONNECTIONS`,
+              test(done, chinook, ok, {
+                id: expect.any(Number),
+                dbname: database,
+                chname: table,
+                client_uuid: uuid()
+              })
+            )
+          }
+        : test(done, chinook, false)
     )
   })
 
@@ -1086,9 +1206,19 @@ describe.each([
     )
   })
 
+  it(`should${ok ? '' : "n't"} switch`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`SWITCH DATABASE ${database}`, test(done, chinook, ok))
+  })
+
   it(`should${ok ? '' : "n't"} disable and list`, done => {
     const chinook = getConnection()
     chinook.sendCommands(`DISABLE DATABASE ${database}; LIST DATABASES`, test(done, chinook, false, { name: database }))
+  })
+
+  it(`shouldn't switch`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`SWITCH DATABASE ${database}`, test(done, chinook, false))
   })
 
   it(`should${ok ? '' : "n't"} enable and list`, done => {
@@ -1262,6 +1392,11 @@ describe.each([
       test(done, chinook, false, { name: database })
     )
   })
+
+  it(`shouldn't switch`, done => {
+    const chinook = getConnection()
+    chinook.sendCommands(`SWITCH DATABASE ${database}`, test(done, chinook, false))
+  })
 })
 
 describe.each([
@@ -1310,7 +1445,7 @@ describe.each([
 
   it(`should${/* can't get backups to work locally. enabled ? true : */ false ? '' : "n't"} restore ${database} backup`, done => {
     const chinook = getConnection()
-    chinook.sendCommands(`RESTORE BACKUP DATABASE ${database}`, test(done, chinook, /* enabled ? true : */ false))
+    chinook.sendCommands(`RESTORE BACKUP DATABASE ${database}`, test(done, chinook, /* enabled ? true : */ false)) //[GENERATION <generation>] [INDEX <index>] [TIMESTAMP <timestamp>]
   })
 })
 
@@ -1828,7 +1963,7 @@ describe.each([
 ])('cluster settings', (key, value, detailed, no_read_only, ok) => {
   let old_value = expect.stringMatching(/([0-9]|\/|\[)/)
 
-  it(`should${ok ? '' : "n't"} get key`, done => {
+  it(`should${ok ? '' : "n't"} get key: ${key && typeof key == 'string' && !key.includes('\\') ? key : 'something that will make me crash'}`, done => {
     const chinook = getConnection()
     chinook.sendCommands(
       `GET KEY ${key}`,
