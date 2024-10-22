@@ -2,9 +2,24 @@
  * reserved-commands.test.ts - test sqlitecloud reserved commands
  */
 
-import { _, getConnection, test, CHINOOK_API_KEY, date, parseconnectionstring, CHINOOK_DATABASE_URL, uuid, ip, randomBool, randomDate } from './shared'
+import {
+  _,
+  getConnection,
+  test,
+  CHINOOK_API_KEY,
+  date,
+  parseconnectionstring,
+  CHINOOK_DATABASE_URL,
+  uuid,
+  ip,
+  randomBool,
+  randomDate,
+  randomName
+} from './shared'
+import fs from 'fs'
+import path from 'path'
 
-jest.retryTimes(3)
+//jest.retryTimes(3)
 
 describe.each([
   ['example.com', 'chinook.sqlite', 'artists', 3, _, 'example', true],
@@ -16,6 +31,7 @@ describe.each([
   [_, _, _, 2, _, _, false]
 ])('webhook', (url_or_code, database, table, mask, options, secret, ok) => {
   let generated_secret = ''
+  let id = 0
 
   it(`should${ok ? '' : "n't"} add`, done => {
     const chinook = getConnection()
@@ -32,8 +48,6 @@ describe.each([
       test(done, chinook, ok, secret)
     )
   })
-
-  let id = 0
 
   it(`should${ok ? '' : "n't"} list`, done => {
     const chinook = getConnection()
@@ -1752,95 +1766,166 @@ describe.each([
 
             chinook.sendCommands(`BLOB CLOSE ${index}`, test(done, chinook, ok))
           }
-        : test(done, chinook, ok)
+        : chinook2.close() && test(done, chinook, ok)
     )
   })
 })
 
 describe.each([
-  ['chinook.sqlite', true],
-  [_, false]
+  ['northwind.db', true]
+  //[_, false]
 ])('upload database', (database, ok) => {
   it(`should fail to start upload database`, done => {
     const chinook = getConnection()
     chinook.sendCommands(`UPLOAD DATABASE chinook.sqlite`, test(done, chinook, false))
   })
 
-  /* it(`should${ok ? '' : "n't"} upload database`, done => {
+  //fails because we need to handle blobs in the driver
+  it.skip(`should${ok ? '' : "n't"} upload database`, async () => {
     const chinook = getConnection()
-    chinook.sendCommands(
-      `UPLOAD DATABASE ${database}`,
-      ok
-        ? (e, r) => {
-            expect(e).toBeNull()
-            expect(r).toEqual([expect.any(Number), expect.any(Number), expect.any(Number)]) //could fail??
-            r.forEach((v: number) => expect(v).toBeGreaterThan(0))
-            for (let i = 0; i < r.length - 1; i++) {
-              chinook.sendCommands(
-                `DOWNLOAD STEP`,
-                i != r.length - 2
-                  ? (e, r) => {
-                      expect(e).toBeNull()
-                      expect(r).toBeInstanceOf(Buffer)
-                    }
-                  : test(done, chinook, ok, expect.any(Buffer))
-              )
-            }
+
+    const upload_database = await chinook.sql(`UPLOAD DATABASE ${database} REPLACE`)
+    expect(upload_database).toBe('OK')
+    console.log('UPLOAD DATABASE', upload_database)
+
+    const fileStream = fs.createReadStream(path.join(__dirname, '../assets/', database as string))
+
+    async function uploader(connection: any, sql: string | ArrayBuffer): Promise<unknown> {
+      return await new Promise((resolve, reject) => {
+        // console.debug(`sendCommandsAsync - ${sql}`)
+        connection.sendCommands([sql], (error: Error | null, results: any) => {
+          console.log('uploader', error, results)
+          // Explicitly type the 'error' parameter as 'Error'
+          if (error) {
+            reject(error)
+          } else {
+            // console.debug(JSON.stringify(results).substring(0, 140) + '...')
+            resolve(results)
           }
-        : test(done, chinook, ok)
-    )
-  })
+        })
+      })
+    }
 
-  it(`should${ok ? '' : "n't"} abort download database`, done => {
+    let chunk
+    for await (chunk of fileStream) {
+      console.log(chunk.buffer)
+      const upload_chunk = await uploader(chinook, chunk.buffer)
+      expect(upload_chunk).toBe('OK')
+    }
+
+    fileStream.close()
+
+    const close_upload = await uploader(chinook, new ArrayBuffer(0))
+    expect(close_upload).toBe('OK')
+
+    const list_databases = await chinook.sql(`LIST DATABASES DETAILED`)
+    expect(list_databases).toContainEqual({
+      size: expect.any(Number),
+      name: database,
+      connections: 0,
+      encryption: expect.any(String),
+      backup: 0,
+      nread: 0,
+      nwrite: 0,
+      inbytes: 0,
+      outbytes: 0,
+      fragmentation: 0.0,
+      pagesize: 1024,
+      encoding: 'UTF-8',
+      status: 1
+    })
+
+    chinook.close()
+  }, 60000)
+
+  it(`should reserve and unreserve database`, done => {
     const chinook = getConnection()
-    chinook.sendCommands(
-      `DOWNLOAD DATABASE ${database}`,
-      ok
-        ? (e, r) => {
-            expect(e).toBeNull()
-            expect(r).toEqual([expect.any(Number), expect.any(Number), expect.any(Number)])
-            r.forEach((v: number) => expect(v).toBeGreaterThan(0))
+    const rsrvd_db_test = randomName()
+    chinook.sendCommands(`RESERVE DATABASE ${rsrvd_db_test} UUID ${rsrvd_db_test}`, (e, r) => {
+      expect(e).toBeNull()
+      expect(r).toBe('OK')
 
-            chinook.sendCommands(`DOWNLOAD STEP`, (e, r) => {
+      chinook.sendCommands(`UPLOAD DATABASE ${rsrvd_db_test}`, (e, r) => {
+        expect(r).toBeUndefined()
+        expect(e && e.message).toMatch(/is reserved and cannot be uploaded/i)
+
+        chinook.sendCommands(`UPLOAD ABORT`, (e, r) => {
+          expect(e).toBeNull()
+          expect(r).toEqual('OK')
+
+          chinook.sendCommands(`UPLOAD DATABASE ${rsrvd_db_test}`, (e, r) => {
+            expect(r).toBeUndefined()
+            expect(e && e.message).toMatch(/is reserved and cannot be uploaded/i)
+
+            chinook.sendCommands(`UNRESERVE DATABASE ${rsrvd_db_test} UUID`, (e, r) => {
               expect(e).toBeNull()
-              expect(r).toBeInstanceOf(Buffer)
-              chinook.sendCommands(`DOWNLOAD ABORT`, (e, r) => {
+              expect(r).toEqual('OK')
+
+              chinook.sendCommands(`UPLOAD DATABASE ${rsrvd_db_test}`, (e, r) => {
                 expect(e).toBeNull()
-                expect(r).toEqual('OK')
-                chinook.sendCommands(`DOWNLOAD STEP`, test(done, chinook, ok))
+                expect(r).toBe('OK')
+
+                chinook.sendCommands(`UPLOAD ABORT`, test(done, chinook, true))
               })
             })
-          }
-        : test(done, chinook, ok)
-    )
+          })
+        })
+      })
+    })
   })
 
-  it(`should download database if exists${ok ? '' : " (it doesn't exist)"}`, done => {
+  it(`should try multiple database transfers`, done => {
     const chinook = getConnection()
-    chinook.sendCommands(
-      `DOWNLOAD DATABASE ${database} IF EXISTS`,
-      ok
-        ? (e, r) => {
+    const rsrvd_db_test = randomName()
+    chinook.sendCommands(`TRANSFER DATABASE ${rsrvd_db_test}`, (e, r) => {
+      expect(e).toBeNull()
+      expect(r).toBe('OK')
+
+      chinook.sendCommands(`TRANSFER DATABASE ${rsrvd_db_test} INTERNAL`, (e, r) => {
+        expect(r).toBeUndefined()
+        expect(e && e.message).toMatch(/another upload operation is in place/i)
+
+        chinook.sendCommands(`UPLOAD ABORT`, (e, r) => {
+          expect(e).toBeNull()
+          expect(r).toEqual('OK')
+
+          chinook.sendCommands(`TRANSFER DATABASE ${rsrvd_db_test} INTERNAL`, (e, r) => {
             expect(e).toBeNull()
-            expect(r).toEqual([expect.any(Number), expect.any(Number), expect.any(Number)])
-            r.forEach((v: number) => expect(v).toBeGreaterThan(0))
-            for (let i = 0; i < r.length - 1; i++) {
-              chinook.sendCommands(
-                `DOWNLOAD STEP`,
-                i != r.length - 2
-                  ? (e, r) => {
-                      expect(e).toBeNull()
-                      expect(r).toBeInstanceOf(Buffer)
-                    }
-                  : test(done, chinook, ok, expect.any(Buffer))
-              )
-            }
-          }
-        : (e, r) => {
-            expect(e).toBeNull()
-            expect(r).toEqual([0, 0, expect.any(Number)])
-            chinook.sendCommands(`DOWNLOAD STEP`, test(done, chinook, ok))
-          }
-    )
-  }) */
+            expect(r).toEqual('OK')
+
+            chinook.sendCommands(`UPLOAD ABORT`, (e, r) => {
+              expect(e).toBeNull()
+              expect(r).toEqual('OK')
+
+              chinook.sendCommands(`TRANSFER DATABASE ${rsrvd_db_test} KEY ${rsrvd_db_test} INTERNAL`, (e, r) => {
+                expect(e).toBeNull()
+                expect(r).toBe('OK')
+
+                chinook.sendCommands(`UPLOAD ABORT`, test(done, chinook, true))
+              })
+            })
+          })
+        })
+      })
+    })
+  })
+})
+
+describe('vm commands', () => {
+  it(`should vm execute`, async () => {
+    const chinook = getConnection()
+    expect(await chinook.sql(`VM EXECUTE "SELECT * FROM artists"`)).toContainEqual({
+      ArtistId: 3,
+      Name: 'Aerosmith'
+    })
+    chinook.close()
+  })
+
+  it(`should vm compile`, async () => {
+    const chinook = getConnection()
+    const result = await chinook.sql(`VM COMPILE "SELECT * FROM artists"`)
+    expect(result[0]).toBe(21)
+    expect(result[7]).toBe(0)
+    chinook.close()
+  })
 })
