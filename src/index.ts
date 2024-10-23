@@ -10,6 +10,14 @@
 export { Database } from './drivers/database'
 export { Statement } from './drivers/statement'
 export { SQLiteCloudConnection } from './drivers/connection'
-export { type SQLiteCloudConfig, type SQLCloudRowsetMetadata, SQLiteCloudError, type ResultsCallback, type ErrorCallback } from './drivers/types'
+export {
+  type SQLiteCloudConfig,
+  type SQLCloudRowsetMetadata,
+  SQLiteCloudError,
+  type ResultsCallback,
+  type ErrorCallback,
+  type SQLiteCloudDataTypes
+} from './drivers/types'
 export { SQLiteCloudRowset, SQLiteCloudRow } from './drivers/rowset'
-export { escapeSqlParameter, prepareSql, parseconnectionstring, validateConfiguration } from './drivers/utilities'
+export { escapeSqlParameter, prepareSql, parseconnectionstring, validateConfiguration, getInitializationCommands } from './drivers/utilities'
+export * as protocol from './drivers/protocol'
