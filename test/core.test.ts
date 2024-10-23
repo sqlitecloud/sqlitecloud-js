@@ -11,8 +11,7 @@ import { SQLiteCloudConnection } from '../src/drivers/connection'
 import { CHINOOK_DATABASE_URL, CHINOOK_API_KEY } from './shared'
 import { parseconnectionstring } from '../src/drivers/utilities'
 
-//giving tests more retries in ci
-if (!CHINOOK_DATABASE_URL.includes('localhost')) jest.retryTimes(3)
+jest.retryTimes(3)
 
 // #region tests utilities
 const _ = undefined // to use undefined as empty argument
