@@ -19,7 +19,8 @@ import {
 import fs from 'fs'
 import path from 'path'
 
-//jest.retryTimes(3)
+//giving tests more retries in ci
+if (!CHINOOK_DATABASE_URL.includes('localhost')) jest.retryTimes(3)
 
 describe.each([
   ['example.com', 'chinook.sqlite', 'artists', 3, _, 'example', true],
@@ -178,6 +179,7 @@ describe('command debug', () => {
 })
 
 describe.skip.each([
+  //unable to find command set env??
   ['test', Number.MAX_VALUE, true],
   ['//', '//', false]
 ])('env', (key, value, ok) => {
@@ -208,7 +210,7 @@ describe.skip.each([
   })
 })
 
-describe.skip.each([
+describe.each([
   [true, 2, '192.168.1.1:8860', '192.168.1.1:8860', true]
   //[false, 0, '//', '//', false]
 ])('node', (learner, id, address, cluster, ok) => {
@@ -249,6 +251,7 @@ describe.skip.each([
   })
 })
 
+//skipping some list tests because they get undefined reply??
 describe('list', () => {
   it.skip(`should list compile options`, done => {
     const chinook = getConnection()
@@ -317,7 +320,7 @@ describe('list', () => {
         { compile_options: 'THREADSAFE=1' }
       ])
     )
-  }, 15000)
+  })
 
   it.skip(`should list only reserved commands`, done => {
     const chinook = getConnection()
