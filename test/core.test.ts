@@ -1734,8 +1734,8 @@ describe.each([
           expect(error.message).toMatch(/(is read-only|unable to set)/i)
           read_only = true
         }
-        done()
         chinook.close()
+        done()
       } else {
         test(done, chinook, ok)(error, results)
       }
@@ -2097,8 +2097,8 @@ describe.each([
           expect(error.message).toMatch(/is read-only/i)
           read_only = true
         }
-        done()
         chinook.close()
+        done()
       } else {
         test(done, chinook, ok)(error, results)
       }
