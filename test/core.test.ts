@@ -435,8 +435,9 @@ describe.each([
       'LIST NODES',
       test(done, chinook, ok, {
         id: leader ?? expect.any(Number),
-        node: leader ? parseconnectionstring(CHINOOK_DATABASE_URL).host + ':' + parseconnectionstring(CHINOOK_DATABASE_URL).port : expect.any(String),
-        cluster: leader ? parseconnectionstring(CHINOOK_DATABASE_URL).host + ':9860' : expect.any(String),
+        public_addr: leader ? parseconnectionstring(CHINOOK_DATABASE_URL).host : expect.any(String),
+        port: leader ? parseconnectionstring(CHINOOK_DATABASE_URL).port : expect.any(String),
+        cluster_port: leader ? '9860' : expect.any(String),
         status: leader ? 'Leader' : expect.any(String),
         progress: expect.any(String),
         match: expect.any(Number),
@@ -2308,12 +2309,12 @@ describe.skip.each([
 })
 
 describe.each([
-  [true, 2, '192.168.1.1:8860', '192.168.1.1:8860', true]
+  [true, 2, '192.168.1.1', '8860', '9860', true]
   //[false, 0, '//', '//', false]
-])('node', (learner, id, address, cluster, ok) => {
+])('node', (learner, id, address, port, cluster_port, ok) => {
   it(`should${ok ? '' : "n't"} add`, done => {
     const chinook = getConnection()
-    chinook.sendCommands(`ADD${learner ? ' LEARNER' : ''} NODE ${id} ADDRESS ${address}${cluster ? ` CLUSTER ${cluster}` : ''}`, test(done, chinook, ok))
+    chinook.sendCommands(`ADD${learner ? ' LEARNER' : ''} NODE ${id} ADDRESS ${address}:${port} ${cluster_port ? ` CLUSTER ${address}:${cluster_port}` : ''}`, test(done, chinook, ok))
   })
 
   it(`should${ok ? '' : "n't"} list`, done => {
@@ -2322,8 +2323,9 @@ describe.each([
       `LIST NODES`,
       test(done, chinook, ok, {
         id: id,
-        node: address,
-        cluster: cluster,
+        public_addr: address,
+        port: port,
+        cluster_port: cluster_port,
         status: learner ? 'Learner' : 'Leader',
         progress: expect.stringMatching(/(replicate|probe)/i),
         match: expect.any(Number),
