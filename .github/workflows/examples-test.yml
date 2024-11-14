@@ -1,0 +1,217 @@
+name: 'end to end test'
+on:
+  push:
+
+jobs:
+  examples-test:
+    name: 'Examples Test'
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      #setup node, bun and deno
+      - uses: actions/setup-node@v4
+        with:
+          node-version: latest
+      - uses: oven-sh/setup-bun@v2
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: vx.x.x
+
+      - name: build driver
+        run: npm i && npm run build
+
+      #testing driver, removing examples after testing to save up space
+      - name: node with-javascript-express
+        working-directory: examples/with-javascript-express
+        run: |
+          npm i
+          npm start &
+          sleep 3
+          node_test=$(curl localhost:3000)
+          if [[ $node_test == *"{\"tracks\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
+            echo "✅ node with-javascript-express test passed"
+            exit 0
+          fi
+          echo "❌ node with-javascript-express test failed"
+          exit 1
+        env:
+          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
+
+      - name: bun with-javascript-express
+        working-directory: examples/with-javascript-express
+        run: |
+          bun i
+          bun start &
+          sleep 3
+          bun_test=$(curl localhost:3000)
+          if [[ $bun_test == *"{\"tracks\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
+            echo "✅ bun with-javascript-express test passed"
+            exit 0
+          fi
+          echo "❌ bun with-javascript-express test failed"
+          exit 1
+        env:
+          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
+
+      - name: deno with-javascript-express
+        working-directory: examples/with-javascript-express
+        run: |
+          deno run start &
+          sleep 3
+          deno_test=$(curl localhost:3000)
+          if [[ $deno_test == *"{\"tracks\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
+            echo "✅ deno with-javascript-express test passed"
+            exit 0
+          fi
+          echo "❌ deno with-javascript-express test failed"
+          exit 1
+        env:
+          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
+
+      - name: remove with-javascript-express
+        run: rm -rf examples/with-javascript-express
+
+      - name: node with-plain-javascript
+        working-directory: examples/with-plain-javascript
+        run: |
+          npm i
+          app_log=$(mktemp)
+          npm start > "$app_log" 2>&1 &
+
+          app_pid=$!
+          sleep 3
+          kill "$app_pid" 2>/dev/null
+
+          node_test=$(<"$app_log")
+          rm "$app_log"
+
+          if [[ "$node_test" == *"Composer: 'Angus Young, Malcolm Young, Brian Johnson',"* ]]; then
+            echo "✅ node with-plain-javascript test passed"
+            exit 0
+          fi
+          echo "❌ node with-plain-javascript test failed"
+          exit 1
+        env:
+          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
+
+      - name: bun with-plain-javascript
+        working-directory: examples/with-plain-javascript
+        run: |
+          bun i
+          app_log=$(mktemp)
+          bun start > "$app_log" 2>&1 &
+
+          app_pid=$!
+          sleep 3
+          kill "$app_pid" 2>/dev/null
+
+          bun_test=$(<"$app_log")
+          rm "$app_log"
+
+          if [[ "$bun_test" == *"Composer: 'Angus Young, Malcolm Young, Brian Johnson',"* ]]; then
+            echo "✅ bun with-plain-javascript test passed"
+            exit 0
+          fi
+          echo "❌ bun with-plain-javascript test failed"
+          exit 1
+        env:
+          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
+
+      - name: deno with-plain-javascript
+        working-directory: examples/with-plain-javascript
+        run: |
+          app_log=$(mktemp)
+          deno run start > "$app_log" 2>&1 &
+
+          app_pid=$!
+          sleep 3
+          kill "$app_pid" 2>/dev/null
+
+          deno_test=$(<"$app_log")
+          rm "$app_log"
+
+          if [[ "$deno_test" == *"Composer: 'Angus Young, Malcolm Young, Brian Johnson',"* ]]; then
+            echo "✅ deno with-plain-javascript test passed"
+            exit 0
+          fi
+          echo "❌ deno with-plain-javascript test failed"
+          exit 1
+        env:
+          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
+
+      - name: remove with-plain-javascript
+        run: rm -rf examples/with-plain-javascript
+
+      - name: bun with-typescript-knex
+        working-directory: examples/with-typescript-knex
+        run: |
+          bun i
+          bun_test=$(bun example.ts)
+
+          if [[ "$bun_test" == *"\"Company\": \"Embraer - Empresa Brasileira de Aeronáutica S.A.\","* ]]; then
+            echo "✅ bun with-typescript-knex test passed"
+            exit 0
+          fi
+          echo "❌ bun with-typescript-knex test failed"
+          exit 1
+        env:
+          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
+
+      - name: remove with-typescript-knex
+        run: rm -rf examples/with-typescript-knex
+
+      - name: node with-typescript-nextjs
+        working-directory: examples/with-typescript-nextjs
+        run: |
+          npm i
+          npm run dev &
+          sleep 3
+          node_test=$(curl localhost:3000)
+          node_test2=$(curl localhost:3000/api/hello)
+
+          if [[ $node_test == *"next.js json route"* && $node_test2 == *"{\"data\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
+            echo "✅ node with-typescript-nextjs test passed"
+            exit 0
+          fi
+          echo "❌ node with-typescript-nextjs test failed"
+          exit 1
+        env:
+          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
+
+      - name: bun with-typescript-nextjs
+        working-directory: examples/with-typescript-nextjs
+        run: |
+          bun i
+          bun run dev &
+          sleep 3
+          bun_test=$(curl localhost:3000)
+          bun_test2=$(curl localhost:3000/api/hello)
+          if [[ $bun_test == *"next.js json route"* && $bun_test2 == *"{\"data\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
+            echo "✅ bun with-typescript-nextjs test passed"
+            exit 0
+          fi
+          echo "❌ bun with-typescript-nextjs test failed"
+          exit 1
+        env:
+          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
+
+      - name: deno with-typescript-nextjs
+        working-directory: examples/with-typescript-nextjs
+        run: |
+          deno run dev &
+          sleep 3
+          #not testing index page because it throws an error with deno
+          deno_test=$(curl localhost:3000/api/hello)
+          if [[ $deno_test == *"{\"data\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
+            echo "✅ deno with-typescript-nextjs test passed"
+            exit 0
+          fi
+          echo "❌ deno with-typescript-nextjs test failed"
+          exit 1
+        env:
+          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
+
+      - name: remove with-typescript-nextjs
+        run: rm -rf examples/with-typescript-nextjs
