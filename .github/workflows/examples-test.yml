@@ -71,10 +71,7 @@ jobs:
           DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
 
       - name: remove with-javascript-express
-        run: |
-          lsof -i tcp:3000
-          kill -9 PID
-          rm -rf examples/with-javascript-express
+        run: npx kill-port 3000 && rm -rf examples/with-javascript-express
 
       - name: node with-plain-javascript
         working-directory: examples/with-plain-javascript
