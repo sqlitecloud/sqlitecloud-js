@@ -167,7 +167,7 @@ jobs:
         run: |
           npm i
           npm run dev &
-          sleep 5
+          sleep 3
           node_test=$(curl localhost:3000)
           node_test2=$(curl localhost:3000/api/hello)
 
@@ -185,7 +185,7 @@ jobs:
         run: |
           bun i
           bun run dev &
-          sleep 5
+          sleep 3
           bun_test=$(curl localhost:3000)
           bun_test2=$(curl localhost:3000/api/hello)
           if [[ $bun_test == *"next.js json route"* && $bun_test2 == *"{\"data\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
@@ -201,7 +201,7 @@ jobs:
         working-directory: examples/with-typescript-nextjs
         run: |
           deno run dev &
-          sleep 5
+          sleep 3
           #not testing index page because it throws an error with deno
           deno_test=$(curl localhost:3000/api/hello)
           if [[ $deno_test == *"{\"data\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
