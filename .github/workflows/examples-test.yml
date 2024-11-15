@@ -261,3 +261,24 @@ jobs:
 
       - name: remove with-javascript-vite
         run: rm -rf examples/with-javascript-vite
+
+      - name: node with-javascript-browser
+        working-directory: examples/with-javascript-browser
+        run: npm i && node test.cjs
+        env:
+          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
+
+      - name: bun with-javascript-browser
+        working-directory: examples/with-javascript-browser
+        run: bun i && bun test.cjs
+        env:
+          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
+
+      - name: deno with-javascript-browser
+        working-directory: examples/with-javascript-browser
+        run: deno --allow-all test.cjs
+        env:
+          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
+
+      - name: remove with-javascript-browser
+        run: rm -rf examples/with-javascript-browser
