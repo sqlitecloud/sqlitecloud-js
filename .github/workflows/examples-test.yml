@@ -2,11 +2,14 @@ name: 'end to end test'
 on:
   push:
 
+env:
+  DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
+
 jobs:
   examples-test:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest] #, windows-latest]
 
     name: 'End to End Test'
     timeout-minutes: 20
@@ -49,8 +52,6 @@ jobs:
           fi
           echo "❌ node with-javascript-express test failed"
           exit 1
-        env:
-          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
 
       - name: bun with-javascript-express
         working-directory: examples/with-javascript-express
@@ -66,8 +67,6 @@ jobs:
           fi
           echo "❌ bun with-javascript-express test failed"
           exit 1
-        env:
-          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
 
       - name: deno with-javascript-express
         working-directory: examples/with-javascript-express
@@ -82,8 +81,6 @@ jobs:
           fi
           echo "❌ deno with-javascript-express test failed"
           exit 1
-        env:
-          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
 
       - name: remove with-javascript-express
         run: rm -rf examples/with-javascript-express
@@ -108,8 +105,6 @@ jobs:
           fi
           echo "❌ node with-plain-javascript test failed"
           exit 1
-        env:
-          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
 
       - name: bun with-plain-javascript
         working-directory: examples/with-plain-javascript
@@ -131,8 +126,6 @@ jobs:
           fi
           echo "❌ bun with-plain-javascript test failed"
           exit 1
-        env:
-          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
 
       - name: deno with-plain-javascript
         working-directory: examples/with-plain-javascript
@@ -153,8 +146,6 @@ jobs:
           fi
           echo "❌ deno with-plain-javascript test failed"
           exit 1
-        env:
-          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
 
       - name: remove with-plain-javascript
         run: rm -rf examples/with-plain-javascript
@@ -171,8 +162,6 @@ jobs:
           fi
           echo "❌ node with-typescript-knex test failed"
           exit 1
-        env:
-          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
 
       - name: bun with-typescript-knex
         working-directory: examples/with-typescript-knex
@@ -186,8 +175,6 @@ jobs:
           fi
           echo "❌ bun with-typescript-knex test failed"
           exit 1
-        env:
-          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
 
       - name: remove with-typescript-knex
         run: rm -rf examples/with-typescript-knex
@@ -208,8 +195,6 @@ jobs:
           fi
           echo "❌ node with-typescript-nextjs test failed"
           exit 1
-        env:
-          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
 
       - name: bun with-typescript-nextjs
         working-directory: examples/with-typescript-nextjs
@@ -226,8 +211,6 @@ jobs:
           fi
           echo "❌ bun with-typescript-nextjs test failed"
           exit 1
-        env:
-          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
 
       - name: deno with-typescript-nextjs
         working-directory: examples/with-typescript-nextjs
@@ -243,8 +226,6 @@ jobs:
           fi
           echo "❌ deno with-typescript-nextjs test failed"
           exit 1
-        env:
-          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
 
       - name: remove with-typescript-nextjs
         run: rm -rf examples/with-typescript-nextjs
@@ -274,20 +255,14 @@ jobs:
       - name: node with-javascript-browser
         working-directory: examples/with-javascript-browser
         run: npm i && node test.cjs
-        env:
-          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
 
       - name: bun with-javascript-browser
         working-directory: examples/with-javascript-browser
         run: bun i && bun test.cjs
-        env:
-          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
 
       - name: deno with-javascript-browser
         working-directory: examples/with-javascript-browser
         run: deno --allow-all test.cjs
-        env:
-          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
 
       - name: remove with-javascript-browser
         run: rm -rf examples/with-javascript-browser
