@@ -15,10 +15,6 @@ jobs:
     timeout-minutes: 30
     runs-on: ${{ matrix.os }}
 
-    defaults:
-      run:
-        shell: bash
-
     steps:
       - uses: actions/checkout@v4
 
