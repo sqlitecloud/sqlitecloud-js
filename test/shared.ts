@@ -231,7 +231,7 @@ export async function clearTestingDatabasesAsync() {
   for (let i = 0; i < databases.length; i++) {
     const databaseName = databases[i]['name']
     if (testingPattern.test(databaseName)) {
-      const result = await chinook.sql`REMOVE DATABASE ${databaseName};`
+      const result = await chinook.sql(`REMOVE DATABASE ${databaseName};`)
       console.assert(result)
       numDeleted++
     }

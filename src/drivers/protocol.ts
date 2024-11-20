@@ -2,7 +2,7 @@
 // protocol.ts - low level protocol handling for SQLiteCloud transport
 //
 
-import { SQLiteCloudError, type SQLCloudRowsetMetadata, type SQLiteCloudDataTypes } from './types'
+import { SQLiteCloudCommand, SQLiteCloudError, type SQLCloudRowsetMetadata, type SQLiteCloudDataTypes } from './types'
 import { SQLiteCloudRowset } from './rowset'
 
 // explicitly importing buffer library to allow cross-platform support by replacing it
@@ -335,7 +335,60 @@ export function popData(buffer: Buffer): { data: SQLiteCloudDataTypes | SQLiteCl
 }
 
 /** Format a command to be sent via SCSP protocol */
-export function formatCommand(command: string): string {
-  const commandLength = Buffer.byteLength(command, 'utf-8')
-  return `+${commandLength} ${command}`
+export function formatCommand(command: SQLiteCloudCommand): string {
+  if (command.parameters && command.parameters.length > 0) {
+    // by SCSP the string paramenters in the array are zero-terminated
+    return serializeCommand([command.query, ...command.parameters || []], true)
+  }
+  return serializeData(command.query, false)
+}
+
+function serializeCommand(data: any[], zeroString: boolean = false): string {
+  const n = data.length
+  let serializedData = `${n} `
+
+  for (let i = 0; i < n; i++) {
+    // the first string is the sql and it must be zero-terminated
+    const zs = i == 0 || zeroString
+    serializedData += serializeData(data[i], zs)
+  }
+
+  const header = `${CMD_ARRAY}${serializedData.length} `
+  return header + serializedData
+}
+
+function serializeData(data: any, zeroString: boolean = false): string {
+  if (typeof data === 'string') {
+    let cmd = CMD_STRING
+    if (zeroString) {
+      cmd = CMD_ZEROSTRING
+      data += '\0'
+    }
+
+    const header = `${cmd}${Buffer.byteLength(data, 'utf-8')} `
+    return header + data
+  }
+
+  if (typeof data === 'number') {
+    if (Number.isInteger(data)) {
+      return `${CMD_INT}${data} `
+    } else {
+      return `${CMD_FLOAT}${data} `
+    }
+  }
+
+  if (Buffer.isBuffer(data)) {
+    const header = `${CMD_BLOB}${data.length} `
+    return header + data.toString('utf-8')
+  }
+
+  if (data === null || data === undefined) {
+    return `${CMD_NULL} `
+  }
+
+  if (Array.isArray(data)) {
+    return serializeCommand(data, zeroString)
+  }
+
+  throw new Error(`Unsupported data type for serialization: ${typeof data}`)
 }

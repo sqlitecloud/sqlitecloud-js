@@ -105,6 +105,11 @@ export interface SQLCloudRowsetMetadata {
 /** Basic types that can be returned by SQLiteCloud APIs */
 export type SQLiteCloudDataTypes = string | number | bigint | boolean | Record<string | number, unknown> | Buffer | null | undefined
 
+export interface SQLiteCloudCommand {
+  query: string
+  parameters?: SQLiteCloudDataTypes[]
+}
+
 /** Custom error reported by SQLiteCloud drivers */
 export class SQLiteCloudError extends Error {
   constructor(message: string, args?: Partial<SQLiteCloudError>) {

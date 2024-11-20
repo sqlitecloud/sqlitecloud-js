@@ -2,7 +2,7 @@
  * connection-tls.ts - connection via tls socket and sqlitecloud protocol
  */
 
-import { type SQLiteCloudConfig, SQLiteCloudError, type ErrorCallback, type ResultsCallback } from './types'
+import { type SQLiteCloudConfig, SQLiteCloudError, type ErrorCallback, type ResultsCallback, SQLiteCloudCommand } from './types'
 import { SQLiteCloudConnection } from './connection'
 import { getInitializationCommands } from './utilities'
 import {
@@ -22,8 +22,6 @@ import {
 import { Buffer } from 'buffer'
 
 import * as tls from 'tls'
-
-import fs from 'fs'
 
 /**
  * Implementation of SQLiteCloudConnection that connects to the database using specific tls APIs
@@ -104,11 +102,15 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
   }
 
   /** Will send a command immediately (no queueing), return the rowset/result or throw an error */
-  transportCommands(commands: string, callback?: ResultsCallback): this {
+  transportCommands(commands: string | SQLiteCloudCommand, callback?: ResultsCallback): this {
     // connection needs to be established?
     if (!this.socket) {
       callback?.call(this, new SQLiteCloudError('Connection not established', { errorCode: 'ERR_CONNECTION_NOT_ESTABLISHED' }))
       return this
+    }
+
+    if (typeof commands === 'string') {
+      commands = { query: commands } as SQLiteCloudCommand
     }
 
     // reset buffer and rowset chunks, define response callback
@@ -148,7 +150,7 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
   // buffer to accumulate incoming data until an whole command is received and can be parsed
   private buffer: Buffer = Buffer.alloc(0)
   private startedOn: Date = new Date()
-  private executingCommands?: string
+  private executingCommands?: SQLiteCloudCommand
 
   // callback to be called when a command is finished processing
   private processCallback?: ResultsCallback

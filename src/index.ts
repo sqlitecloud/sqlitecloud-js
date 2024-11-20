@@ -8,7 +8,6 @@
 // connection-ws does not want/need to load on node and is loaded dynamically by Database
 
 export { Database } from './drivers/database'
-export { Statement } from './drivers/statement'
 export { SQLiteCloudConnection } from './drivers/connection'
 export {
   type SQLiteCloudConfig,
@@ -19,5 +18,5 @@ export {
   type SQLiteCloudDataTypes
 } from './drivers/types'
 export { SQLiteCloudRowset, SQLiteCloudRow } from './drivers/rowset'
-export { escapeSqlParameter, prepareSql, parseconnectionstring, validateConfiguration, getInitializationCommands } from './drivers/utilities'
+export { parseconnectionstring, validateConfiguration, getInitializationCommands, sanitizeSQLiteIdentifier } from './drivers/utilities'
 export * as protocol from './drivers/protocol'

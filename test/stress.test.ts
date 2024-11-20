@@ -134,7 +134,7 @@ describe('stress testing', () => {
 
         const table = 'tracks'
         for (let i = 0; i < SEQUENCE_TEST_SIZE; i++) {
-          const results = await chinook.sql`SELECT * FROM ${table} ORDER BY RANDOM() LIMIT 12`
+          const results = await chinook.sql(`SELECT * FROM ${table} ORDER BY RANDOM() LIMIT 12`)
           expect(results).toHaveLength(12)
           expect(Object.keys(results[0])).toEqual(['TrackId', 'Name', 'AlbumId', 'MediaTypeId', 'GenreId', 'Composer', 'Milliseconds', 'Bytes', 'UnitPrice'])
         }

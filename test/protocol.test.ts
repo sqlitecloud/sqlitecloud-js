@@ -2,7 +2,8 @@
 // protocol.test.ts
 //
 
-import { parseRowsetChunks } from '../src/drivers/protocol'
+import { formatCommand, parseRowsetChunks } from '../src/drivers/protocol'
+import { SQLiteCloudCommand } from '../src/drivers/types'
 
 // response sent by the server when we TEST ROWSET_CHUNK
 const CHUNKED_RESPONSE = Buffer.from(
@@ -27,5 +28,29 @@ describe('parseRowsetChunks', () => {
     expect(rowset.length).toBe(147)
     expect(rowset[0]['key']).toBe('REINDEX')
     expect(rowset[146]['key']).toBe('PRIMARY')
+  })
+})
+
+const testCases = [
+  { query: "SELECT 'hello world'", parameters: [], expected: "+20 SELECT 'hello world'" },
+  {
+    query: 'SELECT ?, ?, ?, ?, ?',
+    parameters: ['world', 123, 3.14, null, Buffer.from('hello')],
+    expected: '=57 6 !21 SELECT ?, ?, ?, ?, ?\x00!6 world\x00:123 ,3.14 _ $5 hello',
+  },
+  {
+    query: 'SELECT ?',
+    parameters: ["'hello world'"],
+    expected: "=32 2 !9 SELECT ?\x00!14 'hello world'\x00",
+  },
+]
+
+describe('Format command', () => {
+  testCases.forEach(({ query, parameters, expected }) => {
+    it(`should serialize ${JSON.stringify([query, ...parameters])}`, () => {
+      const command: SQLiteCloudCommand = { query, parameters }
+      const serialized = formatCommand(command)
+      expect(serialized).toEqual(expected)
+    })
   })
 })

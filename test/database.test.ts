@@ -2,7 +2,7 @@
  * database.test.ts - test driver api
  */
 
-import { SQLiteCloudRowset, SQLiteCloudRow, SQLiteCloudError } from '../src/index'
+import { SQLiteCloudRowset, SQLiteCloudRow, SQLiteCloudError, sanitizeSQLiteIdentifier } from '../src/index'
 import { getTestingDatabase, getTestingDatabaseAsync, getChinookDatabase, removeDatabase, removeDatabaseAsync, LONG_TIMEOUT } from './shared'
 import { RowCountCallback } from '../src/drivers/types'
 
@@ -138,6 +138,23 @@ describe('Database.all', () => {
     },
     LONG_TIMEOUT
   )
+
+  it('select with empty space after semi-colon', done => {
+    const chinook = getChinookDatabase()
+    chinook.all('SELECT 1; ', (err: Error, rows: SQLiteCloudRowset) => {
+      expect(err).toBeNull()
+      expect(rows).toBeDefined()
+      expect(rows).toHaveLength(1)
+      expect(rows[0]).toMatchObject({
+        '1': 1
+      })
+
+      chinook.close(error => {
+        expect(error).toBeNull()
+        done()
+      })
+    })
+  })
 
   it('select with parameters', done => {
     const chinook = getChinookDatabase()
@@ -390,7 +407,7 @@ describe('Database.sql (async)', () => {
       let database
       try {
         database = await getTestingDatabaseAsync()
-        const updateSql = "UPDATE people SET name = 'Charlie Brown' WHERE id = 3; UPDATE people SET name = 'David Bowie' WHERE id = 4; "
+        const updateSql = "UPDATE people SET name = 'Charlie Brown' WHERE id = 3; UPDATE people SET name = 'David Bowie' WHERE id = 4;"
         let results = await database.sql(updateSql)
         expect(results).toMatchObject({
           lastID: 20,
@@ -404,6 +421,23 @@ describe('Database.sql (async)', () => {
     },
     LONG_TIMEOUT
   )
+
+  it('simple insert with empty space after semi-colon', async () => {
+    let database
+    try {
+      database = await getTestingDatabaseAsync()
+      const insertSql = "INSERT INTO people (name, hobby, age) VALUES ('Barnaby Bumblecrump', 'Rubber Duck Dressing', 42); "
+      let results = await database.sql(insertSql)
+      expect(results).toMatchObject({
+        lastID: 21,
+        changes: 1,
+        totalChanges: 21,
+        finalized: 1
+      })
+    } finally {
+      await removeDatabaseAsync(database)
+    }
+  })
 
   it(
     'should insert and respond with metadata',
@@ -425,4 +459,55 @@ describe('Database.sql (async)', () => {
     },
     LONG_TIMEOUT
   )
+
+  it('should select and return boolean value', async () => {
+    let database
+    try {
+      database = await getTestingDatabaseAsync()
+      let results = await database.sql`SELECT true`
+      expect(results).toMatchObject([
+        {
+          true: 1
+        }
+      ])
+    } finally {
+      await removeDatabaseAsync(database)
+    }
+  })
+
+  it('should sanitize SQL Injection as table name', async () => {
+    const database = await getTestingDatabaseAsync()
+    
+    const databaseName = sanitizeSQLiteIdentifier('people.sqlite; SELECT * FROM people; -- ')
+    await expect(database.sql(`USE DATABASE ${databaseName}`)).rejects.toThrow('Database name contains invalid characters (people.sqlite; SELECT * FROM people; --).')
+    
+    const table = sanitizeSQLiteIdentifier('people; -- ')
+    await expect(database.sql(`SELECT * FROM ${table} WHERE people = 1`)).rejects.toThrow('no such table: people; --')
+  })
+
+  it('should throw exception when using table name as binding', async () => {
+    const database = await getTestingDatabaseAsync()  
+    const table = 'people'
+    await expect(database.sql`USE DATABASE people.sqlite; SELECT * FROM ${table}`).rejects.toThrow('near "?": syntax error')
+  })
+
+  it('should built in commands accept bindings', async () => {
+    const database = await getTestingDatabaseAsync()
+    
+    let databaseName = 'people.sqlite'
+    await expect(database.sql`USE DATABASE ${databaseName}`).resolves.toBe('OK')
+  
+    databaseName = 'people.sqlite; SELECT * FROM people'
+    await expect(database.sql`USE DATABASE ${databaseName}`).rejects.toThrow('Database name contains invalid characters (people.sqlite; SELECT * FROM people).')
+    
+    let key = 'logo_level'
+    let value = 'debug'
+    await expect(database.sql`SET KEY ${key} TO ${value}`).resolves.toBe('OK')
+  
+    key = 'logo_level'
+    value = 'debug; DROP TABLE people'
+    await expect(database.sql`SET KEY ${key} TO ${value}`).resolves.toBe('OK')
+    const result = await database.sql`SELECT * FROM people`
+    expect(result.length).toBeGreaterThan(0)
+  })
 })
