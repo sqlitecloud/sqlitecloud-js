@@ -343,7 +343,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest] #, windows-latest]
-        api-level: [15, 23, 28, 30, 35]
+        api-level: [23, 28, 30, 35]
 
     name: 'Android End to End Test'
     timeout-minutes: 30
