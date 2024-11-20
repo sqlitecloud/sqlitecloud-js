@@ -31,6 +31,9 @@ jobs:
         with:
           deno-version: vx.x.x
 
+      - name: setup playwright for browser related test
+        run: npm i -g playwright && npx playwright install --with-deps && npx playwright install msedge && npx playwright install chrome
+
       - name: build driver
         run: npm i && npm run build
 
@@ -229,12 +232,7 @@ jobs:
 
       - name: node with-javascript-vite
         working-directory: examples/with-javascript-vite
-        run: |
-          npm i
-          npx playwright install --with-deps
-          npx playwright install msedge
-          npx playwright install chrome
-          npx playwright test
+        run: npm i && npx playwright test
         env:
           VITE_DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
 
