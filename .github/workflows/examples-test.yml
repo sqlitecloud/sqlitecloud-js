@@ -12,7 +12,7 @@ jobs:
         os: [ubuntu-latest, macos-latest] #, windows-latest]
 
     name: 'End to End Test'
-    timeout-minutes: 30
+    timeout-minutes: 15
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -29,22 +29,6 @@ jobs:
 
       - name: setup playwright for browser related test
         run: npx playwright install --with-deps && npx playwright install msedge && npx playwright install chrome
-
-      #setup build tools and simulators for iOS and Android testing
-      - name: setup macOS utils
-        if: matrix.os == 'macos-latest'
-        run: |
-          brew tap wix/brew
-          brew install applesimutils
-        env:
-          HOMEBREW_NO_AUTO_UPDATE: 1
-          HOMEBREW_NO_INSTALL_CLEANUP: 1
-      - name: Setup Ruby
-        if: matrix.os == 'macos-latest'
-        uses: ruby/setup-ruby@v1
-        with:
-          bundler-cache: true
-          ruby-version: 3.3.6
 
       - name: build driver
         run: npm i && npm run build
@@ -279,12 +263,45 @@ jobs:
       - name: remove with-javascript-browser
         run: rm -rf examples/with-javascript-browser
 
-      - name: node with-typescript-react-native
-        if: matrix.os == 'macos-latest'
+  ios-test:
+    strategy:
+      matrix:
+        os: [macos-latest] #, ubuntu-latest, windows-latest]
+
+    name: 'iOS End to End Test'
+    timeout-minutes: 30
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: latest
+
+      #setup build tools and simulators
+      - name: setup utils
+        run: |
+          brew tap wix/brew
+          brew install applesimutils
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: 1
+          HOMEBREW_NO_INSTALL_CLEANUP: 1
+      - name: setup ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+          ruby-version: 3.3.6
+
+      - name: build driver
+        run: |
+          npm i && npm run build
+          echo "DRIVER=$(npm pack --json | jq '.[0].filename')" >> $GITHUB_ENV
+
+      - name: install this commit version of the driver
         working-directory: examples/with-typescript-react-native
-        run: npm i
-      - name: Cache CocoaPods
-        if: matrix.os == 'macos-latest'
+        run: npm i ../../${{ env.DRIVER }}
+
+      - name: cache cocoapods
         id: cache-cocoapods
         uses: actions/cache@v3
         with:
@@ -292,12 +309,13 @@ jobs:
           key: ${{ runner.os }}-pods-${{ hashFiles('examples/with-typescript-react-native/ios/Podfile.lock') }}
           restore-keys: |
             ${{ runner.os }}-pods-
-      - name: Install CocoaPods
+
+      - name: install cocoapods
         working-directory: examples/with-typescript-react-native
-        if: steps.cache-cocoapods.outputs.cache-hit != 'true' && matrix.os == 'macos-latest'
+        if: steps.cache-cocoapods.outputs.cache-hit != 'true'
         run: cd ios ; pod install ; cd -
-      - name: Cache Detox build
-        if: matrix.os == 'macos-latest'
+
+      - name: cache detox build
         id: cache-detox-build
         uses: actions/cache@v3
         with:
@@ -305,11 +323,11 @@ jobs:
           key: ${{ runner.os }}-detox-build
           restore-keys: |
             ${{ runner.os }}-detox-build
-      - name: Detox build
-        if: matrix.os == 'macos-latest'
+
+      - name: detox build
         working-directory: examples/with-typescript-react-native
         run: npx detox build --configuration ios.sim.release
-      - name: Detox test
-        if: matrix.os == 'macos-latest'
+
+      - name: detox test
         working-directory: examples/with-typescript-react-native
         run: npx detox test --configuration ios.sim.release --cleanup --headless --record-logs all
