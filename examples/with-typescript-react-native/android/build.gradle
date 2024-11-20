@@ -15,7 +15,18 @@ buildscript {
         classpath("com.android.tools.build:gradle")
         classpath("com.facebook.react:react-native-gradle-plugin")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion") // detox end-to-end testing
     }
 }
+
+allprojects {
+    repositories {
+        google()
+        maven { // detox end-to-end testing
+            url("$rootDir/../node_modules/detox/Detox-android")
+        }
+        maven { url 'https://www.jitpack.io' }
+   }
+ }
 
 apply plugin: "com.facebook.react.rootproject"

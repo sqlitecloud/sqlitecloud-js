@@ -82,6 +82,8 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        testBuildType System.getProperty('testBuildType', 'debug') // detox end-to-end testing
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner' // detox end-to-end testing
     }
     signingConfigs {
         debug {
@@ -101,11 +103,16 @@ android {
             signingConfig signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+            proguardFile "${rootProject.projectDir}/../node_modules/detox/android/detox/proguard-rules-app.pro" // detox end-to-end testing
         }
     }
 }
 
 dependencies {
+
+    androidTestImplementation('com.wix:detox:+') // detox end-to-end testing
+    implementation 'androidx.appcompat:appcompat:1.1.0' // detox end-to-end testing
+
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 
