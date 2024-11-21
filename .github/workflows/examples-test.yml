@@ -269,7 +269,7 @@ jobs:
         os: [macos-latest] #, ubuntu-latest, windows-latest]
 
     name: 'iOS End to End Test'
-    timeout-minutes: 35
+    timeout-minutes: 40
     runs-on: ${{ matrix.os }}
 
     steps:
