@@ -59,8 +59,8 @@ jobs:
           npm start &
           Start-Sleep -Seconds 3
           $node_test = Invoke-RestMethod -Uri http://localhost:3000
-          if ($node_test.Contains('{"tracks":[{"TrackId":1,"Name":"For Those About To Rock (We Salute You)","AlbumId":1,"MediaTypeId":1,"GenreId":1,"Composer":"Angus Young, Malcolm Young, Brian Johnson","Milliseconds":343719,"Bytes":11170334,"UnitPrice":0.99},{')) {
-            Stop-Process -Id (Get-Process node).Id
+          if ($node_test.Content.Contains('{"tracks":[{"TrackId":1,"Name":"For Those About To Rock (We Salute You)","AlbumId":1,"MediaTypeId":1,"GenreId":1,"Composer":"Angus Young, Malcolm Young, Brian Johnson","Milliseconds":343719,"Bytes":11170334,"UnitPrice":0.99},{')) {
+            Stop-Process -Id (Get-Process npm).Id
             Write-Host "✅ node with-javascript-express test passed"
           } else {
             Write-Error "❌ node with-javascript-express test failed"
@@ -415,7 +415,7 @@ jobs:
           api-level: ${{ matrix.api-level }}
           arch: x86_64
           disable-animations: false
-          emulator-options: -noaudio -gpu swiftshader_indirect -no-boot-anim -camera-back none
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           force-avd-creation: false
           script: echo 'Generated AVD snapshot for caching.'
 
@@ -445,9 +445,9 @@ jobs:
           arch: x86_64
           avd-name: ${{ steps.device.outputs.AVD_NAME }}
           disable-animations: true
-          emulator-options: -no-snapshot-save -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           force-avd-creation: false
-          script: npx detox test --configuration android.emu.release --headless --record-logs all --take-screenshots failing
+          script: npx detox test --configuration android.emu.release --headless --record-logs all
 
       - name: upload artifacts
         if: failure()
