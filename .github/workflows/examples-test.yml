@@ -55,17 +55,14 @@ jobs:
         working-directory: examples/with-javascript-express
         run: |
           npm i
-          npm start &
-          sleep 3
-          node_test=$(curl localhost:3000)
-
+          Start-Process -NoNewWindow -FilePath node -ArgumentList "start" -PassThru | Out-Null
+          Start-Sleep -Seconds 3
+          $node_test = Invoke-RestMethod -Uri http://localhost:3000
           if ($node_test -like '{\"tracks\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{') {
-            echo "✅ node with-javascript-express test passed"
-            npx kill-port 3000
-            exit 0
+            Stop-Process -Id (Get-Process node).Id
+            Write-Host "✅ node with-javascript-express test passed"
           } else {
-            echo "❌ node with-javascript-express test failed"
-            exit 1
+            Write-Error "❌ node with-javascript-express test failed"
           }
 
       - name: bun with-javascript-express
