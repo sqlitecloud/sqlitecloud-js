@@ -85,7 +85,7 @@ jobs:
 
       - name: remove with-javascript-express
         run: |
-          lsof +D ./ | awk '{print $2}' | tail -n +2 | xargs -r kill -9
+          lsof +D ./examples/with-javascript-express | awk '{print $2}' | tail -n +2 | xargs -r kill -9
           rm -rf examples/with-javascript-express
 
       - name: node with-plain-javascript
@@ -153,7 +153,7 @@ jobs:
 
       - name: remove with-plain-javascript
         run: |
-          lsof +D ./ | awk '{print $2}' | tail -n +2 | xargs -r kill -9
+          lsof +D ./examples/with-javascript-express | awk '{print $2}' | tail -n +2 | xargs -r kill -9
           rm -rf examples/with-plain-javascript
 
       - name: node with-typescript-knex
@@ -185,7 +185,7 @@ jobs:
 
       - name: remove with-typescript-knex
         run: |
-          lsof +D ./ | awk '{print $2}' | tail -n +2 | xargs -r kill -9
+          lsof +D ./examples/with-javascript-express | awk '{print $2}' | tail -n +2 | xargs -r kill -9
           rm -rf examples/with-typescript-knex
 
       - name: node with-typescript-nextjs
@@ -239,7 +239,7 @@ jobs:
 
       - name: remove with-typescript-nextjs
         run: |
-          lsof +D ./ | awk '{print $2}' | tail -n +2 | xargs -r kill -9
+          lsof +D ./examples/with-javascript-express | awk '{print $2}' | tail -n +2 | xargs -r kill -9
           rm -rf examples/with-typescript-nextjs
 
       - name: node with-javascript-vite
@@ -264,7 +264,7 @@ jobs:
 
       - name: remove with-javascript-vite
         run: |
-          lsof +D ./ | awk '{print $2}' | tail -n +2 | xargs -r kill -9
+          lsof +D ./examples/with-javascript-express | awk '{print $2}' | tail -n +2 | xargs -r kill -9
           rm -rf examples/with-javascript-vite
 
       - name: node with-javascript-browser
@@ -282,7 +282,7 @@ jobs:
 
       - name: remove with-javascript-browser
         run: |
-          lsof +D ./ | awk '{print $2}' | tail -n +2 | xargs -r kill -9
+          lsof +D ./examples/with-javascript-express | awk '{print $2}' | tail -n +2 | xargs -r kill -9
           rm -rf examples/with-javascript-browser
 
   ios-test:
