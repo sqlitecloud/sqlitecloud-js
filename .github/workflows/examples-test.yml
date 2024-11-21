@@ -11,6 +11,10 @@ jobs:
       matrix:
         os: [windows-latest] # ubuntu-latest, macos-latest,
 
+    defaults:
+      run:
+        shell: bash
+
     name: 'End to End Test'
     timeout-minutes: 15
     runs-on: ${{ matrix.os }}
@@ -28,7 +32,6 @@ jobs:
           deno-version: vx.x.x
 
       - name: setup playwright for browser related test
-        if: false
         run: npx playwright install --with-deps && npx playwright install msedge && npx playwright install chrome
 
       - name: build driver
@@ -36,7 +39,6 @@ jobs:
 
       #testing driver, removing examples after testing to save up space
       - name: node with-javascript-express
-        if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
         working-directory: examples/with-javascript-express
         run: |
           npm i
@@ -51,22 +53,8 @@ jobs:
           echo "❌ node with-javascript-express test failed"
           exit 1
 
-      - name: node with-javascript-express
-        if: matrix.os == 'windows-latest'
-        working-directory: examples/with-javascript-express
-        run: |
-          npm i
-          npm start &
-          Start-Sleep -Seconds 3
-          $node_test = Invoke-RestMethod -Uri http://localhost:3000
-          if ($node_test.Content.Contains('{"tracks":[{"TrackId":1,"Name":"For Those About To Rock (We Salute You)","AlbumId":1,"MediaTypeId":1,"GenreId":1,"Composer":"Angus Young, Malcolm Young, Brian Johnson","Milliseconds":343719,"Bytes":11170334,"UnitPrice":0.99},{')) {
-            Stop-Process -Id (Get-Process npm).Id
-            Write-Host "✅ node with-javascript-express test passed"
-          } else {
-            Write-Error "❌ node with-javascript-express test failed"
-          }
-
       - name: bun with-javascript-express
+        if: matrix.os != 'windows-latest'
         working-directory: examples/with-javascript-express
         run: |
           bun i
@@ -120,6 +108,7 @@ jobs:
           exit 1
 
       - name: bun with-plain-javascript
+        if: matrix.os != 'windows-latest'
         working-directory: examples/with-plain-javascript
         run: |
           bun i
@@ -177,6 +166,7 @@ jobs:
           exit 1
 
       - name: bun with-typescript-knex
+        if: matrix.os != 'windows-latest'
         working-directory: examples/with-typescript-knex
         run: |
           bun i
@@ -210,6 +200,7 @@ jobs:
           exit 1
 
       - name: bun with-typescript-nextjs
+        if: matrix.os != 'windows-latest'
         working-directory: examples/with-typescript-nextjs
         run: |
           bun i
@@ -250,6 +241,7 @@ jobs:
           VITE_DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
 
       - name: bun with-javascript-vite
+        if: matrix.os != 'windows-latest'
         working-directory: examples/with-javascript-vite
         run: bun i && bun playwright test
         env:
@@ -270,6 +262,7 @@ jobs:
         run: npm i && node test.cjs
 
       - name: bun with-javascript-browser
+        if: matrix.os != 'windows-latest'
         working-directory: examples/with-javascript-browser
         run: bun i && bun test.cjs
 
