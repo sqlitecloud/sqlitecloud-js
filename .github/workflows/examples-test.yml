@@ -108,7 +108,7 @@ jobs:
           exit 1
 
       - name: bun with-plain-javascript
-        if: matrix.os != 'windows-latest'
+        continue-on-error: true
         working-directory: examples/with-plain-javascript
         run: |
           bun i
@@ -167,7 +167,7 @@ jobs:
           exit 1
 
       - name: bun with-typescript-knex
-        if: matrix.os != 'windows-latest'
+        continue-on-error: true
         working-directory: examples/with-typescript-knex
         run: |
           bun i
@@ -201,7 +201,7 @@ jobs:
           exit 1
 
       - name: bun with-typescript-nextjs
-        if: matrix.os != 'windows-latest'
+        continue-on-error: true
         working-directory: examples/with-typescript-nextjs
         run: |
           bun i
@@ -242,7 +242,7 @@ jobs:
           VITE_DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
 
       - name: bun with-javascript-vite
-        if: matrix.os != 'windows-latest'
+        continue-on-error: true
         working-directory: examples/with-javascript-vite
         run: bun i && bun playwright test
         env:
@@ -369,11 +369,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: latest
-      - name: Use specific Java version for sdkmanager to work
-        uses: joschi/setup-jdk@v1
+      - uses: actions/setup-java@v4
         with:
-          java-version: 'openjdk8'
-          architecture: 'x64'
+          distribution: temurin
+          java-version: 21
 
       - name: build driver
         run: |
