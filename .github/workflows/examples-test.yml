@@ -28,6 +28,7 @@ jobs:
           deno-version: vx.x.x
 
       - name: setup playwright for browser related test
+        if: false
         run: npx playwright install --with-deps && npx playwright install msedge && npx playwright install chrome
 
       - name: build driver
@@ -55,7 +56,7 @@ jobs:
         working-directory: examples/with-javascript-express
         run: |
           npm i
-          Start-Process -NoNewWindow -FilePath npm -ArgumentList "start" -PassThru | Out-Null
+          npm start &
           Start-Sleep -Seconds 3
           $node_test = Invoke-RestMethod -Uri http://localhost:3000
           if ($node_test -like '{\"tracks\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{') {
