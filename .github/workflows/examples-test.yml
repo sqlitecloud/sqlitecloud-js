@@ -54,10 +54,8 @@ jobs:
           exit 1
 
       - name: bun with-javascript-express
-        if: matrix.os != 'windows-latest'
         working-directory: examples/with-javascript-express
         run: |
-          bun i
           bun start &
           sleep 3
           bun_test=$(curl localhost:3000)
@@ -108,7 +106,6 @@ jobs:
           exit 1
 
       - name: bun with-plain-javascript
-        continue-on-error: true
         working-directory: examples/with-plain-javascript
         run: |
           app_log=$(mktemp)
@@ -166,10 +163,8 @@ jobs:
           exit 1
 
       - name: bun with-typescript-knex
-        continue-on-error: true
         working-directory: examples/with-typescript-knex
         run: |
-          bun i
           bun_test=$(bun example.ts)
 
           if [[ "$bun_test" == *"\"Company\": \"Embraer - Empresa Brasileira de Aeronáutica S.A.\","* ]]; then
@@ -200,10 +195,8 @@ jobs:
           exit 1
 
       - name: bun with-typescript-nextjs
-        continue-on-error: true
         working-directory: examples/with-typescript-nextjs
         run: |
-          bun i
           bun run dev &
           sleep 3
           bun_test=$(curl localhost:3000)
@@ -241,9 +234,8 @@ jobs:
           VITE_DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
 
       - name: bun with-javascript-vite
-        continue-on-error: true
         working-directory: examples/with-javascript-vite
-        run: bun i && bun playwright test
+        run: bun playwright test
         env:
           VITE_DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
 
@@ -264,7 +256,7 @@ jobs:
 
       - name: bun with-javascript-browser
         working-directory: examples/with-javascript-browser
-        run: bun i && bun test.cjs
+        run: bun test.cjs
 
       - name: deno with-javascript-browser
         if: matrix.os != 'windows-latest' #https://github.com/denoland/deno/issues/23524#issuecomment-2292075726
@@ -371,8 +363,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 21
-          architecture: x64
+          java-version: 8
 
       - name: build driver
         run: |
