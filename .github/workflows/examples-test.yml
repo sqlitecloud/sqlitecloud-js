@@ -264,7 +264,6 @@ jobs:
         run: npm i && node test.cjs
 
       - name: bun with-javascript-browser
-        if: matrix.os != 'windows-latest'
         working-directory: examples/with-javascript-browser
         run: bun i && bun test.cjs
 
@@ -370,15 +369,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: latest
-      - name: setup java
-        uses: actions/setup-java@v4
+      - name: Use specific Java version for sdkmanager to work
+        uses: joschi/setup-jdk@v1
         with:
-          cache: gradle
-          distribution: zulu
-          java-version: 8
-          architecture: x64
-      - name: gradle cache
-        uses: gradle/actions/setup-gradle@v4
+          java-version: 'openjdk8'
+          architecture: 'x64'
 
       - name: build driver
         run: |
@@ -392,25 +387,26 @@ jobs:
       - name: download android emulator image
         run: |
           echo "y" | $ANDROID_HOME/tools/bin/sdkmanager --install "system-images;android-29;google_apis;x86"
-          echo "no" | $ANDROID_HOME/tools/bin/avdmanager create avd --force -n Medium_Phone_API_35 -d pixel --package 'system-images;android-29;google_apis;x86'
+          echo "no" | $ANDROID_HOME/tools/bin/avdmanager create avd --force --name Medium_Phone_API_35 --device "Medium_Phone_API_35" -k 'system-images;android-29;google_apis;x86'
           $ANDROID_HOME/emulator/emulator -list-avds
-
-      - name: cache detox build
-        id: cache-detox-build
-        uses: actions/cache@v4
-        with:
-          path: examples/with-typescript-react-native/android/app/build
-          key: ${{ runner.os }}-detox-build
-          restore-keys: |
-            ${{ runner.os }}-detox-build
 
       - name: detox build
         working-directory: examples/with-typescript-react-native
         run: npx detox build --configuration android.emu.release
 
+      - name: android emulator
+        timeout-minutes: 10
+        continue-on-error: true
+        run: |
+          echo "starting emulator"
+          nohup $ANDROID_HOME/emulator/emulator -avd Medium_Phone_API_35 -no-audio -no-snapshot -no-window &
+          $ANDROID_HOME/platform-tools/adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed | tr -d '\r') ]]; do sleep 1; done; input keyevent 82'
+          $ANDROID_HOME/platform-tools/adb devices
+          echo "✅ emulator started"
+
       - name: detox test
         working-directory: examples/with-typescript-react-native
-        run: npx detox test --configuration android.emu.release --take-screenshots failing --record-logs all
+        run: npx detox test --configuration android.emu.release --take-screenshots failing
 
       - name: upload artifacts
         if: failure()
