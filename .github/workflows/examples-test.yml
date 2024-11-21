@@ -379,9 +379,9 @@ jobs:
           node-version: latest
       - uses: actions/setup-java@v4
         with:
+          cache: gradle
           distribution: zulu
           java-version: 8
-      - uses: gradle/actions/setup-gradle@v4
 
       - name: build driver
         run: |
