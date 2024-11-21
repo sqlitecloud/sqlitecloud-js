@@ -16,7 +16,7 @@ jobs:
       run:
         shell: bash
 
-    name: 'End to End Test'
+    name: 'Node, Bun, Deno, Browsers, Express, Knex, NextJS, Vite Test'
     timeout-minutes: 15
     runs-on: ${{ matrix.os }}
 
@@ -290,7 +290,7 @@ jobs:
       matrix:
         os: [macos-latest] #, ubuntu-latest, windows-latest]
 
-    name: 'iOS End to End Test'
+    name: 'React Native iOS Test'
     timeout-minutes: 40
     runs-on: ${{ matrix.os }}
 
@@ -367,7 +367,7 @@ jobs:
         os: [macos-latest] #, windows-latest]ubuntu-latest,
         api-level: [26] #23, 28, 30, 35
 
-    name: 'Android End to End Test'
+    name: 'React Native Android Test'
     timeout-minutes: 30
     runs-on: ${{ matrix.os }}
 
@@ -381,8 +381,8 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           cache: gradle
-          distribution: zulu
-          java-version: 8
+          distribution: tamarin
+          java-version: 17
 
       - name: build driver
         run: |
