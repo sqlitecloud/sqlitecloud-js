@@ -9,7 +9,7 @@ jobs:
   examples-test:
     strategy:
       matrix:
-        os: [windows-latest] # ubuntu-latest, macos-latest,
+        os: [ubuntu-latest, macos-latest, windows-latest]
 
     defaults:
       run:
@@ -56,6 +56,9 @@ jobs:
       - name: bun with-javascript-express
         working-directory: examples/with-javascript-express
         run: |
+          if [ "$RUNNER_OS" != "Windows" ]; then
+            bun i #re-installing dependencies in windows with bash causes a panic
+          fi
           bun start &
           sleep 3
           bun_test=$(curl localhost:3000)
@@ -108,6 +111,9 @@ jobs:
       - name: bun with-plain-javascript
         working-directory: examples/with-plain-javascript
         run: |
+          if [ "$RUNNER_OS" != "Windows" ]; then
+            bun i #re-installing dependencies in windows with bash causes a panic
+          fi
           app_log=$(mktemp)
           bun start > "$app_log" 2>&1 &
 
@@ -165,6 +171,9 @@ jobs:
       - name: bun with-typescript-knex
         working-directory: examples/with-typescript-knex
         run: |
+          if [ "$RUNNER_OS" != "Windows" ]; then
+            bun i #re-installing dependencies in windows with bash causes a panic
+          fi
           bun_test=$(bun example.ts)
 
           if [[ "$bun_test" == *"\"Company\": \"Embraer - Empresa Brasileira de Aeronáutica S.A.\","* ]]; then
@@ -197,6 +206,9 @@ jobs:
       - name: bun with-typescript-nextjs
         working-directory: examples/with-typescript-nextjs
         run: |
+          if [ "$RUNNER_OS" != "Windows" ]; then
+            bun i #re-installing dependencies in windows with bash causes a panic
+          fi
           bun run dev &
           sleep 3
           bun_test=$(curl localhost:3000)
@@ -235,7 +247,11 @@ jobs:
 
       - name: bun with-javascript-vite
         working-directory: examples/with-javascript-vite
-        run: bun playwright test
+        run: |
+          if [ "$RUNNER_OS" != "Windows" ]; then
+            bun i #re-installing dependencies in windows with bash causes a panic
+          fi
+          bun playwright test
         env:
           VITE_DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
 
@@ -255,8 +271,9 @@ jobs:
         run: npm i && node test.cjs
 
       - name: bun with-javascript-browser
+        if: matrix.os != 'windows-latest' #cannot launch browsers on windows with bash in commonjs?
         working-directory: examples/with-javascript-browser
-        run: bun test.cjs
+        run: bun i && bun test.cjs
 
       - name: deno with-javascript-browser
         if: matrix.os != 'windows-latest' #https://github.com/denoland/deno/issues/23524#issuecomment-2292075726
@@ -377,7 +394,7 @@ jobs:
       - name: download android emulator image
         run: |
           echo "y" | $ANDROID_HOME/tools/bin/sdkmanager --install "system-images;android-29;google_apis;x86"
-          echo "no" | $ANDROID_HOME/tools/bin/avdmanager create avd --force --name Medium_Phone_API_35 --device "Medium_Phone_API_35" -k 'system-images;android-29;google_apis;x86'
+          echo "no" | $ANDROID_HOME/tools/bin/avdmanager create avd --force --name Medium_Phone_API_35 --device pixel -k 'system-images;android-29;google_apis;x86'
           $ANDROID_HOME/emulator/emulator -list-avds
 
       - name: detox build
