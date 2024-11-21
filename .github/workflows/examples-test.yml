@@ -369,11 +369,13 @@ jobs:
         with:
           node-version: latest
       - name: setup java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
-          distribution: zulu
-          java-version: 8
-          architecture: x64
+          cache: gradle
+          distribution: temurin
+          java-version: 17
+      - name: gradle cache
+        uses: gradle/actions/setup-gradle@v4
 
       - name: build driver
         run: |
