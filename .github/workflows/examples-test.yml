@@ -362,8 +362,8 @@ jobs:
           node-version: latest
       - uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: 17
+          distribution: zulu
+          java-version: 8
 
       - name: build driver
         run: |
