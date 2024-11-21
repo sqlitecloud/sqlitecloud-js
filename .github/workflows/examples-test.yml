@@ -59,7 +59,7 @@ jobs:
           npm start &
           Start-Sleep -Seconds 3
           $node_test = Invoke-RestMethod -Uri http://localhost:3000
-          if ($node_test -like '{\"tracks\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{') {
+          if ($node_test.Contains('{"tracks":[{"TrackId":1,"Name":"For Those About To Rock (We Salute You)","AlbumId":1,"MediaTypeId":1,"GenreId":1,"Composer":"Angus Young, Malcolm Young, Brian Johnson","Milliseconds":343719,"Bytes":11170334,"UnitPrice":0.99},{')) {
             Stop-Process -Id (Get-Process node).Id
             Write-Host "✅ node with-javascript-express test passed"
           } else {
