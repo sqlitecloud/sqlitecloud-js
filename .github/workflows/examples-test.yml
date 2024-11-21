@@ -111,7 +111,6 @@ jobs:
         continue-on-error: true
         working-directory: examples/with-plain-javascript
         run: |
-          bun i
           app_log=$(mktemp)
           bun start > "$app_log" 2>&1 &
 
@@ -373,6 +372,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+          architecture: x64
 
       - name: build driver
         run: |
