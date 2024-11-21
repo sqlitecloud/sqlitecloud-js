@@ -84,7 +84,6 @@ jobs:
           exit 1
 
       - name: remove with-javascript-express
-        if: always()
         run: rm -rf examples/with-javascript-express
 
       - name: node with-plain-javascript
@@ -151,7 +150,7 @@ jobs:
           exit 1
 
       - name: remove with-plain-javascript
-        if: always()
+        if: matrix.os != 'windows-latest'
         run: rm -rf examples/with-plain-javascript
 
       - name: node with-typescript-knex
@@ -182,7 +181,6 @@ jobs:
           exit 1
 
       - name: remove with-typescript-knex
-        if: always()
         run: rm -rf examples/with-typescript-knex
 
       - name: node with-typescript-nextjs
@@ -235,7 +233,6 @@ jobs:
           exit 1
 
       - name: remove with-typescript-nextjs
-        if: always()
         run: rm -rf examples/with-typescript-nextjs
 
       - name: node with-javascript-vite
@@ -259,7 +256,6 @@ jobs:
           PW_DISABLE_TS_ESM: true
 
       - name: remove with-javascript-vite
-        if: always()
         run: rm -rf examples/with-javascript-vite
 
       - name: node with-javascript-browser
@@ -276,7 +272,6 @@ jobs:
         run: deno --allow-all test.cjs
 
       - name: remove with-javascript-browser
-        if: always()
         run: rm -rf examples/with-javascript-browser
 
   ios-test:
