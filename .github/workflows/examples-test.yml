@@ -150,7 +150,7 @@ jobs:
           exit 1
 
       - name: remove with-plain-javascript
-        if: matrix.os != 'windows-latest'
+        if: matrix.os != 'windows-latest' #kill command doesn not work on windows with bash, we can skip this step
         run: rm -rf examples/with-plain-javascript
 
       - name: node with-typescript-knex
@@ -249,6 +249,7 @@ jobs:
           VITE_DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
 
       - name: deno with-javascript-vite
+        if: matrix.os != 'windows-latest' #https://github.com/denoland/deno/issues/23524#issuecomment-2292075726
         working-directory: examples/with-javascript-vite
         run: deno add npm:@playwright/test && deno run --allow-all npm:playwright test
         env:
