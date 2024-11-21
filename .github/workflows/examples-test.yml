@@ -381,6 +381,7 @@ jobs:
         with:
           distribution: zulu
           java-version: 8
+      - uses: gradle/actions/setup-gradle@v4
 
       - name: build driver
         run: |
