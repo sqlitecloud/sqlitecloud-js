@@ -381,7 +381,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           cache: gradle
-          distribution: tamarin
+          distribution: temurin
           java-version: 17
 
       - name: build driver
