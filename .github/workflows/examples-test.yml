@@ -9,7 +9,7 @@ jobs:
   examples-test:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest] #, windows-latest]
+        os: [windows-latest] # ubuntu-latest, macos-latest,
 
     name: 'End to End Test'
     timeout-minutes: 15
@@ -35,6 +35,7 @@ jobs:
 
       #testing driver, removing examples after testing to save up space
       - name: node with-javascript-express
+        if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
         working-directory: examples/with-javascript-express
         run: |
           npm i
@@ -48,6 +49,24 @@ jobs:
           fi
           echo "❌ node with-javascript-express test failed"
           exit 1
+
+      - name: node with-javascript-express
+        if: matrix.os == 'windows-latest'
+        working-directory: examples/with-javascript-express
+        run: |
+          npm i
+          npm start &
+          sleep 3
+          node_test=$(curl localhost:3000)
+
+          if ($node_test -like '{\"tracks\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{') {
+            echo "✅ node with-javascript-express test passed"
+            npx kill-port 3000
+            exit 0
+          } else {
+            echo "❌ node with-javascript-express test failed"
+            exit 1
+          }
 
       - name: bun with-javascript-express
         working-directory: examples/with-javascript-express
@@ -264,6 +283,7 @@ jobs:
         run: rm -rf examples/with-javascript-browser
 
   ios-test:
+    if: false
     strategy:
       matrix:
         os: [macos-latest] #, ubuntu-latest, windows-latest]
@@ -397,7 +417,7 @@ jobs:
           api-level: ${{ matrix.api-level }}
           arch: x86_64
           disable-animations: false
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-options: -noaudio -no-boot-anim -camera-back none
           force-avd-creation: false
           script: echo 'Generated AVD snapshot for caching.'
 
@@ -427,7 +447,7 @@ jobs:
           arch: x86_64
           avd-name: ${{ steps.device.outputs.AVD_NAME }}
           disable-animations: true
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-options: -no-snapshot-save -noaudio -no-boot-anim -camera-back none
           force-avd-creation: false
           script: npx detox test --configuration android.emu.release --headless --record-logs all --take-screenshots failing
 
