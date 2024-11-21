@@ -269,6 +269,7 @@ jobs:
         run: bun i && bun test.cjs
 
       - name: deno with-javascript-browser
+        if: matrix.os != 'windows-latest' #https://github.com/denoland/deno/issues/23524#issuecomment-2292075726
         working-directory: examples/with-javascript-browser
         run: deno --allow-all test.cjs
 
@@ -373,8 +374,9 @@ jobs:
         uses: actions/setup-java@v4
         with:
           cache: gradle
-          distribution: temurin
-          java-version: 17
+          distribution: zulu
+          java-version: 8
+          architecture: x64
       - name: gradle cache
         uses: gradle/actions/setup-gradle@v4
 
