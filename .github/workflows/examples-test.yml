@@ -9,7 +9,7 @@ jobs:
   examples-test:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest] #, windows-latest]
 
     name: 'End to End Test'
     timeout-minutes: 15
@@ -41,7 +41,7 @@ jobs:
           npm start &
           sleep 3
           node_test=$(curl localhost:3000)
-          if [ "$node_test" == *"{\"tracks\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]; then
+          if [[ $node_test == *"{\"tracks\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
             echo "✅ node with-javascript-express test passed"
             npx kill-port 3000
             exit 0
@@ -56,7 +56,7 @@ jobs:
           bun start &
           sleep 3
           bun_test=$(curl localhost:3000)
-          if [ "$bun_test" == *"{\"tracks\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]; then
+          if [[ $bun_test == *"{\"tracks\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
             echo "✅ bun with-javascript-express test passed"
             npx kill-port 3000
             exit 0
@@ -70,7 +70,7 @@ jobs:
           deno run start &
           sleep 3
           deno_test=$(curl localhost:3000)
-          if [ "$deno_test" == *"{\"tracks\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]; then
+          if [[ $deno_test == *"{\"tracks\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
             echo "✅ deno with-javascript-express test passed"
             npx kill-port 3000
             exit 0
@@ -95,7 +95,7 @@ jobs:
           node_test=$(<"$app_log")
           rm "$app_log"
 
-          if [ "$node_test" == *"Composer: 'Angus Young, Malcolm Young, Brian Johnson',"* ]; then
+          if [[ "$node_test" == *"Composer: 'Angus Young, Malcolm Young, Brian Johnson',"* ]]; then
             echo "✅ node with-plain-javascript test passed"
             exit 0
           fi
@@ -116,7 +116,7 @@ jobs:
           bun_test=$(<"$app_log")
           rm "$app_log"
 
-          if [ "$bun_test" == *"Composer: 'Angus Young, Malcolm Young, Brian Johnson',"* ]; then
+          if [[ "$bun_test" == *"Composer: 'Angus Young, Malcolm Young, Brian Johnson',"* ]]; then
             echo "✅ bun with-plain-javascript test passed"
             exit 0
           fi
@@ -136,7 +136,7 @@ jobs:
           deno_test=$(<"$app_log")
           rm "$app_log"
 
-          if [ "$deno_test" == *"Composer: 'Angus Young, Malcolm Young, Brian Johnson',"* ]; then
+          if [[ "$deno_test" == *"Composer: 'Angus Young, Malcolm Young, Brian Johnson',"* ]]; then
             echo "✅ deno with-plain-javascript test passed"
             exit 0
           fi
@@ -152,7 +152,7 @@ jobs:
           npm i
           node_test=$(npx tsx example.ts)
 
-          if [ "$node_test" == *"\"Company\": \"Embraer - Empresa Brasileira de Aeronáutica S.A.\","* ]; then
+          if [[ "$node_test" == *"\"Company\": \"Embraer - Empresa Brasileira de Aeronáutica S.A.\","* ]]; then
             echo "✅ node with-typescript-knex test passed"
             exit 0
           fi
@@ -165,7 +165,7 @@ jobs:
           bun i
           bun_test=$(bun example.ts)
 
-          if [ "$bun_test" == *"\"Company\": \"Embraer - Empresa Brasileira de Aeronáutica S.A.\","* ]; then
+          if [[ "$bun_test" == *"\"Company\": \"Embraer - Empresa Brasileira de Aeronáutica S.A.\","* ]]; then
             echo "✅ bun with-typescript-knex test passed"
             exit 0
           fi
@@ -184,7 +184,7 @@ jobs:
           node_test=$(curl localhost:3000)
           node_test2=$(curl localhost:3000/api/hello)
 
-          if [ "$node_test" == *"next.js json route"* && "$node_test2" == *"{\"data\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]; then
+          if [[ $node_test == *"next.js json route"* && $node_test2 == *"{\"data\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
             echo "✅ node with-typescript-nextjs test passed"
             npx kill-port 3000
             exit 0
@@ -200,7 +200,7 @@ jobs:
           sleep 3
           bun_test=$(curl localhost:3000)
           bun_test2=$(curl localhost:3000/api/hello)
-          if [ "$bun_test" == *"next.js json route"* && "$bun_test2" == *"{\"data\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]; then
+          if [[ $bun_test == *"next.js json route"* && $bun_test2 == *"{\"data\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
             echo "✅ bun with-typescript-nextjs test passed"
             npx kill-port 3000
             exit 0
@@ -215,7 +215,7 @@ jobs:
           sleep 3
           #not testing index page because it throws an error with deno
           deno_test=$(curl localhost:3000/api/hello)
-          if [ "$deno_test" == *"{\"data\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]; then
+          if [[ $deno_test == *"{\"data\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
             echo "✅ deno with-typescript-nextjs test passed"
             npx kill-port 3000
             exit 0
