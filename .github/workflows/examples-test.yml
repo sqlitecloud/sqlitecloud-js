@@ -401,7 +401,6 @@ jobs:
           arch: ${{ matrix.arch }}
           avd-name: Medium_Phone_API_35
           force-avd-creation: false
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-metrics
           disable-animations: false
           working-directory: examples/with-typescript-react-native
           script: npx detox test --configuration android.emu.release --take-screenshots failing
