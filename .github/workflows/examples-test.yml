@@ -285,10 +285,9 @@ jobs:
         run: rm -rf examples/with-javascript-browser
 
   ios-test:
-    if: false
     strategy:
       matrix:
-        os: [macos-latest] #, ubuntu-latest, windows-latest]
+        os: [macos-latest]
 
     name: 'React Native iOS Test'
     timeout-minutes: 40
@@ -296,9 +295,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: latest
 
       #setup build tools and simulators
       - name: setup utils
@@ -308,11 +304,6 @@ jobs:
         env:
           HOMEBREW_NO_AUTO_UPDATE: 1
           HOMEBREW_NO_INSTALL_CLEANUP: 1
-      - name: setup ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          bundler-cache: true
-          ruby-version: 3.3.6
 
       - name: build driver
         run: |
@@ -381,7 +372,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           cache: gradle
-          distribution: zulu
+          distribution: microsoft
           java-version: 17
 
       - name: build driver
