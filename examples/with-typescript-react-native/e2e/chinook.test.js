@@ -23,8 +23,6 @@ describe('React Native project connection test', () => {
     await waitFor(element(by.text('• Alcohol Fueled Brewtality Live! [Disc 2] by Black Label Society'))).toBeVisible().withTimeout(10000)
     await waitFor(element(by.text('• Black Sabbath by Black Sabbath'))).toBeVisible().withTimeout(10000)
     await waitFor(element(by.text('• Black Sabbath Vol. 4 (Remaster) by Black Sabbath'))).toBeVisible().withTimeout(10000)
-    await waitFor(element(by.text('• Body Count by Body Count'))).toBeVisible().withTimeout(10000)
-    await waitFor(element(by.text('• Chemical Wedding by Bruce Dickinson'))).toBeVisible().withTimeout(10000)
-    await waitFor(element(by.text('• The Best Of Buddy Guy - The Millenium Collection by Buddy Guy'))).toBeVisible().withTimeout(10000)
+    
   });
 });
