@@ -37,6 +37,7 @@ export default function App() {
 
 const styles = StyleSheet.create({
   container: {
+    height: '90%',
     padding: 15,
   },
   title: {
