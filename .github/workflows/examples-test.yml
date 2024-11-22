@@ -366,43 +366,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      #setup build tools and simulators
-      - uses: actions/setup-node@v4
-        with:
-          node-version: latest
-
       - name: build driver
-        run: |
-          npm i && npm run build
-          echo "DRIVER=$(npm pack --json | jq '.[0].filename')" >> $GITHUB_ENV
+        run: npm i && npm run build && echo "DRIVER=$(npm pack --json | jq '.[0].filename')" >> $GITHUB_ENV
 
       - name: install last committed version of the driver
         working-directory: examples/with-typescript-react-native
         run: npm i ../../${{ env.DRIVER }}
 
-      - name: download android emulator image
-        run: |
-          echo "y" | $ANDROID_HOME/tools/bin/sdkmanager --install "system-images;android-${{matrix.api-level}};google_apis;x86"
-          echo "no" | $ANDROID_HOME/tools/bin/avdmanager create avd --force --name Medium_Phone_API_35 --device pixel -k 'system-images;android-${{matrix.api-level}};google_apis;x86'
-          $ANDROID_HOME/emulator/emulator -list-avds
-
       - name: detox build
         working-directory: examples/with-typescript-react-native
         run: npx detox build --configuration android.emu.release
 
-      - name: android emulator
-        timeout-minutes: 10
-        continue-on-error: true
-        run: |
-          echo "starting emulator"
-          nohup $ANDROID_HOME/emulator/emulator -avd Medium_Phone_API_35 -no-audio -no-snapshot -no-window &
-          $ANDROID_HOME/platform-tools/adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed | tr -d '\r') ]]; do sleep 1; done; input keyevent 82'
-          $ANDROID_HOME/platform-tools/adb devices
-          echo "✅ emulator started"
-
-      - name: detox test
-        working-directory: examples/with-typescript-react-native
-        run: npx detox test --configuration android.emu.release --take-screenshots failing
+      - name: detox tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          arch: x86_64
+          avd-name: Medium_Phone_API_35
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-metrics
+          disable-animations: false
+          working-directory: examples/with-typescript-react-native
+          script: npx detox test --configuration android.emu.release --take-screenshots failing
 
       - name: upload artifacts
         if: failure()
