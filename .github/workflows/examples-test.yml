@@ -371,6 +371,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: enable kvm group perms in linux
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: actions/setup-java@v4
+        if: matrix.os == 'ubuntu-latest'
+        with:
+          distribution: temurin
+          java-version: 21
+
       - name: build driver
         run: npm i && npm run build && echo "DRIVER=$(npm pack --json | jq '.[0].filename')" >> $GITHUB_ENV
 
