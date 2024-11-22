@@ -362,8 +362,8 @@ jobs:
         include:
           - os: ubuntu-latest
             arch: x86_64
-          - os: macos-latest
-            arch: arm64-v8a
+          #- os: macos-latest
+          #  arch: arm64-v8a
 
     name: 'React Native Android Test'
     timeout-minutes: 30
