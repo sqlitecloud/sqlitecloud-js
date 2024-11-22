@@ -391,9 +391,15 @@ jobs:
         working-directory: examples/with-typescript-react-native
         run: npm i ../../${{ env.DRIVER }}
 
-      - name: detox build
+      - name: detox build ubuntu
+        if: matrix.os == 'ubuntu-latest'
         working-directory: examples/with-typescript-react-native
         run: npx detox build --configuration android.emu.release
+
+      - name: detox build windows
+        if: matrix.os == 'windows-latest'
+        working-directory: examples/with-typescript-react-native
+        run: cd android && gradlew assembleRelease assembleAndroidTest -DtestBuildType=release
 
       - name: detox tests
         uses: reactivecircus/android-emulator-runner@v2
