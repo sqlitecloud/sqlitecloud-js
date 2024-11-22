@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
     padding: 15,
   },
   title: {
-    fontSize: 22,
+    fontSize: 12,
     fontWeight: '600',
   },
   listItem: {
