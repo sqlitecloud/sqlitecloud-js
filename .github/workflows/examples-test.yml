@@ -356,7 +356,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest] #, windows-latest]ubuntu-latest,
-        api-level: [26] #23, 28, 30, 35
+        api-level: [35] #23, 26, 28, 30, 35
 
     name: 'React Native Android Test'
     timeout-minutes: 30
@@ -372,7 +372,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           cache: gradle
-          distribution: microsoft
+          distribution: zulu
           java-version: 17
 
       - name: build driver
@@ -386,8 +386,8 @@ jobs:
 
       - name: download android emulator image
         run: |
-          echo "y" | $ANDROID_HOME/tools/bin/sdkmanager --install "system-images;android-29;google_apis;x86"
-          echo "no" | $ANDROID_HOME/tools/bin/avdmanager create avd --force --name Medium_Phone_API_35 --device pixel -k 'system-images;android-29;google_apis;x86'
+          echo "y" | $ANDROID_HOME/tools/bin/sdkmanager --install "system-images;android-${{matrix.api-level}};google_apis;x86"
+          echo "no" | $ANDROID_HOME/tools/bin/avdmanager create avd --force --name Medium_Phone_API_35 --device pixel -k 'system-images;android-${{matrix.api-level}};google_apis;x86'
           $ANDROID_HOME/emulator/emulator -list-avds
 
       - name: detox build
