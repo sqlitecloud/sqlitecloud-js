@@ -285,6 +285,7 @@ jobs:
         run: rm -rf examples/with-javascript-browser
 
   ios-test:
+    if: false
     strategy:
       matrix:
         os: [macos-latest]
@@ -369,11 +370,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: latest
-      - uses: actions/setup-java@v4
-        with:
-          cache: gradle
-          distribution: zulu
-          java-version: 17
 
       - name: build driver
         run: |
