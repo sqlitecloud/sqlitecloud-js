@@ -2,9 +2,6 @@ import {Database} from '@sqlitecloud/drivers';
 import {useState, useEffect} from 'react';
 import {View, Text, FlatList, StyleSheet} from 'react-native';
 import { DATABASE_URL } from '@env';
-import { Dimensions} from 'react-native'
-
-const {width, height} = Dimensions.get('window');
 
 export default function App() {
   const [albums, setAlbums] = useState([]);
@@ -41,11 +38,9 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     padding: 15,
-    width: width,
-    height: height,
   },
   title: {
-    fontSize: 34,
+    fontSize: 22,
     fontWeight: '600',
   },
   listItem: {
