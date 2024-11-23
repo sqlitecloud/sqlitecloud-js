@@ -38,25 +38,29 @@ module.exports = {
     simulator_15: {
       type: 'ios.simulator',
       device: {
-        type: 'iPhone 8,iOS 15.0'
+        type: 'iPhone 8',
+        os: 'iOS 15.0'
       }
     },
     simulator_16_1: {
       type: 'ios.simulator',
       device: {
-        type: 'iPad Air (5th generation),iOS 16.1'
+        type: 'iPad Air (5th generation)',
+        os: 'iOS 16.1'
       }
     },
     simulator_17: {
       type: 'ios.simulator',
       device: {
-        type: 'iPad mini (6th generation),iOS 17.0'
+        type: 'iPad mini (6th generation)',
+        os: 'iOS 17.0'
       }
     },
     simulator_18: {
       type: 'ios.simulator',
       device: {
-        type: 'iPhone SE (3rd generation),iOS 18.0'
+        type: 'iPhone SE (3rd generation)',
+        os: 'iOS 18.0'
       }
     },
 
