@@ -45,7 +45,7 @@ module.exports = {
     simulator_16_1: {
       type: 'ios.simulator',
       device: {
-        type: 'iPad Air (5th generation)',
+        type: 'iPhone 14 Pro Max',
         os: 'iOS 16.1'
       }
     },
