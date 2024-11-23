@@ -328,7 +328,7 @@ jobs:
 
       - name: test app
         working-directory: examples/with-typescript-react-native
-        run: npx detox test --configuration ios.sim.${{ matrix.version }} --cleanup --headless --record-videos all --take-screenshots all
+        run: npx detox test --configuration ios.sim.${{ matrix.version }} --cleanup --headless --record-videos all
 
       - name: upload artifacts
         if: always()
