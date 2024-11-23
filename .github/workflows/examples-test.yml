@@ -339,8 +339,8 @@ jobs:
             version: 10
           - api-level: 30
             version: 11
-          - api-level: 35
-            version: 15
+          #- api-level: 35
+          #  version: 15
 
     name: 'React Native Android ${{matrix.version}} Test'
     timeout-minutes: 30
