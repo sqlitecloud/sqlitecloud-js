@@ -288,10 +288,8 @@ jobs:
   ios-test:
     strategy:
       matrix:
-        os: [macos-12, macos-13, macos-14, macos-15]
+        os: [macos-13, macos-14, macos-15] # macos-12 for ios 15 it's going to be deprecated, it's also using an old version of xcode that is not compatible with react native
         include:
-          - os: macos-12
-            version: '15'
           - os: macos-13
             version: '16.1'
           - os: macos-14
