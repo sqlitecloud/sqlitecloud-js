@@ -302,7 +302,7 @@ jobs:
       - name: build driver
         run: npm i && npm run build && echo "DRIVER=$(npm pack --json | jq '.[0].filename')" >> $GITHUB_ENV
 
-      - name: install last committed version of the driver
+      - name: install driver
         working-directory: examples/with-typescript-react-native
         run: npm i ../../${{ env.DRIVER }}
 
@@ -310,27 +310,30 @@ jobs:
         working-directory: examples/with-typescript-react-native
         run: cd ios ; pod install ; cd -
 
-      - name: build
+      - name: build app
         working-directory: examples/with-typescript-react-native
         run: npx detox build --configuration ios.sim.release
 
-      - name: test
+      - name: test app
         working-directory: examples/with-typescript-react-native
-        run: npx detox test --configuration ios.sim.release --cleanup --record-videos all
+        run: npx detox test --configuration ios.sim.release --cleanup --headless --record-videos all
 
       - name: upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: detox-artifacts
-          path: artifacts
+          path: examples/with-typescript-react-native/artifacts
 
   android-test:
     strategy:
       matrix:
-        api-level: [29, 35] #23, 26, 28, 30
-        arch: [x86_64, x86, arm64-v8a]
+        api-level: [29, 30, 35] #23, 26, 28
+        include:
+          - arch: x86_64
+          - arch: arm64-v8a
+            api-level: 30
 
-    name: 'React Native Android Test'
+    name: 'React Native Android ${{matrix.api-level}} Test'
     timeout-minutes: 30
     runs-on: ubuntu-latest #android emulator on github actions works only on linux and old macos x86 builds, we can skip other os since the build and test process is going to be the same
 
@@ -351,7 +354,7 @@ jobs:
       - name: build driver
         run: npm i && npm run build && echo "DRIVER=$(npm pack --json | jq '.[0].filename')" >> $GITHUB_ENV
 
-      - name: install last committed version of the driver
+      - name: install driver
         working-directory: examples/with-typescript-react-native
         run: npm i ../../${{ env.DRIVER }}
 
@@ -367,7 +370,7 @@ jobs:
           avd-name: Medium_Phone_API_35
           emulator-boot-timeout: 20000
           working-directory: examples/with-typescript-react-native
-          script: npx detox test --configuration android.emu.release --record-videos all
+          script: npx detox test --configuration android.emu.release --cleanup --headless --record-videos all
 
       - name: upload artifacts
         uses: actions/upload-artifact@v4
