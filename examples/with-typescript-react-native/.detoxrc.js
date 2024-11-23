@@ -35,6 +35,31 @@ module.exports = {
     }
   },
   devices: {
+    simulator_15: {
+      type: 'ios.simulator',
+      device: {
+        type: 'iPhone 8,iOS 15.0'
+      }
+    },
+    simulator_16_1: {
+      type: 'ios.simulator',
+      device: {
+        type: 'iPad Air (5th generation),iOS 16.1'
+      }
+    },
+    simulator_17: {
+      type: 'ios.simulator',
+      device: {
+        type: 'iPad mini (6th generation),iOS 17.0'
+      }
+    },
+    simulator_18: {
+      type: 'ios.simulator',
+      device: {
+        type: 'iPhone SE (3rd generation),iOS 18.0'
+      }
+    },
+
     simulator: {
       type: 'ios.simulator',
       device: {
@@ -55,6 +80,22 @@ module.exports = {
     }
   },
   configurations: {
+    'ios.sim.15': {
+      device: 'simulator_15',
+      app: 'ios.release'
+    },
+    'ios.sim.16.1': {
+      device: 'simulator_16_1',
+      app: 'ios.release'
+    },
+    'ios.sim.17': {
+      device: 'simulator_17',
+      app: 'ios.release'
+    },
+    'ios.sim.18': {
+      device: 'simulator_18',
+      app: 'ios.release'
+    },
     'ios.sim.debug': {
       device: 'simulator',
       app: 'ios.debug'

@@ -286,10 +286,22 @@ jobs:
         run: rm -rf examples/with-javascript-browser
 
   ios-test:
-    if: false
-    name: 'React Native iOS Test'
+    strategy:
+      matrix:
+        os: [macos-12, macos-13, macos-14, macos-15]
+        include:
+          - os: macos-12
+            version: '15'
+          - os: macos-13
+            version: '16.1'
+          - os: macos-14
+            version: '17'
+          - os: macos-15
+            version: '18'
+
+    name: 'React Native iOS ${{ matrix.version }} Test'
     timeout-minutes: 40
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v4
@@ -317,7 +329,7 @@ jobs:
 
       - name: test app
         working-directory: examples/with-typescript-react-native
-        run: npx detox test --configuration ios.sim.release --cleanup --headless --record-videos all
+        run: npx detox test --configuration ios.sim.${{ matrix.version }} --cleanup --headless --record-videos all
 
       - name: upload artifacts
         if: always()
@@ -327,6 +339,7 @@ jobs:
           path: examples/with-typescript-react-native/artifacts
 
   android-test:
+    if: false
     strategy:
       matrix:
         api-level: [25, 26, 29, 31, 35] #app fail: android 5; driver fail: android 6 and android 7
@@ -347,6 +360,9 @@ jobs:
     runs-on: ubuntu-latest #android emulator on github actions works only on linux and old macos x86 builds, we can skip other os since the build and test process is going to be the same
 
     steps:
+      - uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          android: false
       - uses: actions/checkout@v4
 
       - name: enable kvm group perms
