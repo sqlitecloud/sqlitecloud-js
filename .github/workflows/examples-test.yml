@@ -310,12 +310,6 @@ jobs:
           HOMEBREW_NO_AUTO_UPDATE: 1
           HOMEBREW_NO_INSTALL_CLEANUP: 1
 
-      #switch to old xcode version that has ios 16.4
-      - uses: maxim-lobanov/setup-xcode@v1.6.0
-        if: matrix.version == '16.4'
-        with:
-          xcode-version: 14.3
-
       - name: build driver
         run: npm i && npm run build && echo "DRIVER=$(npm pack --json | jq '.[0].filename')" >> $GITHUB_ENV
 
@@ -395,11 +389,11 @@ jobs:
         with:
           api-level: ${{ matrix.api-level }}
           arch: x86_64
-          profile: Medium Phone
+          profile: Nexus 6
           avd-name: Medium_Phone_API_35
           emulator-boot-timeout: 20000
           working-directory: examples/with-typescript-react-native
-          script: npx detox test --configuration android.emu.release --cleanup --headless --record-videos all
+          script: avdmanager list device && npx detox test --configuration android.emu.release --cleanup --headless --record-videos all
 
       - name: upload artifacts
         if: always()
