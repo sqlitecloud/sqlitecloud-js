@@ -332,7 +332,7 @@ jobs:
         include:
           - arch: x86_64
           - arch: arm64-v8a
-            api-level: 30
+            api-level: 33
           - api-level: 26
             version: '8.0'
           - api-level: 29
