@@ -286,106 +286,18 @@ jobs:
         run: rm -rf examples/with-javascript-browser
 
   ios-test:
-    if: false
-    strategy:
-      matrix:
-        os: [macos-latest]
-
     name: 'React Native iOS Test'
     timeout-minutes: 40
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      #setup build tools and simulators
       - name: setup utils
-        run: |
-          brew tap wix/brew
-          brew install applesimutils
+        run: brew tap wix/brew && brew install applesimutils
         env:
           HOMEBREW_NO_AUTO_UPDATE: 1
           HOMEBREW_NO_INSTALL_CLEANUP: 1
-
-      - name: build driver
-        run: |
-          npm i && npm run build
-          echo "DRIVER=$(npm pack --json | jq '.[0].filename')" >> $GITHUB_ENV
-
-      - name: install last committed version of the driver
-        working-directory: examples/with-typescript-react-native
-        run: npm i ../../${{ env.DRIVER }}
-
-      - name: cache cocoapods
-        id: cache-cocoapods
-        uses: actions/cache@v4
-        with:
-          path: examples/with-typescript-react-native/ios/Pods
-          key: ${{ runner.os }}-pods-${{ hashFiles('examples/with-typescript-react-native/ios/Podfile.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pods-
-
-      - name: install cocoapods
-        working-directory: examples/with-typescript-react-native
-        if: steps.cache-cocoapods.outputs.cache-hit != 'true'
-        run: cd ios ; pod install ; cd -
-
-      - name: cache detox build
-        id: cache-detox-build
-        uses: actions/cache@v4
-        with:
-          path: examples/with-typescript-react-native/ios/build
-          key: ${{ runner.os }}-detox-build
-          restore-keys: |
-            ${{ runner.os }}-detox-build
-
-      - name: detox build
-        working-directory: examples/with-typescript-react-native
-        run: npx detox build --configuration ios.sim.release
-
-      - name: detox test
-        working-directory: examples/with-typescript-react-native
-        run: npx detox test --configuration ios.sim.release --cleanup --headless --record-logs all
-
-      - name: upload artifacts
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: detox-artifacts
-          path: artifacts
-
-  android-test:
-    strategy:
-      matrix:
-        os: [ubuntu-latest,windows-latest] #, macos-latest, ]
-        api-level: [29, 35] #23, 26, 28, 30
-        include:
-          - os: ubuntu-latest
-            arch: x86_64
-          #- os: macos-latest
-          #  arch: arm64-v8a
-
-    name: 'React Native Android Test'
-    timeout-minutes: 30
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: enable kvm group perms in linux
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-      - uses: actions/setup-java@v4
-        if: matrix.os == 'ubuntu-latest'
-        with:
-          distribution: zulu
-          java-version: 21
-      - name: Setup Gradle
-        if: matrix.os == 'windows-latest'
-        uses: gradle/actions/setup-gradle@v4
 
       - name: build driver
         run: npm i && npm run build && echo "DRIVER=$(npm pack --json | jq '.[0].filename')" >> $GITHUB_ENV
@@ -394,17 +306,60 @@ jobs:
         working-directory: examples/with-typescript-react-native
         run: npm i ../../${{ env.DRIVER }}
 
-      - name: detox build ubuntu
-        if: matrix.os == 'ubuntu-latest'
+      - name: install cocoapods
+        working-directory: examples/with-typescript-react-native
+        run: cd ios ; pod install ; cd -
+
+      - name: build
+        working-directory: examples/with-typescript-react-native
+        run: npx detox build --configuration ios.sim.release
+
+      - name: test
+        working-directory: examples/with-typescript-react-native
+        run: npx detox test --configuration ios.sim.release --cleanup --record-videos all
+
+      - name: upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: detox-artifacts
+          path: artifacts
+
+  android-test:
+    strategy:
+      matrix:
+        api-level: [29, 35] #23, 26, 28, 30
+        arch: [x86_64, x86, arm64-v8a]
+
+    name: 'React Native Android Test'
+    timeout-minutes: 30
+    runs-on: ubuntu-latest #android emulator on github actions works only on linux and old macos x86 builds, we can skip other os since the build and test process is going to be the same
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: enable kvm group perms
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 21
+
+      - name: build driver
+        run: npm i && npm run build && echo "DRIVER=$(npm pack --json | jq '.[0].filename')" >> $GITHUB_ENV
+
+      - name: install last committed version of the driver
+        working-directory: examples/with-typescript-react-native
+        run: npm i ../../${{ env.DRIVER }}
+
+      - name: build app
         working-directory: examples/with-typescript-react-native
         run: npx detox build --configuration android.emu.release
 
-      - name: detox build windows
-        if: matrix.os == 'windows-latest'
-        working-directory: examples/with-typescript-react-native
-        run: cd android && gradlew assembleRelease assembleAndroidTest -DtestBuildType=release
-
-      - name: detox tests
+      - name: test app
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ matrix.api-level }}
@@ -412,10 +367,9 @@ jobs:
           avd-name: Medium_Phone_API_35
           emulator-boot-timeout: 20000
           working-directory: examples/with-typescript-react-native
-          script: npx detox test --configuration android.emu.release --take-screenshots failing
+          script: npx detox test --configuration android.emu.release --record-videos all
 
       - name: upload artifacts
-        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: detox-artifacts
