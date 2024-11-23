@@ -286,7 +286,6 @@ jobs:
         run: rm -rf examples/with-javascript-browser
 
   ios-test:
-    if: false
     strategy:
       matrix:
         os: [macos-13, macos-14, macos-15] # macos-12 for ios 15 it's going to be deprecated, it's also using an old version of xcode that is not compatible with react native
@@ -310,6 +309,12 @@ jobs:
         env:
           HOMEBREW_NO_AUTO_UPDATE: 1
           HOMEBREW_NO_INSTALL_CLEANUP: 1
+
+      #switch to old xcode version that has ios 16.1
+      - uses: maxim-lobanov/setup-xcode@v1.6.0
+        if: matrix.version == '16.1'
+        with:
+          xcode-version: 14.1
 
       - name: build driver
         run: npm i && npm run build && echo "DRIVER=$(npm pack --json | jq '.[0].filename')" >> $GITHUB_ENV
@@ -390,7 +395,7 @@ jobs:
         with:
           api-level: ${{ matrix.api-level }}
           arch: x86_64
-          profile: Nexus 6
+          profile: Pixel 6
           avd-name: Medium_Phone_API_35
           emulator-boot-timeout: 20000
           working-directory: examples/with-typescript-react-native
