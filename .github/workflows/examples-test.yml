@@ -383,6 +383,9 @@ jobs:
         with:
           distribution: zulu
           java-version: 21
+      - name: Setup Gradle
+        if: matrix.os == 'windows-latest'
+        uses: gradle/actions/setup-gradle@v4
 
       - name: build driver
         run: npm i && npm run build && echo "DRIVER=$(npm pack --json | jq '.[0].filename')" >> $GITHUB_ENV
