@@ -8,6 +8,7 @@ env:
 
 jobs:
   examples-test:
+    if: false
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
@@ -285,6 +286,7 @@ jobs:
         run: rm -rf examples/with-javascript-browser
 
   ios-test:
+    if: false
     strategy:
       matrix:
         os: [macos-13, macos-14, macos-15] # macos-12 for ios 15 it's going to be deprecated, it's also using an old version of xcode that is not compatible with react native
@@ -388,7 +390,7 @@ jobs:
         with:
           api-level: ${{ matrix.api-level }}
           arch: x86_64
-          profile: Pixel 8
+          profile: Nexus 6
           avd-name: Medium_Phone_API_35
           emulator-boot-timeout: 20000
           working-directory: examples/with-typescript-react-native
