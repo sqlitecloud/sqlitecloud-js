@@ -42,11 +42,11 @@ module.exports = {
         os: 'iOS 15.0'
       }
     },
-    simulator_16_1: {
+    simulator_16_4: {
       type: 'ios.simulator',
       device: {
         type: 'iPhone 14',
-        os: 'iOS 16.1'
+        os: 'iOS 16.4'
       }
     },
     simulator_17: {
@@ -88,8 +88,8 @@ module.exports = {
       device: 'simulator_15',
       app: 'ios.release'
     },
-    'ios.sim.16.1': {
-      device: 'simulator_16_1',
+    'ios.sim.16.4': {
+      device: 'simulator_16_4',
       app: 'ios.release'
     },
     'ios.sim.17': {
