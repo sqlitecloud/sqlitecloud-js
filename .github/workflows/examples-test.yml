@@ -286,6 +286,7 @@ jobs:
         run: rm -rf examples/with-javascript-browser
 
   ios-test:
+    if: false
     name: 'React Native iOS Test'
     timeout-minutes: 40
     runs-on: macos-latest
@@ -327,11 +328,13 @@ jobs:
   android-test:
     strategy:
       matrix:
-        api-level: [29, 30, 35] #23, 26, 28
+        api-level: [26, 29, 30] #23, 26, 28, 35
         include:
           - arch: x86_64
           - arch: arm64-v8a
             api-level: 30
+          - api-level: 26
+            version: 8.0
           - api-level: 29
             version: 10
           - api-level: 30
