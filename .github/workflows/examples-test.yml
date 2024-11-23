@@ -291,7 +291,7 @@ jobs:
         os: [macos-13, macos-14, macos-15] # macos-12 for ios 15 it's going to be deprecated, it's also using an old version of xcode that is not compatible with react native
         include:
           - os: macos-13
-            version: '16.1'
+            version: '16.4'
           - os: macos-14
             version: '17'
           - os: macos-15
@@ -310,9 +310,9 @@ jobs:
           HOMEBREW_NO_AUTO_UPDATE: 1
           HOMEBREW_NO_INSTALL_CLEANUP: 1
 
-      #switch to old xcode version that has ios 16.1
+      #switch to old xcode version that has ios 16.4
       - uses: maxim-lobanov/setup-xcode@v1.6.0
-        if: matrix.version == '16.1'
+        if: matrix.version == '16.4'
         with:
           xcode-version: 14.3
 
@@ -321,7 +321,7 @@ jobs:
 
       - name: install driver
         working-directory: examples/with-typescript-react-native
-        run: npm i ../../${{ env.DRIVER }} && xcodebuild -showsdks
+        run: npm i ../../${{ env.DRIVER }}
 
       - name: install cocoapods
         working-directory: examples/with-typescript-react-native
@@ -373,7 +373,6 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-          avdmanager list devices
 
       - uses: actions/setup-java@v4
         with:
