@@ -347,9 +347,6 @@ jobs:
     runs-on: ubuntu-latest #android emulator on github actions works only on linux and old macos x86 builds, we can skip other os since the build and test process is going to be the same
 
     steps:
-      - uses: jlumbroso/free-disk-space@v1.3.1
-        with:
-          android: false
       - uses: actions/checkout@v4
 
       - name: enable kvm group perms
