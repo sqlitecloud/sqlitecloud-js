@@ -332,8 +332,14 @@ jobs:
           - arch: x86_64
           - arch: arm64-v8a
             api-level: 30
+          - api-level: 29
+            version: 10
+          - api-level: 30
+            version: 11
+          - api-level: 35
+            version: 15
 
-    name: 'React Native Android ${{matrix.api-level}} Test'
+    name: 'React Native Android ${{matrix.version}} Test'
     timeout-minutes: 30
     runs-on: ubuntu-latest #android emulator on github actions works only on linux and old macos x86 builds, we can skip other os since the build and test process is going to be the same
 
