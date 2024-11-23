@@ -328,17 +328,17 @@ jobs:
   android-test:
     strategy:
       matrix:
-        api-level: [26, 29, 33] #23, 26, 28, 35
+        api-level: [26, 29, 32] #23, 26, 28, 35
         include:
           - arch: x86_64
           - arch: arm64-v8a
-            api-level: 33
+            api-level: 32
           - api-level: 26
             version: '8.0'
           - api-level: 29
             version: '10'
-          - api-level: 33
-            version: '13'
+          - api-level: 32
+            version: '12'
           #- api-level: 35
           #  version: 15
 
@@ -387,5 +387,5 @@ jobs:
       - name: upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: detox-artifacts
+          name: android-${{matrix.version}}-test-video
           path: examples/with-typescript-react-native/artifacts
