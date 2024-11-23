@@ -332,7 +332,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ios-test-artifacts
+          name: ios-${{matrix.version}}-test-artifacts
           path: examples/with-typescript-react-native/artifacts
 
   android-test:
