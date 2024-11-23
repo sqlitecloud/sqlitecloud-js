@@ -329,10 +329,10 @@ jobs:
   android-test:
     strategy:
       matrix:
-        api-level: [21, 26, 29, 31, 35]
+        api-level: [23, 26, 29, 31, 35]
         include:
-          - api-level: 21
-            version: '5.0'
+          - api-level: 23
+            version: '6.0'
           - api-level: 26
             version: '8.0'
           - api-level: 29
