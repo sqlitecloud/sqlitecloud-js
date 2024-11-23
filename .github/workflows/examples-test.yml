@@ -320,6 +320,7 @@ jobs:
         run: npx detox test --configuration ios.sim.release --cleanup --headless --record-videos all
 
       - name: upload artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ios-test-artifacts
@@ -384,6 +385,7 @@ jobs:
           script: npx detox test --configuration android.emu.release --cleanup --headless --record-videos all
 
       - name: upload artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: android-${{matrix.version}}-test-artifacts
