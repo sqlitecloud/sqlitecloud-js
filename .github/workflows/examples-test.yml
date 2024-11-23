@@ -322,25 +322,24 @@ jobs:
       - name: upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: detox-artifacts
+          name: ios-test-artifacts
           path: examples/with-typescript-react-native/artifacts
 
   android-test:
     strategy:
       matrix:
-        api-level: [26, 29, 32] #23, 26, 28, 35
+        api-level: [21, 26, 29, 31, 35]
         include:
-          - arch: x86_64
-          - arch: arm64-v8a
-            api-level: 32
+          - api-level: 21
+            version: '5.0'
           - api-level: 26
             version: '8.0'
           - api-level: 29
             version: '10'
-          - api-level: 32
+          - api-level: 31
             version: '12'
-          #- api-level: 35
-          #  version: 15
+          - api-level: 35
+            version: '15'
 
     name: 'React Native Android ${{matrix.version}} Test'
     timeout-minutes: 30
@@ -378,7 +377,7 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ matrix.api-level }}
-          arch: ${{ matrix.arch }}
+          arch: x86_64
           avd-name: Medium_Phone_API_35
           emulator-boot-timeout: 20000
           working-directory: examples/with-typescript-react-native
@@ -387,5 +386,5 @@ jobs:
       - name: upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: android-${{matrix.version}}-test-video
+          name: android-${{matrix.version}}-test-artifacts
           path: examples/with-typescript-react-native/artifacts
