@@ -328,17 +328,17 @@ jobs:
   android-test:
     strategy:
       matrix:
-        api-level: [26, 29, 30] #23, 26, 28, 35
+        api-level: [26, 29, 33] #23, 26, 28, 35
         include:
           - arch: x86_64
           - arch: arm64-v8a
             api-level: 30
           - api-level: 26
-            version: 8.0
+            version: '8.0'
           - api-level: 29
-            version: 10
-          - api-level: 30
-            version: 11
+            version: '10'
+          - api-level: 33
+            version: '13'
           #- api-level: 35
           #  version: 15
 
@@ -347,6 +347,9 @@ jobs:
     runs-on: ubuntu-latest #android emulator on github actions works only on linux and old macos x86 builds, we can skip other os since the build and test process is going to be the same
 
     steps:
+      - uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          android: false
       - uses: actions/checkout@v4
 
       - name: enable kvm group perms
