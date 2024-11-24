@@ -1,4 +1,4 @@
-package com.sqlcquickstartreactnative; // (1)
+package com.withtypescriptreactnative; // (1)
 
 import com.wix.detox.Detox;
 import com.wix.detox.config.DetoxConfig;

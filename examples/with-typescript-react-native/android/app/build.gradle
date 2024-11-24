@@ -75,9 +75,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.sqlcquickstartreactnative"
+    namespace "com.withtypescriptreactnative"
     defaultConfig {
-        applicationId "com.sqlcquickstartreactnative"
+        applicationId "com.withtypescriptreactnative"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

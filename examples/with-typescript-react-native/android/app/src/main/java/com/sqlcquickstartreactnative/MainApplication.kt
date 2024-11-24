@@ -1,4 +1,4 @@
-package com.sqlcquickstartreactnative
+package com.withtypescriptreactnative
 
 import android.app.Application
 import com.facebook.react.PackageList
