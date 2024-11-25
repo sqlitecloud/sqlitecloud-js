@@ -28,3 +28,4 @@ dist-ssr
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+package-lock.json
