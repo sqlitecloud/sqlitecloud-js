@@ -4,7 +4,7 @@ describe('React Native project connection test', () => {
   });
 
   it.only('should show chinook query result', async () => {
-    await expect(element(by.text('Albums'))).toBeVisible();
+    await waitFor(element(by.text('Albums'))).toBeVisible().withTimeout(10000)
 
     await waitFor(element(by.text('• For Those About To Rock We Salute You by AC/DC'))).toBeVisible().withTimeout(10000)
     await waitFor(element(by.text('• Balls to the Wall by Accept'))).toBeVisible().withTimeout(10000)
