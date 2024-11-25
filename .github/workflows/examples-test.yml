@@ -193,12 +193,12 @@ jobs:
           npm i
           npm run dev &
           sleep 3
-          node_test=$(curl localhost:3000)
-          node_test2=$(curl localhost:3000/api/hello)
+          node_test=$(curl localhost:3003)
+          node_test2=$(curl localhost:3003/api/hello)
 
           if [[ $node_test == *"next.js json route"* && $node_test2 == *"{\"data\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
             echo "✅ node with-typescript-nextjs test passed"
-            npx kill-port 3000
+            npx kill-port 3003
             exit 0
           fi
           echo "❌ node with-typescript-nextjs test failed"
@@ -212,11 +212,11 @@ jobs:
           fi
           bun run dev &
           sleep 3
-          bun_test=$(curl localhost:3000)
-          bun_test2=$(curl localhost:3000/api/hello)
+          bun_test=$(curl localhost:3003)
+          bun_test2=$(curl localhost:3003/api/hello)
           if [[ $bun_test == *"next.js json route"* && $bun_test2 == *"{\"data\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
             echo "✅ bun with-typescript-nextjs test passed"
-            npx kill-port 3000
+            npx kill-port 3003
             exit 0
           fi
           echo "❌ bun with-typescript-nextjs test failed"
@@ -228,10 +228,10 @@ jobs:
           deno run dev &
           sleep 3
           #not testing index page because it throws an error with deno
-          deno_test=$(curl localhost:3000/api/hello)
+          deno_test=$(curl localhost:3003/api/hello)
           if [[ $deno_test == *"{\"data\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
             echo "✅ deno with-typescript-nextjs test passed"
-            npx kill-port 3000
+            npx kill-port 3003
             exit 0
           fi
           echo "❌ deno with-typescript-nextjs test failed"
@@ -313,7 +313,7 @@ jobs:
       - uses: maxim-lobanov/setup-xcode@v1.6.0
         if: matrix.version == '16.4'
         with:
-          xcode-version: 14.3    
+          xcode-version: 14.3
 
       - name: build driver
         run: npm i && npm run build && echo "DRIVER=$(npm pack --json | jq '.[0].filename')" >> $GITHUB_ENV
