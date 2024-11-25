@@ -1,7 +1,7 @@
 {
   "name": "with-javascript-browser",
   "version": "1.0.0",
-  "main": "test.js",
+  "main": "test.cjs",
   "author": "",
   "license": "ISC",
   "description": "",
