@@ -448,6 +448,10 @@ jobs:
         working-directory: examples/with-javascript-expo
         run: npm i ../../${{ env.DRIVER }}
 
+      - name: expo prebuild
+        working-directory: examples/with-javascript-expo
+        run: npx expo prebuild
+
       - name: build app
         working-directory: examples/with-javascript-expo
         run: npx detox build --configuration ios.sim.release
