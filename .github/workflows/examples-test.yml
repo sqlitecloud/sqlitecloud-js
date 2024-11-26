@@ -335,7 +335,7 @@ jobs:
 
       - name: test app
         working-directory: examples/with-typescript-react-native
-        run: npx detox test --configuration ios.sim.${{ matrix.version }} --cleanup --headless --record-videos all --take-screenshots all
+        run: npx detox test --configuration ios.sim.${{ matrix.version }} --headless --record-videos all --take-screenshots all
 
       - name: upload artifacts
         if: always()
@@ -401,7 +401,7 @@ jobs:
           avd-name: Medium_Phone_API_35
           emulator-boot-timeout: 20000
           working-directory: examples/with-typescript-react-native
-          script: npx detox test --configuration android.emu.release --cleanup --headless --record-videos all --take-screenshots all
+          script: npx detox test --configuration android.emu.release --headless --record-videos all --take-screenshots all
 
       - name: upload artifacts
         if: always()
@@ -458,7 +458,7 @@ jobs:
 
       - name: test app
         working-directory: examples/with-javascript-expo
-        run: npx detox test --configuration ios.sim.${{ matrix.version }} --cleanup --headless --record-videos all --take-screenshots all
+        run: npx detox test --configuration ios.sim.${{ matrix.version }} --headless --record-videos all --take-screenshots all
 
       - name: upload artifacts
         if: always()
@@ -528,7 +528,7 @@ jobs:
           avd-name: Medium_Phone_API_35
           emulator-boot-timeout: 20000
           working-directory: examples/with-javascript-expo
-          script: npx detox test --configuration android.emu.release --cleanup --headless --record-videos all --take-screenshots all
+          script: npx detox test --configuration android.emu.release --headless --record-videos all --take-screenshots all
 
       - name: upload artifacts
         if: always()
