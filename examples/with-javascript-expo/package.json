@@ -8,6 +8,7 @@
     "ios": "expo run:ios",
     "web": "expo run:web"
   },
+  "//": "FOLLOW THIS GUIDE IF YOU WANT TO UPDATE EXPO, DETOX OR @CONFIG-PLUGINS/DETOX. WRONG VERSIONS COULD BREAK THE CI. https://www.npmjs.com/package/@config-plugins/detox",
   "dependencies": {
     "@expo/metro-runtime": "~3.2.1",
     "@react-native-community/masked-view": "^0.1.11",
