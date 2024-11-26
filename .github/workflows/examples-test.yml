@@ -514,7 +514,7 @@ jobs:
 
       - name: build app
         working-directory: examples/with-javascript-expo
-        run: npx detox build --configuration android.emu.release
+        run: npx expo prebuild && npx detox build --configuration android.emu.release
 
       - name: test app
         uses: reactivecircus/android-emulator-runner@v2
