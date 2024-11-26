@@ -28,4 +28,5 @@ const { chromium, firefox, webkit } = require('playwright');
         await window.close();
     });
 
+    return
 })();

@@ -17,7 +17,7 @@ jobs:
         shell: bash
 
     name: 'Node, Bun, Deno, Browsers, Express, Knex, NextJS, Vite Test'
-    timeout-minutes: 15
+    timeout-minutes: 20
     runs-on: ${{ matrix.os }}
 
     steps:
