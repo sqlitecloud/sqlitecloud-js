@@ -338,7 +338,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ios-${{matrix.version}}-test-artifacts
+          name: rn-ios-${{matrix.version}}-test-artifacts
           path: examples/with-typescript-react-native/artifacts
 
   rn-android-test:
@@ -404,7 +404,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: android-${{matrix.version}}-test-artifacts
+          name: rn-android-${{matrix.version}}-test-artifacts
           path: examples/with-typescript-react-native/artifacts
 
   expo-ios-test:
@@ -461,7 +461,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ios-${{matrix.version}}-test-artifacts
+          name: expo-ios-${{matrix.version}}-test-artifacts
           path: examples/with-javascript-expo/artifacts
 
   expo-android-test:
@@ -531,5 +531,5 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: android-${{matrix.version}}-test-artifacts
+          name: expo-android-${{matrix.version}}-test-artifacts
           path: examples/with-javascript-expo/artifacts
