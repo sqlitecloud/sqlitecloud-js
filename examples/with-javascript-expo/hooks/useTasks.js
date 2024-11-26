@@ -29,11 +29,11 @@ const useTasks = (tag = null) => {
     } catch (error) {
       console.error("Error getting tasks", error);
     }
-  }, [tag, taskList]);
+  }, [tag]);
 
   const updateTask = async (completedStatus, taskId) => {
     try {
-      const task = await db.sql(
+      await db.sql(
         "UPDATE tasks SET isCompleted=? WHERE id=? RETURNING *",
         completedStatus,
         taskId
@@ -77,7 +77,7 @@ const useTasks = (tag = null) => {
     try {
       await db.sql("DELETE FROM tasks_tags WHERE task_id=?", taskId);
       const result = await db.sql("DELETE FROM tasks WHERE id=?", taskId);
-      console.log(`deleted ${result[0].TOTAL_CHANGES} task`);
+      console.log(`Deleted ${result.totalChanges} task`);
       getTasks();
     } catch (error) {
       console.error("Error deleting task", error);
