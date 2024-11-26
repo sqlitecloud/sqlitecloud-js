@@ -12,13 +12,13 @@ module.exports = {
   apps: {
     'ios.debug': {
       type: 'ios.app',
-      binaryPath: 'ios/build/Build/Products/Debug-iphonesimulator/mobiletodoapp.app',
-      build: 'xcodebuild -workspace ios/mobiletodoapp.xcworkspace -scheme mobiletodoapp -configuration Debug -sdk iphonesimulator -derivedDataPath ios/build'
+      binaryPath: 'ios/build/Build/Products/Debug-iphonesimulator/withjavascriptexpo.app',
+      build: 'xcodebuild -workspace ios/withjavascriptexpo.xcworkspace -scheme withjavascriptexpo -configuration Debug -sdk iphonesimulator -derivedDataPath ios/build'
     },
     'ios.release': {
       type: 'ios.app',
-      binaryPath: 'ios/build/Build/Products/Release-iphonesimulator/mobiletodoapp.app',
-      build: 'xcodebuild -workspace ios/mobiletodoapp.xcworkspace -scheme mobiletodoapp -configuration Release -sdk iphonesimulator -derivedDataPath ios/build'
+      binaryPath: 'ios/build/Build/Products/Release-iphonesimulator/withjavascriptexpo.app',
+      build: 'xcodebuild -workspace ios/withjavascriptexpo.xcworkspace -scheme withjavascriptexpo -configuration Release -sdk iphonesimulator -derivedDataPath ios/build'
     },
     'android.debug': {
       type: 'android.apk',
@@ -35,10 +35,40 @@ module.exports = {
     }
   },
   devices: {
+
+    simulator_15: {
+      type: 'ios.simulator',
+      device: {
+        type: 'iPhone 8',
+        os: 'iOS 15.0'
+      }
+    },
+    simulator_16_4: {
+      type: 'ios.simulator',
+      device: {
+        type: 'iPhone 14',
+        os: 'iOS 16.4'
+      }
+    },
+    simulator_17: {
+      type: 'ios.simulator',
+      device: {
+        type: 'iPad mini (6th generation)',
+        os: 'iOS 17.0'
+      }
+    },
+    simulator_18: {
+      type: 'ios.simulator',
+      device: {
+        type: 'iPhone SE (3rd generation)',
+        os: 'iOS 18.0'
+      }
+    },
+
     simulator: {
       type: 'ios.simulator',
       device: {
-        type: 'iPhone 15'
+        type: 'iPhone SE (3rd generation)'
       }
     },
     attached: {
@@ -55,6 +85,22 @@ module.exports = {
     }
   },
   configurations: {
+    'ios.sim.15': {
+      device: 'simulator_15',
+      app: 'ios.release'
+    },
+    'ios.sim.16.4': {
+      device: 'simulator_16_4',
+      app: 'ios.release'
+    },
+    'ios.sim.17': {
+      device: 'simulator_17',
+      app: 'ios.release'
+    },
+    'ios.sim.18': {
+      device: 'simulator_18',
+      app: 'ios.release'
+    },
     'ios.sim.debug': {
       device: 'simulator',
       app: 'ios.debug'
