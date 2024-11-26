@@ -8,7 +8,6 @@ env:
 
 jobs:
   examples-test:
-    if: false
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
@@ -286,7 +285,6 @@ jobs:
         run: rm -rf examples/with-javascript-browser
 
   rn-ios-test:
-    if: false
     strategy:
       matrix:
         os: [macos-13, macos-14, macos-15] # macos-12 for ios 15 it's going to be deprecated, it's also using an old version of xcode that is not compatible with react native
@@ -344,7 +342,6 @@ jobs:
           path: examples/with-typescript-react-native/artifacts
 
   rn-android-test:
-    if: false
     strategy:
       matrix:
         api-level: [25, 26, 29, 31, 35] #app fail: android 5; driver fail: android 6 and android 7
@@ -411,7 +408,6 @@ jobs:
           path: examples/with-typescript-react-native/artifacts
 
   expo-ios-test:
-    if: false
     strategy:
       matrix:
         os: [macos-13, macos-14, macos-15] # macos-12 for ios 15 it's going to be deprecated, it's also using an old version of xcode that is not compatible with react native
@@ -503,7 +499,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: zulu
-          java-version: 17
+          java-version: 21
 
       - name: build driver
         run: npm i && npm run build && echo "DRIVER=$(npm pack --json | jq '.[0].filename')" >> $GITHUB_ENV
