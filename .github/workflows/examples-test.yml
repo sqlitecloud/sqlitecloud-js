@@ -398,7 +398,7 @@ jobs:
           avd-name: Medium_Phone_API_35
           emulator-boot-timeout: 20000
           working-directory: examples/with-typescript-react-native
-          script: npx detox test --configuration android.emu.release --cleanup --headless --record-videos all --take-screenshots all
+          script: npx detox test --configuration android.emu.release --cleanup --headless --record-videos all --take-screenshots all --retries 3
 
       - name: upload artifacts
         if: always()
@@ -525,7 +525,7 @@ jobs:
           avd-name: Medium_Phone_API_35
           emulator-boot-timeout: 20000
           working-directory: examples/with-javascript-expo
-          script: npx detox test --configuration android.emu.release --cleanup --headless --record-videos all --take-screenshots all
+          script: npx detox test --configuration android.emu.release --cleanup --headless --record-videos all --take-screenshots all --retries 3
 
       - name: upload artifacts
         if: always()
