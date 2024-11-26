@@ -511,9 +511,13 @@ jobs:
         working-directory: examples/with-javascript-expo
         run: npm i ../../${{ env.DRIVER }}
 
+      - name: expo prebuild
+        working-directory: examples/with-javascript-expo
+        run: npx expo prebuild
+
       - name: build app
         working-directory: examples/with-javascript-expo
-        run: npx expo prebuild && npx detox build --configuration android.emu.release
+        run: npx detox build --configuration android.emu.release
 
       - name: test app
         uses: reactivecircus/android-emulator-runner@v2
