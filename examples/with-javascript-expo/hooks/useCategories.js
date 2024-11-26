@@ -46,7 +46,7 @@ const useCategories = () => {
       );
 
       if (
-        createTagsTable === "OK" &&
+        createTasksTable === "OK" &&
         createTagsTable === "OK" &&
         createTagsTasksTable === "OK"
       ) {
