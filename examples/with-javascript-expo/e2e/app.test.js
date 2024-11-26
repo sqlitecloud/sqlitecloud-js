@@ -10,6 +10,9 @@ describe('mobile todo app test', () => {
   it.only('should have welcome screen', async () => {
     await expect(element(by.text(/organize your/i))).toBeVisible();
     await expect(element(by.text(/tasks with sqlite/i))).toBeVisible();
+    await expect(element(by.text(/designed for happiness, not just productivity./i))).toBeVisible();
+    await expect(element(by.text(/enjoy a stress-free way to manage your day./i))).toBeVisible();
+
   });
 
   it('should show hello screen after tap', async () => {
