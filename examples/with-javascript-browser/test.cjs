@@ -27,6 +27,4 @@ const { chromium, firefox, webkit } = require('playwright');
         console.log(`✅ ${browser.name()} with-javascript-browser test passed`);
         await window.close();
     });
-
-    return
 })();
