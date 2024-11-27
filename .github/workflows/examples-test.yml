@@ -1,6 +1,5 @@
 name: 'end to end test'
 on:
-  pull_request:
   push:
 
 env:

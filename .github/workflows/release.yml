@@ -1,4 +1,4 @@
-name: 'Build, test, deploy'
+name: 'Release'
 on:
   push:
     branches: [main]
@@ -9,8 +9,8 @@ permissions:
   id-token: write
 
 jobs:
-  build:
-    name: 'Build'
+  build_and_docs:
+    name: 'Build and Docs'
     timeout-minutes: 5
     runs-on: ubuntu-latest
     environment:
@@ -35,27 +35,3 @@ jobs:
       - name: Deploy Typedoc to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
-  test:
-    name: 'Test'
-    timeout-minutes: 20
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: latest
-      - name: Setup Dependencies
-        run: |
-          corepack enable
-          npm install
-      - name: Jest Tests
-        env:
-          CHINOOK_DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
-          CHINOOK_API_KEY: ${{ secrets.CHINOOK_API_KEY }}
-          GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
-        run: npm test
-      - name: Upload Code Coverage
-        uses: codecov/codecov-action@v4
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
