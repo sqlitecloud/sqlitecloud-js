@@ -21,46 +21,46 @@ describe('mobile todo app test', () => {
   });
 
   it('should show welcome screen', async () => {
-    await expect(element(by.text(/cover/i))).toBeVisible();
+    await waitFor(element(by.text(/cover/i))).toBeVisible().withTimeout(10000);
 
-    await expect(element(by.text(/organize your/i))).toBeVisible();
-    await expect(element(by.text(/tasks with sqlite/i))).toBeVisible();
-    await expect(element(by.text(/designed for happiness, not just productivity./i))).toBeVisible();
-    await expect(element(by.text(/enjoy a stress-free way to manage your day./i))).toBeVisible();
+    await waitFor(element(by.text(/organize your/i))).toBeVisible().withTimeout(10000);
+    await waitFor(element(by.text(/tasks with sqlite/i))).toBeVisible().withTimeout(10000);
+    await waitFor(element(by.text(/designed for happiness, not just productivity./i))).toBeVisible().withTimeout(10000);
+    await waitFor(element(by.text(/enjoy a stress-free way to manage your day./i))).toBeVisible().withTimeout(10000);
 
-    await expect(element(by.text(/get started/i))).toBeVisible();
+    await waitFor(element(by.text(/get started/i))).toBeVisible().withTimeout(10000);
   });
 
   it('should get categories from chinook', async () => {
-    await expect(element(by.text(/get started/i))).toBeVisible();
+    await waitFor(element(by.text(/get started/i))).toBeVisible().withTimeout(10000);
     await element(by.text(/get started/i)).tap();
 
-    await expect(element(by.text(/inbox/i))).toBeVisible();
-    await expect(element(by.text(/work/i))).toBeVisible();
-    await expect(element(by.text(/personal/i))).toBeVisible();
+    await waitFor(element(by.text(/inbox/i))).toBeVisible().withTimeout(10000);
+    await waitFor(element(by.text(/work/i))).toBeVisible().withTimeout(10000);
+    await waitFor(element(by.text(/personal/i))).toBeVisible().withTimeout(10000);
     await waitFor(element(by.text(/expo_ci_do_not_delete/i))).toBeVisible().withTimeout(10000);
   });
 
   it('should get tasks from chinook', async () => {
-    await expect(element(by.text(/get started/i))).toBeVisible();
+    await waitFor(element(by.text(/get started/i))).toBeVisible().withTimeout(10000);
     await element(by.text(/get started/i)).tap();
 
-    await expect(element(by.text(/inbox/i))).toBeVisible();
+    await waitFor(element(by.text(/inbox/i))).toBeVisible().withTimeout(10000);
     await element(by.text(/inbox/i)).tap();
     await waitFor(element(by.text(/task_work/i))).toBeVisible().withTimeout(10000);
     await waitFor(element(by.text(/task_personal/i))).toBeVisible().withTimeout(10000);
     await pressBack();
 
-    await expect(element(by.text(/work/i))).toBeVisible();
+    await waitFor(element(by.text(/work/i))).toBeVisible().withTimeout(10000);
     await element(by.text(/work/i)).tap();
     await waitFor(element(by.text(/task_work/i))).toBeVisible().withTimeout(10000);
     await pressBack();
 
-    await expect(element(by.text(/personal/i))).toBeVisible();
+    await waitFor(element(by.text(/personal/i))).toBeVisible().withTimeout(10000);
     await element(by.text(/personal/i)).tap();
     await waitFor(element(by.text(/task_personal/i))).toBeVisible().withTimeout(10000);
     await pressBack();
 
-    await expect(element(by.text(/categories/i))).toBeVisible();
+    await waitFor(element(by.text(/categories/i))).toBeVisible().withTimeout(10000);
   });
 });
