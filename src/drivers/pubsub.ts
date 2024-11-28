@@ -66,7 +66,7 @@ export class PubSub {
   public async createChannel(name: string, failIfExists: boolean = true): Promise<any> {
     let notExistsCommand = ''
     if (!failIfExists) {
-      notExistsCommand = 'IF NOT EXISTS'
+      notExistsCommand = ' IF NOT EXISTS'
     }
 
     return this.connection.sql(`CREATE CHANNEL ?${notExistsCommand};`, name)
