@@ -9,9 +9,9 @@ describe('pubSub', () => {
       const connection = getChinookDatabase()
       const pubSub = await connection.getPubSub()
 
+      const channelName = 'test-channel-' + self.crypto.randomUUID()
       try {
         let callbackCalled = false
-        const channelName = 'test-channel-' + Math.floor(Math.random() * 999)
         const message = 'Message in a bottle ' + Math.floor(Math.random() * 999)
 
         await pubSub.createChannel(channelName)
@@ -39,6 +39,7 @@ describe('pubSub', () => {
 
         expect(callbackCalled).toBeTruthy()
       } finally {
+        pubSub.removeChannel(channelName)
         connection.close()
         pubSub.close()
       }
@@ -52,7 +53,7 @@ describe('pubSub', () => {
       try {
         const channelName = 'test-channel-' + Math.floor(Math.random() * 999)
 
-        await pubSub.createChannel(channelName)
+        await pubSub.createChannel(channelName, false)
 
         await pubSub.listen(PUBSUB_ENTITY_TYPE.CHANNEL, channelName, (error, results, data) => {
           expect(true).toBeFalsy()

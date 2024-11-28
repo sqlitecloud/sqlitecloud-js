@@ -1,4 +1,4 @@
-name: 'end to end test'
+name: 'Test'
 on:
   push:
   workflow_dispatch:
@@ -349,7 +349,7 @@ jobs:
 
       - name: install driver
         working-directory: examples/with-typescript-react-native
-        run: npm i ../../${{ env.DRIVER }}
+        run: npm i ../../${{ env.DRIVER }} #installing a tar packaged version of the driver since react native doesn't work well with local dependencies
 
       - name: install cocoapods
         working-directory: examples/with-typescript-react-native
@@ -413,7 +413,7 @@ jobs:
 
       - name: install driver
         working-directory: examples/with-typescript-react-native
-        run: npm i ../../${{ env.DRIVER }}
+        run: npm i ../../${{ env.DRIVER }} #installing a tar packaged version of the driver since react native doesn't work well with local dependencies
 
       - name: build app
         working-directory: examples/with-typescript-react-native
@@ -474,7 +474,7 @@ jobs:
 
       - name: install driver
         working-directory: examples/with-javascript-expo
-        run: npm i ../../${{ env.DRIVER }}
+        run: npm i ../../${{ env.DRIVER }} #installing a tar packaged version of the driver since react native doesn't work well with local dependencies
 
       - name: expo prebuild
         working-directory: examples/with-javascript-expo
@@ -538,7 +538,7 @@ jobs:
 
       - name: install driver
         working-directory: examples/with-javascript-expo
-        run: npm i ../../${{ env.DRIVER }}
+        run: npm i ../../${{ env.DRIVER }} #installing a tar packaged version of the driver since react native doesn't work well with local dependencies
 
       - name: expo prebuild
         working-directory: examples/with-javascript-expo
