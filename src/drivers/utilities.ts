@@ -96,7 +96,7 @@ export function sanitizeSQLiteIdentifier(identifier: any): string {
   }
 
   // escape double quotes
-  const escaped = trimmed.replace(/"/g, '"')
+  const escaped = trimmed.replace(/"/g, '\"')
 
   // Wrap in double quotes for safety
   return `"${escaped}"`

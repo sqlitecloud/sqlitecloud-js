@@ -1,4 +1,5 @@
 bun install
+bun install --production
 bun .husky/pre-commit.js
 git add package.json
 git add bun.lockb
