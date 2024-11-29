@@ -163,6 +163,6 @@ describe('sanitizeSQLiteIdentifier()', () => {
   it('should double quotes for sql injection', () => {
     const identifier = ' chinook.sql; DROP TABLE "albums" '
     const sanitized = sanitizeSQLiteIdentifier(identifier)
-    expect(sanitized).toBe('"chinook.sql; DROP TABLE \"albums\""')
+    expect(sanitized).toBe('"chinook.sql; DROP TABLE \"\"albums\"\""')
   })
 })

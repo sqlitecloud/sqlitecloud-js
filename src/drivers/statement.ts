@@ -33,10 +33,10 @@ export class Statement<T> {
    * Binds parameters to the prepared statement and calls the callback when done
    * or when an error occurs. The function returns the Statement object to allow
    * for function chaining. The first and only argument to the callback is null
-   * when binding was successful. Binding parameters with this function completely 
-   * resets the statement object and row cursor and removes all previously bound 
+   * when binding was successful. Binding parameters with this function completely
+   * resets the statement object and row cursor and removes all previously bound
    * parameters, if any.
-   * 
+   *
    * In SQLiteCloud the statement is prepared on the database server and binding errors
    * are raised on execution time.
    */

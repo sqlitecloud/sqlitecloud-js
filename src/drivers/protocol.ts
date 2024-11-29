@@ -338,7 +338,7 @@ export function popData(buffer: Buffer): { data: SQLiteCloudDataTypes | SQLiteCl
 export function formatCommand(command: SQLiteCloudCommand): string {
   if (command.parameters && command.parameters.length > 0) {
     // by SCSP the string paramenters in the array are zero-terminated
-    return serializeCommand([command.query, ...command.parameters || []], true)
+    return serializeCommand([command.query, ...(command.parameters || [])], true)
   }
   return serializeData(command.query, false)
 }
