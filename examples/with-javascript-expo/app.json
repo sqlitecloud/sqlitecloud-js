@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "withjavascriptexpo",
+    "slug": "withjavascriptexpo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "plugins": [
+      "@config-plugins/detox"
+    ],
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.withjavascriptexpo"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.withjavascriptexpo"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "faffd54b-fc15-4368-987a-a73b08640cfd"
+      }
+    },
+    "owner": "sqlitecloud"
+  }
+}

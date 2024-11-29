@@ -66,10 +66,18 @@ export class PubSub {
   public async createChannel(name: string, failIfExists: boolean = true): Promise<any> {
     let notExistsCommand = ''
     if (!failIfExists) {
-      notExistsCommand = 'IF NOT EXISTS;'
+      notExistsCommand = ' IF NOT EXISTS'
     }
 
-    return this.connection.sql(`CREATE CHANNEL ? ${notExistsCommand}`, name)
+    return this.connection.sql(`CREATE CHANNEL ?${notExistsCommand};`, name)
+  }
+
+  /**
+   * Deletes a Pub/Sub channel.
+   * @param name Channel name
+   */
+  public async removeChannel(name: string): Promise<any> {
+    return this.connection.sql(`REMOVE CHANNEL ?;`, name)
   }
 
   /**

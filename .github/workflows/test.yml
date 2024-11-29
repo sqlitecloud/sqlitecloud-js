@@ -1,0 +1,567 @@
+name: 'Test'
+on:
+  push:
+  workflow_dispatch:
+
+env:
+  DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
+
+jobs:
+  code-test:
+    name: 'Code Test'
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: latest
+      - name: Setup Dependencies
+        run: |
+          corepack enable
+          npm install
+      - name: Jest Tests
+        env:
+          CHINOOK_DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
+          CHINOOK_API_KEY: ${{ secrets.CHINOOK_API_KEY }}
+          GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
+        run: npm test
+      - name: Upload Code Coverage
+        uses: codecov/codecov-action@v4
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  examples-test:
+    needs: code-test
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    defaults:
+      run:
+        shell: bash
+
+    name: 'Node, Bun, Deno, Browsers, Express, Knex, NextJS, Vite Test'
+    timeout-minutes: 20
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      #setup node, bun and deno
+      - uses: actions/setup-node@v4
+        with:
+          node-version: latest
+      - uses: oven-sh/setup-bun@v2
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: vx.x.x
+
+      - name: setup playwright for browser related test
+        run: npx playwright install --with-deps && npx playwright install msedge && npx playwright install chrome
+
+      - name: build driver
+        run: npm i && npm run build
+
+      #testing driver, removing examples after testing to save up space
+      - name: node with-javascript-express
+        working-directory: examples/with-javascript-express
+        run: |
+          npm i
+          npm start &
+          sleep 3
+          node_test=$(curl localhost:3000)
+          if [[ $node_test == *"{\"tracks\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
+            echo "✅ node with-javascript-express test passed"
+            npx kill-port 3000
+            exit 0
+          fi
+          echo "❌ node with-javascript-express test failed"
+          exit 1
+
+      - name: bun with-javascript-express
+        working-directory: examples/with-javascript-express
+        run: |
+          if [ "$RUNNER_OS" != "Windows" ]; then
+            bun i #re-installing dependencies in windows with bash causes a panic
+          fi
+          bun start &
+          sleep 3
+          bun_test=$(curl localhost:3000)
+          if [[ $bun_test == *"{\"tracks\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
+            echo "✅ bun with-javascript-express test passed"
+            npx kill-port 3000
+            exit 0
+          fi
+          echo "❌ bun with-javascript-express test failed"
+          exit 1
+
+      - name: deno with-javascript-express
+        working-directory: examples/with-javascript-express
+        run: |
+          deno run start &
+          sleep 3
+          deno_test=$(curl localhost:3000)
+          if [[ $deno_test == *"{\"tracks\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
+            echo "✅ deno with-javascript-express test passed"
+            npx kill-port 3000
+            exit 0
+          fi
+          echo "❌ deno with-javascript-express test failed"
+          exit 1
+
+      - name: remove with-javascript-express
+        run: rm -rf examples/with-javascript-express
+
+      - name: node with-plain-javascript
+        working-directory: examples/with-plain-javascript
+        run: |
+          npm i
+          app_log=$(mktemp)
+          npm start > "$app_log" 2>&1 &
+
+          app_pid=$!
+          sleep 3
+          kill "$app_pid" 2>/dev/null
+
+          node_test=$(<"$app_log")
+          rm "$app_log"
+
+          if [[ "$node_test" == *"Composer: 'Angus Young, Malcolm Young, Brian Johnson',"* ]]; then
+            echo "✅ node with-plain-javascript test passed"
+            exit 0
+          fi
+          echo "❌ node with-plain-javascript test failed"
+          exit 1
+
+      - name: bun with-plain-javascript
+        working-directory: examples/with-plain-javascript
+        run: |
+          if [ "$RUNNER_OS" != "Windows" ]; then
+            bun i #re-installing dependencies in windows with bash causes a panic
+          fi
+          app_log=$(mktemp)
+          bun start > "$app_log" 2>&1 &
+
+          app_pid=$!
+          sleep 3
+          kill "$app_pid" 2>/dev/null
+
+          bun_test=$(<"$app_log")
+          rm "$app_log"
+
+          if [[ "$bun_test" == *"Composer: 'Angus Young, Malcolm Young, Brian Johnson',"* ]]; then
+            echo "✅ bun with-plain-javascript test passed"
+            exit 0
+          fi
+          echo "❌ bun with-plain-javascript test failed"
+          exit 1
+
+      - name: deno with-plain-javascript
+        working-directory: examples/with-plain-javascript
+        run: |
+          app_log=$(mktemp)
+          deno run start > "$app_log" 2>&1 &
+
+          app_pid=$!
+          sleep 3
+          kill "$app_pid" 2>/dev/null
+
+          deno_test=$(<"$app_log")
+          rm "$app_log"
+
+          if [[ "$deno_test" == *"Composer: 'Angus Young, Malcolm Young, Brian Johnson',"* ]]; then
+            echo "✅ deno with-plain-javascript test passed"
+            exit 0
+          fi
+          echo "❌ deno with-plain-javascript test failed"
+          exit 1
+
+      - name: remove with-plain-javascript
+        if: matrix.os != 'windows-latest' #kill command doesn not work on windows with bash, we can skip this step
+        run: rm -rf examples/with-plain-javascript
+
+      - name: node with-typescript-knex
+        working-directory: examples/with-typescript-knex
+        run: |
+          npm i
+          node_test=$(npx tsx example.ts)
+
+          if [[ "$node_test" == *"\"Company\": \"Embraer - Empresa Brasileira de Aeronáutica S.A.\","* ]]; then
+            echo "✅ node with-typescript-knex test passed"
+            exit 0
+          fi
+          echo "❌ node with-typescript-knex test failed"
+          exit 1
+
+      - name: bun with-typescript-knex
+        working-directory: examples/with-typescript-knex
+        run: |
+          if [ "$RUNNER_OS" != "Windows" ]; then
+            bun i #re-installing dependencies in windows with bash causes a panic
+          fi
+          bun_test=$(bun example.ts)
+
+          if [[ "$bun_test" == *"\"Company\": \"Embraer - Empresa Brasileira de Aeronáutica S.A.\","* ]]; then
+            echo "✅ bun with-typescript-knex test passed"
+            exit 0
+          fi
+          echo "❌ bun with-typescript-knex test failed"
+          exit 1
+
+      - name: remove with-typescript-knex
+        run: rm -rf examples/with-typescript-knex
+
+      - name: node with-typescript-nextjs
+        working-directory: examples/with-typescript-nextjs
+        run: |
+          npm i
+          npm run dev &
+          sleep 3
+          node_test=$(curl localhost:3003)
+          node_test2=$(curl localhost:3003/api/hello)
+
+          if [[ $node_test == *"next.js json route"* && $node_test2 == *"{\"data\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
+            echo "✅ node with-typescript-nextjs test passed"
+            npx kill-port 3003
+            exit 0
+          fi
+          echo "❌ node with-typescript-nextjs test failed"
+          exit 1
+
+      - name: bun with-typescript-nextjs
+        working-directory: examples/with-typescript-nextjs
+        run: |
+          if [ "$RUNNER_OS" != "Windows" ]; then
+            bun i #re-installing dependencies in windows with bash causes a panic
+          fi
+          bun run dev &
+          sleep 3
+          bun_test=$(curl localhost:3003)
+          bun_test2=$(curl localhost:3003/api/hello)
+          if [[ $bun_test == *"next.js json route"* && $bun_test2 == *"{\"data\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
+            echo "✅ bun with-typescript-nextjs test passed"
+            npx kill-port 3003
+            exit 0
+          fi
+          echo "❌ bun with-typescript-nextjs test failed"
+          exit 1
+
+      - name: deno with-typescript-nextjs
+        working-directory: examples/with-typescript-nextjs
+        run: |
+          deno run dev &
+          sleep 3
+          #not testing index page because it throws an error with deno
+          deno_test=$(curl localhost:3003/api/hello)
+          if [[ $deno_test == *"{\"data\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
+            echo "✅ deno with-typescript-nextjs test passed"
+            npx kill-port 3003
+            exit 0
+          fi
+          echo "❌ deno with-typescript-nextjs test failed"
+          exit 1
+
+      - name: remove with-typescript-nextjs
+        run: rm -rf examples/with-typescript-nextjs
+
+      - name: node with-javascript-vite
+        working-directory: examples/with-javascript-vite
+        run: npm i && npx playwright test
+        env:
+          VITE_DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
+
+      - name: bun with-javascript-vite
+        working-directory: examples/with-javascript-vite
+        run: |
+          if [ "$RUNNER_OS" != "Windows" ]; then
+            bun i #re-installing dependencies in windows with bash causes a panic
+          fi
+          bun playwright test
+        env:
+          VITE_DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
+
+      - name: deno with-javascript-vite
+        if: matrix.os != 'windows-latest' #https://github.com/denoland/deno/issues/23524#issuecomment-2292075726
+        working-directory: examples/with-javascript-vite
+        run: deno add npm:@playwright/test && deno run --allow-all npm:playwright test
+        env:
+          VITE_DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
+          PW_DISABLE_TS_ESM: true
+
+      - name: remove with-javascript-vite
+        run: rm -rf examples/with-javascript-vite
+
+      - name: node with-javascript-browser
+        working-directory: examples/with-javascript-browser
+        run: npm i && node test.cjs
+
+      - name: bun with-javascript-browser
+        if: matrix.os != 'windows-latest' #cannot launch browsers on windows with bash in commonjs?
+        working-directory: examples/with-javascript-browser
+        run: bun i && bun test.cjs
+
+      - name: deno with-javascript-browser
+        if: matrix.os != 'windows-latest' #https://github.com/denoland/deno/issues/23524#issuecomment-2292075726
+        uses: nick-fields/retry@v3 #doing this step with the retry action because sometimes in macos it gets stuck without failing
+        with:
+          timeout_seconds: 45
+          max_attempts: 5
+          command: cd examples/with-javascript-browser && deno --allow-all test.cjs
+
+      - name: remove with-javascript-browser
+        run: rm -rf examples/with-javascript-browser
+
+  rn-ios-test:
+    needs: code-test
+    strategy:
+      matrix:
+        os: [macos-13, macos-14, macos-15] # macos-12 for ios 15 it's going to be deprecated, it's also using an old version of xcode that is not compatible with react native
+        include:
+          - os: macos-13
+            version: '16.4'
+          - os: macos-14
+            version: '17'
+          - os: macos-15
+            version: '18'
+
+    name: 'React Native iOS ${{ matrix.version }} Test'
+    timeout-minutes: 40
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup utils
+        run: brew tap wix/brew && brew install applesimutils
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: 1
+          HOMEBREW_NO_INSTALL_CLEANUP: 1
+
+        #switch to old xcode version that has ios 16.4
+      - uses: maxim-lobanov/setup-xcode@v1.6.0
+        if: matrix.version == '16.4'
+        with:
+          xcode-version: 14.3
+
+      - name: build driver
+        run: npm i && npm run build && echo "DRIVER=$(npm pack --json | jq '.[0].filename')" >> $GITHUB_ENV
+
+      - name: install driver
+        working-directory: examples/with-typescript-react-native
+        run: npm i ../../${{ env.DRIVER }} #installing a tar packaged version of the driver since react native doesn't work well with local dependencies
+
+      - name: install cocoapods
+        working-directory: examples/with-typescript-react-native
+        run: cd ios ; pod install ; cd -
+
+      - name: build app
+        working-directory: examples/with-typescript-react-native
+        run: npx detox build --configuration ios.sim.release
+
+      - name: test app
+        working-directory: examples/with-typescript-react-native
+        run: npx detox test --configuration ios.sim.${{ matrix.version }} --headless --record-videos all --take-screenshots all
+
+      - name: upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rn-ios-${{matrix.version}}-test-artifacts
+          path: examples/with-typescript-react-native/artifacts
+
+  rn-android-test:
+    needs: code-test
+    strategy:
+      matrix:
+        api-level: [25, 26, 29, 31, 35] #app fail: android 5; driver fail: android 6 and android 7
+        include:
+          - api-level: 25
+            version: '7.1'
+          - api-level: 26
+            version: '8.0'
+          - api-level: 29
+            version: '10'
+          - api-level: 31
+            version: '12'
+          - api-level: 35
+            version: '15'
+
+    name: 'React Native Android ${{matrix.version}} Test'
+    timeout-minutes: 30
+    runs-on: ubuntu-latest #android emulator on github actions works only on linux and old macos x86 builds, we can skip other os since the build and test process is going to be the same
+
+    steps:
+      - uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          android: false
+      - uses: actions/checkout@v4
+
+      - name: enable kvm group perms
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 21
+
+      - name: build driver
+        run: npm i && npm run build && echo "DRIVER=$(npm pack --json | jq '.[0].filename')" >> $GITHUB_ENV
+
+      - name: install driver
+        working-directory: examples/with-typescript-react-native
+        run: npm i ../../${{ env.DRIVER }} #installing a tar packaged version of the driver since react native doesn't work well with local dependencies
+
+      - name: build app
+        working-directory: examples/with-typescript-react-native
+        run: npx detox build --configuration android.emu.release
+
+      - name: test app
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          arch: x86_64
+          profile: Nexus 6
+          avd-name: Medium_Phone_API_35
+          emulator-boot-timeout: 20000
+          working-directory: examples/with-typescript-react-native
+          script: npx detox test --configuration android.emu.release --headless --record-videos all --take-screenshots all
+
+      - name: upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rn-android-${{matrix.version}}-test-artifacts
+          path: examples/with-typescript-react-native/artifacts
+
+  expo-ios-test:
+    needs: code-test
+    strategy:
+      matrix:
+        os: [macos-13, macos-14, macos-15] # macos-12 for ios 15 it's going to be deprecated, it's also using an old version of xcode that is not compatible with react native
+        include:
+          - os: macos-13
+            version: '16.4'
+          - os: macos-14
+            version: '17'
+          - os: macos-15
+            version: '18'
+
+    name: 'Expo iOS ${{ matrix.version }} Test'
+    timeout-minutes: 40
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup utils
+        run: brew tap wix/brew && brew install applesimutils
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: 1
+          HOMEBREW_NO_INSTALL_CLEANUP: 1
+
+        #switch to old xcode version that has ios 16.4
+      - uses: maxim-lobanov/setup-xcode@v1.6.0
+        if: matrix.version == '16.4'
+        with:
+          xcode-version: 14.3
+
+      - name: build driver
+        run: npm i && npm run build && echo "DRIVER=$(npm pack --json | jq '.[0].filename')" >> $GITHUB_ENV
+
+      - name: install driver
+        working-directory: examples/with-javascript-expo
+        run: npm i ../../${{ env.DRIVER }} #installing a tar packaged version of the driver since react native doesn't work well with local dependencies
+
+      - name: expo prebuild
+        working-directory: examples/with-javascript-expo
+        run: npx expo prebuild
+
+      - name: build app
+        working-directory: examples/with-javascript-expo
+        run: npx detox build --configuration ios.sim.release
+
+      - name: test app
+        working-directory: examples/with-javascript-expo
+        run: npx detox test --configuration ios.sim.${{ matrix.version }} --headless --record-videos all --take-screenshots all
+
+      - name: upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: expo-ios-${{matrix.version}}-test-artifacts
+          path: examples/with-javascript-expo/artifacts
+
+  expo-android-test:
+    needs: code-test
+    strategy:
+      matrix:
+        api-level: [25, 26, 29, 31, 35] #app fail: android 5; driver fail: android 6 and android 7
+        include:
+          - api-level: 25
+            version: '7.1'
+          - api-level: 26
+            version: '8.0'
+          - api-level: 29
+            version: '10'
+          - api-level: 31
+            version: '12'
+          - api-level: 35
+            version: '15'
+
+    name: 'Expo Android ${{matrix.version}} Test'
+    timeout-minutes: 30
+    runs-on: ubuntu-latest #android emulator on github actions works only on linux and old macos x86 builds, we can skip other os since the build and test process is going to be the same
+
+    steps:
+      - uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          android: false
+      - uses: actions/checkout@v4
+
+      - name: enable kvm group perms
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 21
+
+      - name: build driver
+        run: npm i && npm run build && echo "DRIVER=$(npm pack --json | jq '.[0].filename')" >> $GITHUB_ENV
+
+      - name: install driver
+        working-directory: examples/with-javascript-expo
+        run: npm i ../../${{ env.DRIVER }} #installing a tar packaged version of the driver since react native doesn't work well with local dependencies
+
+      - name: expo prebuild
+        working-directory: examples/with-javascript-expo
+        run: npx expo prebuild
+
+      - name: build app
+        working-directory: examples/with-javascript-expo
+        run: npx detox build --configuration android.emu.release
+
+      - name: test app
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          arch: x86_64
+          profile: Nexus 6
+          avd-name: Medium_Phone_API_35
+          emulator-boot-timeout: 20000
+          working-directory: examples/with-javascript-expo
+          script: npx detox test --configuration android.emu.release --headless --record-videos all --take-screenshots all
+
+      - name: upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: expo-android-${{matrix.version}}-test-artifacts
+          path: examples/with-javascript-expo/artifacts

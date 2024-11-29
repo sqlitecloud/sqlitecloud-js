@@ -10,8 +10,8 @@ describe('pubSub', () => {
       const pubSub = await connection.getPubSub()
 
       try {
+        const channelName = 'test-channel-' + crypto.randomUUID()
         let callbackCalled = false
-        const channelName = 'test-channel-' + Math.floor(Math.random() * 999)
         const message = 'Message in a bottle ' + Math.floor(Math.random() * 999)
 
         await pubSub.createChannel(channelName)
@@ -38,6 +38,7 @@ describe('pubSub', () => {
         }
 
         expect(callbackCalled).toBeTruthy()
+        pubSub.removeChannel(channelName)
       } finally {
         connection.close()
         pubSub.close()
@@ -52,7 +53,7 @@ describe('pubSub', () => {
       try {
         const channelName = 'test-channel-' + Math.floor(Math.random() * 999)
 
-        await pubSub.createChannel(channelName)
+        await pubSub.createChannel(channelName, false)
 
         await pubSub.listen(PUBSUB_ENTITY_TYPE.CHANNEL, channelName, (error, results, data) => {
           expect(true).toBeFalsy()
@@ -107,7 +108,7 @@ describe('pubSub', () => {
       const pubSub = await connection.getPubSub()
 
       try {
-        const channelName = 'test-channel-' + Math.floor(Math.random() * 999)
+        const channelName = 'test-channel-' + crypto.randomUUID()
 
         await pubSub.createChannel(channelName)
 
