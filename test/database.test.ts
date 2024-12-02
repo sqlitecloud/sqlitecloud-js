@@ -3,9 +3,10 @@
  */
 
 import { SQLiteCloudRowset, SQLiteCloudRow, SQLiteCloudError, sanitizeSQLiteIdentifier } from '../src/index'
-import { getTestingDatabase, getTestingDatabaseAsync, getChinookDatabase, removeDatabase, removeDatabaseAsync, LONG_TIMEOUT } from './shared'
+import { getTestingDatabase, getTestingDatabaseAsync, getChinookDatabase, removeDatabase, removeDatabaseAsync, LONG_TIMEOUT, getChinookWebsocketConnection } from './shared'
 import { RowCountCallback } from '../src/drivers/types'
 import { expect, describe, it } from '@jest/globals'
+import { Database } from 'sqlite3'
 
 //
 // utility methods to setup and destroy temporary test databases

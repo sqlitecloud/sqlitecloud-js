@@ -1,6 +1,6 @@
 {
   "name": "@sqlitecloud/drivers",
-  "version": "1.0.333",
+  "version": "1.0.338",
   "description": "SQLiteCloud drivers for Typescript/Javascript in edge, web and node clients",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
