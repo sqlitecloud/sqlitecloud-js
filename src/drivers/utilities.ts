@@ -214,7 +214,7 @@ export function parseconnectionstring(connectionstring: string): SQLiteCloudConf
     // all lowecase options
     const options: { [key: string]: string } = {}
     url.searchParams.forEach((value, key) => {
-      options[key.toLowerCase().replaceAll('-', '_')] = value
+      options[key.toLowerCase().replace(/-/g, '_')] = value
     })
 
     const config: SQLiteCloudConfig = {
