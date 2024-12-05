@@ -86,81 +86,20 @@ export function getInitializationCommands(config: SQLiteCloudConfig): string {
   return commands
 }
 
-/** Takes a generic value and escapes it so it can replace ? as a binding in a prepared SQL statement */
-export function escapeSqlParameter(param: SQLiteCloudDataTypes): string {
-  if (param === null || param === undefined) {
-    return 'NULL'
+/** Sanitizes an SQLite identifier (e.g., table name, column name). */
+export function sanitizeSQLiteIdentifier(identifier: any): string {
+  const trimmed = identifier.trim()
+
+  // it's not empty
+  if (trimmed.length === 0) {
+    throw new Error('Identifier cannot be empty.')
   }
 
-  if (typeof param === 'string') {
-    // replace single quote with two single quotes
-    param = param.replace(/'/g, "''")
-    return `'${param}'`
-  }
+  // escape double quotes
+  const escaped = trimmed.replace(/"/g, '""')
 
-  if (typeof param === 'number' || typeof param === 'bigint') {
-    return param.toString()
-  }
-
-  if (typeof param === 'boolean') {
-    return param ? '1' : '0'
-  }
-
-  // serialize buffer as X'...' hex encoded string
-  if (Buffer.isBuffer(param)) {
-    return `X'${param.toString('hex')}'`
-  }
-
-  if (typeof param === 'object') {
-    // serialize json then escape single quotes
-    let json = JSON.stringify(param)
-    json = json.replace(/'/g, "''")
-    return `'${json}'`
-  }
-
-  throw new SQLiteCloudError(`Unsupported parameter type: ${typeof param}`)
-}
-
-/** Take a sql statement and replaces ? or $named parameters that are properly serialized and escaped. */
-export function prepareSql(sql: string, ...params: (SQLiteCloudDataTypes | SQLiteCloudDataTypes[])[]): string {
-  // parameters where passed as an array of parameters?
-  if (params?.length === 1 && Array.isArray(params[0])) {
-    params = params[0]
-  }
-
-  // replace ? or ?idx parameters passed as args or as an array
-  let parameterIndex = 1
-  let preparedSql = sql.replace(/\?(\d+)?/g, (match: string, matchIndex: string) => {
-    const index = matchIndex ? parseInt(matchIndex) : parameterIndex
-    parameterIndex++
-
-    let sqlParameter: SQLiteCloudDataTypes
-    if (params[0] && typeof params[0] === 'object' && !(params[0] instanceof Buffer)) {
-      sqlParameter = params[0][index] as SQLiteCloudDataTypes
-    }
-    if (!sqlParameter) {
-      if (index > params.length) {
-        throw new SQLiteCloudError('Not enough parameters')
-      }
-      sqlParameter = params[index - 1] as SQLiteCloudDataTypes
-    }
-
-    return sqlParameter !== null && sqlParameter !== undefined ? escapeSqlParameter(sqlParameter) : 'NULL'
-  })
-
-  // replace $named or :named parameters passed as an object
-  if (params?.length === 1 && params[0] && typeof params[0] === 'object') {
-    const namedParams = params[0] as Record<string, SQLiteCloudDataTypes>
-    for (const [paramKey, param] of Object.entries(namedParams)) {
-      const firstChar = paramKey.charAt(0)
-      if (firstChar == '$' || firstChar == ':' || firstChar == '@') {
-        const escapedParam = escapeSqlParameter(param)
-        preparedSql = preparedSql.replace(new RegExp(`\\${paramKey}`, 'g'), escapedParam)
-      }
-    }
-  }
-
-  return preparedSql
+  // Wrap in double quotes for safety
+  return `"${escaped}"`
 }
 
 /** Converts results of an update or insert call into a more meaning full result set */

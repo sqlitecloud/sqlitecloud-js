@@ -8,7 +8,6 @@ import { getChinookDatabase, getTestingDatabase } from './shared'
 // https://github.com/TryGhost/node-sqlite3/wiki/API
 import sqlite3 from 'sqlite3'
 import { join } from 'path'
-import { error } from 'console'
 
 const INSERT_SQL = "INSERT INTO people (name, hobby, age) VALUES ('Fantozzi Ugo', 'Competitive unicorn farting', 42); "
 const TESTING_DATABASE_FILE = join(__dirname, 'assets/testing.db')

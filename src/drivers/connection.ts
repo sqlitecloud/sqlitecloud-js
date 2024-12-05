@@ -2,8 +2,8 @@
  * connection.ts - base abstract class for sqlitecloud server connections
  */
 
-import { SQLiteCloudConfig, SQLiteCloudError, ErrorCallback, ResultsCallback } from './types'
-import { validateConfiguration, prepareSql } from './utilities'
+import { SQLiteCloudConfig, SQLiteCloudError, ErrorCallback, ResultsCallback, SQLiteCloudCommand } from './types'
+import { validateConfiguration } from './utilities'
 import { OperationsQueue } from './queue'
 import { anonimizeCommand, getUpdateResults } from './utilities'
 
@@ -62,7 +62,7 @@ export abstract class SQLiteCloudConnection {
   protected abstract connectTransport(config: SQLiteCloudConfig, callback?: ErrorCallback): this
 
   /** Send a command, return the rowset/result or throw an error */
-  protected abstract transportCommands(commands: string, callback?: ResultsCallback): this
+  protected abstract transportCommands(commands: string | SQLiteCloudCommand, callback?: ResultsCallback): this
 
   /** Will log to console if verbose mode is enabled */
   protected log(message: string, ...optionalParams: any[]): void {
@@ -85,7 +85,7 @@ export abstract class SQLiteCloudConnection {
   }
 
   /** Will enquee a command to be executed and callback with the resulting rowset/result/error */
-  public sendCommands(commands: string, callback?: ResultsCallback): this {
+  public sendCommands(commands: string | SQLiteCloudCommand, callback?: ResultsCallback): this {
     this.operations.enqueue(done => {
       if (!this.connected) {
         const error = new SQLiteCloudError('Connection not established', { errorCode: 'ERR_CONNECTION_NOT_ESTABLISHED' })
@@ -108,32 +108,33 @@ export abstract class SQLiteCloudConnection {
    * using backticks and parameters in ${parameter} format. These parameters
    * will be properly escaped and quoted like when using a prepared statement.
    * @param sql A sql string or a template string in `backticks` format
+   *  A SQLiteCloudCommand when the query is defined with question marks and bindings.
    * @returns An array of rows in case of selections or an object with
    * metadata in case of insert, update, delete.
    */
-  public async sql(sql: TemplateStringsArray | string, ...values: any[]): Promise<any> {
-    let preparedSql = ''
+  public async sql(sql: TemplateStringsArray | string | SQLiteCloudCommand, ...values: any[]): Promise<any> {
+    let commands = { query: '' } as SQLiteCloudCommand
 
     // sql is a TemplateStringsArray, the 'raw' property is specific to TemplateStringsArray
     if (Array.isArray(sql) && 'raw' in sql) {
+      let query = ''
       sql.forEach((string, i) => {
-        preparedSql += string + (i < values.length ? '?' : '')
+        // TemplateStringsArray splits the string before each variable
+        // used in the template. Add the question mark
+        // to the end of the string for the number of used variables.
+        query += string + (i < values.length ? '?' : '')
       })
-      preparedSql = prepareSql(preparedSql, ...values)
+      commands = { query, parameters: values }
+    } else if (typeof sql === 'string') {
+      commands = { query: sql, parameters: values }
+    } else if (typeof sql === 'object') {
+      commands = sql as SQLiteCloudCommand
     } else {
-      if (typeof sql === 'string') {
-        if (values?.length > 0) {
-          preparedSql = prepareSql(sql, ...values)
-        } else {
-          preparedSql = sql
-        }
-      } else {
-        throw new Error('Invalid sql')
-      }
+      throw new Error('Invalid sql')
     }
 
     return new Promise((resolve, reject) => {
-      this.sendCommands(preparedSql, (error, results) => {
+      this.sendCommands(commands, (error, results) => {
         if (error) {
           reject(error)
         } else {

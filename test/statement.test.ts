@@ -3,23 +3,10 @@
  */
 
 import { SQLiteCloudRowset } from '../src'
-import { RowCallback, RowCountCallback, SQLiteCloudError } from '../src/drivers/types'
+import { RowCountCallback, SQLiteCloudError } from '../src/drivers/types'
 import { getChinookDatabase, getTestingDatabase } from './shared'
 
 describe('Database.prepare', () => {
-  it('without incorrect bindings', done => {
-    const chinook = getChinookDatabase()
-    expect(chinook).toBeDefined()
-
-    // two bindings, but only one is provided...
-    const statement = chinook.prepare('SELECT * FROM tracks WHERE albumId = ? and trackId = ?;', 1, (err: Error, results: any) => {
-      expect(err).toBeInstanceOf(SQLiteCloudError)
-
-      chinook.close()
-      done()
-    })
-  })
-
   it('without initial bindings', done => {
     const chinook = getChinookDatabase()
     expect(chinook).toBeDefined()
@@ -79,27 +66,18 @@ describe('Database.prepare', () => {
 it('Statement.bind', done => {
   const chinook = getChinookDatabase()
   expect(chinook).toBeDefined()
-  const statement = chinook.prepare('SELECT * FROM tracks WHERE albumId = ?;', (err: Error, results: any) => {
-    expect(err).toBeNull()
-  })
+  const statement = chinook.prepare('SELECT * FROM tracks WHERE albumId = ?;')
 
-  statement.bind(3, (error: Error) => {
-    expect(error).toBeNull()
-
+  statement.bind(3, () => {
     statement.all((error, rows) => {
       expect(error).toBeNull()
       expect(rows).toBeDefined()
       expect(rows).toHaveLength(3)
       expect(rows).toBeInstanceOf(SQLiteCloudRowset)
 
-      // missing binding
-      statement.bind((error: Error) => {
-        expect(error).toBeInstanceOf(SQLiteCloudError)
-
-        chinook.close(error => {
-          expect(error).toBeNull()
-          done()
-        })
+      chinook.close(error => {
+        expect(error).toBeNull()
+        done()
       })
     })
   })
@@ -128,6 +106,26 @@ it('Statement.all', done => {
         expect(error).toBeNull()
         done()
       })
+    })
+  })
+})
+
+it('Statement.all withtout bindings', done => {
+  const chinook = getChinookDatabase()
+  expect(chinook).toBeDefined()
+  const statement = chinook.prepare('SELECT * FROM tracks WHERE albumId = 3;', (err: Error, results: any) => {
+    expect(err).toBeNull()
+  })
+
+  statement.all((error, rows) => {
+    expect(error).toBeNull()
+    expect(rows).toBeDefined()
+    expect(rows).toHaveLength(3)
+    expect(rows).toBeInstanceOf(SQLiteCloudRowset)
+
+    chinook.close(error => {
+      expect(error).toBeNull()
+      done()
     })
   })
 })
@@ -163,6 +161,36 @@ it('Statement.each', done => {
   statement.each(4, rowCallback, completeCallback)
 })
 
+it('Statement.each without bindings', done => {
+  const chinook = getChinookDatabase()
+  expect(chinook).toBeDefined()
+
+  let rowCount = 0
+
+  const rowCallback = (error: Error | null, row: any) => {
+    rowCount += 1
+    expect(error).toBeNull()
+    expect(row).toBeDefined()
+    expect(row).toMatchObject({})
+  }
+
+  const completeCallback: RowCountCallback = (error, numberOfRows) => {
+    expect(error).toBeNull()
+    expect(rowCount).toBe(8)
+    expect(numberOfRows).toBe(8)
+    chinook.close(error => {
+      expect(error).toBeNull()
+      done()
+    })
+  }
+
+  const statement = chinook.prepare<any>('SELECT * FROM tracks WHERE albumId = 4;')
+
+  // album 4 has 8 rows
+  statement.each(4, rowCallback, completeCallback)
+})
+
+
 it('Statement.get', done => {
   const chinook = getChinookDatabase()
   expect(chinook).toBeDefined()
@@ -181,6 +209,23 @@ it('Statement.get', done => {
     })
   })
 })
+
+it('Statement.get without bindings', done => {
+  const chinook = getChinookDatabase()
+  expect(chinook).toBeDefined()
+  const statement = chinook.prepare('SELECT * FROM tracks;')
+
+  statement.get((error, rows) => {
+    expect(error).toBeNull()
+    expect(rows).toBeDefined()
+
+    chinook.close(error => {
+      expect(error).toBeNull()
+      done()
+    })
+  })
+})
+
 
 it('Statement.run', done => {
   const chinook = getChinookDatabase()
@@ -202,12 +247,12 @@ it('Statement.run', done => {
   })
 })
 
-it('Statement.run - with insert results', done => {
+it('Statement.run - insert', done => {
   // create simple "people" database that we can write in...
   const database = getTestingDatabase(error => {
     expect(error).toBeNull()
 
-    const statement = database.prepare('INSERT INTO people (name, hobby, age) VALUES (?, ?, ?); ')
+    const statement = database.prepare('INSERT INTO people (name, hobby, age) VALUES (?, ?, ?);')
 
     // @ts-ignore
     statement.run('John Wayne', 73, 'Horse Riding', (error, results) => {
@@ -222,3 +267,81 @@ it('Statement.run - with insert results', done => {
     })
   })
 })
+
+it('Statement.run - insert with empty space after semicolon returns null', done => {
+  // create simple "people" database that we can write in...
+  const database = getTestingDatabase(error => {
+    expect(error).toBeNull()
+
+    const statement = database.prepare('INSERT INTO people (name, hobby, age) VALUES (?, ?, ?); ')
+
+    // @ts-ignore
+    statement.run('John Wayne', 73, 'Horse Riding', (error, results) => {
+      expect(results).toBeNull()
+
+      done()
+    })
+  })
+})
+
+
+it('Statement.run - update', done => {
+  const database = getTestingDatabase(error => {
+    expect(error).toBeNull()
+
+    const statement = database.prepare('UPDATE people SET name= ? WHERE id = ?;')
+
+    // @ts-ignore
+    statement.run('John Wayne', 1, (error, results) => {
+      expect(results.changes).toBe(1)
+
+      done()
+    })
+  })
+})
+
+it('Statement.run - update with empty space after semicolon returns null', done => {
+  const database = getTestingDatabase(error => {
+    expect(error).toBeNull()
+
+    const statement = database.prepare('UPDATE people SET name= ? WHERE id = ?; ')
+
+    // @ts-ignore
+    statement.run('John Wayne', 1, (error, results) => {
+      expect(results).toBeNull()
+
+      done()
+    })
+  })
+})
+
+it('Statement.run - delete', done => {
+  const database = getTestingDatabase(error => {
+    expect(error).toBeNull()
+
+    const statement = database.prepare('DELETE FROM people WHERE id = ?;')
+
+    // @ts-ignore
+    statement.run(1, (error, results) => {
+      expect(results.changes).toBe(1)
+
+      done()
+    })
+  })
+})
+
+it('Statement.run - delete with empty space after semicolon returns null', done => {
+  const database = getTestingDatabase(error => {
+    expect(error).toBeNull()
+
+    const statement = database.prepare('DELETE FROM people WHERE id = ?; ')
+
+    // @ts-ignore
+    statement.run(1, (error, results) => {
+      expect(results).toBeNull()
+
+      done()
+    })
+  })
+})
+

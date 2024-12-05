@@ -14,7 +14,7 @@ import {
   WARN_SPEED_MS,
   EXPECT_SPEED_MS
 } from './shared'
-import { error } from 'console'
+import { SQLiteCloudCommand } from '../src/drivers/types'
 
 describe('connection-ws', () => {
   let chinook: SQLiteCloudConnection
@@ -374,6 +374,24 @@ describe('connection-ws', () => {
           expect(results.numberOfColumns).toBe(3)
           expect(results.numberOfRows).toBe(347)
           expect(results.version == 1 || results.version == 2).toBeTruthy()
+          done()
+        })
+      })
+
+      it('should select without bindings', done => {
+        const command = { query: 'SELECT * FROM albums' } as SQLiteCloudCommand
+        chinook.sendCommands(command, (error, results) => {
+          expect(error).toBeNull()
+          expect(results.numberOfColumns).toBeGreaterThan(0)
+          done()
+        })
+      })
+
+      it('should select with bindings', done => {
+        const command: SQLiteCloudCommand = { query: 'SELECT * FROM albums WHERE albumId = ?', parameters: [1] }
+        chinook.sendCommands(command, (error, results) => {
+          expect(error).toBeNull()
+          expect(results.numberOfColumns).toBe(3)
           done()
         })
       })

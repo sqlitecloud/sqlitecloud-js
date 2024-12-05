@@ -2,7 +2,7 @@
  * transport-ws.ts - handles low level communication with sqlitecloud server via socket.io websocket
  */
 
-import { SQLiteCloudConfig, SQLiteCloudError, ErrorCallback, ResultsCallback } from './types'
+import { SQLiteCloudConfig, SQLiteCloudError, ErrorCallback, ResultsCallback, SQLiteCloudCommand, SQLiteCloudDataTypes } from './types'
 import { SQLiteCloudRowset } from './rowset'
 import { SQLiteCloudConnection } from './connection'
 import { io, Socket } from 'socket.io-client'
@@ -41,14 +41,18 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
   }
 
   /** Will send a command immediately (no queueing), return the rowset/result or throw an error */
-  transportCommands(commands: string, callback?: ResultsCallback): this {
+  transportCommands(commands: string | SQLiteCloudCommand, callback?: ResultsCallback): this {
     // connection needs to be established?
     if (!this.socket) {
       callback?.call(this, new SQLiteCloudError('Connection not established', { errorCode: 'ERR_CONNECTION_NOT_ESTABLISHED' }))
       return this
+    } 
+
+    if (typeof commands === 'string') {
+      commands = { query: commands }
     }
 
-    this.socket.emit('v1/sql', { sql: commands, row: 'array' }, (response: any) => {
+    this.socket.emit('GET /v2/weblite/sql', { sql: commands.query, bind: commands.parameters, row: 'array' }, (response: any) => {
       if (response?.error) {
         const error = new SQLiteCloudError(response.error.detail, { ...response.error })
         callback?.call(this, error)

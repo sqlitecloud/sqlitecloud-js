@@ -2,7 +2,7 @@
  * connection-tls.test.ts - test low level communication protocol with tls sockets and raw commands
  */
 
-import { SQLiteCloudError, SQLiteCloudRowset } from '../src/index'
+import { SQLiteCloudConnection, SQLiteCloudError, SQLiteCloudRowset } from '../src/index'
 import { SQLiteCloudTlsConnection } from '../src/drivers/connection-tls'
 import { anonimizeCommand } from '../src/drivers/utilities'
 import {
@@ -1027,3 +1027,29 @@ describe('anonimizeCommand', () => {
     expect(anonimized).toBe('+62 AUTH USER ****** SOMETHING notreallyapassword; USE DATABASE chinook.sqlite; ')
   })
 })
+
+// TODO: enable this test when this isssue is fixed: https://github.com/sqlitecloud/core/issues/165
+// it('should send unicode database name as array', done => {
+//   new Promise((resolve, reject) => {
+//     const connection = new SQLiteCloudTlsConnection({ connectionstring: CHINOOK_DATABASE_URL }, error => {
+//       if (error) {
+//         expect(error).toBeNull()
+//         reject(error)
+//         done(error)
+//       }
+//       resolve(connection)
+//     })
+//   }).then((value) => {
+//     const connection = value as SQLiteCloudTlsConnection;
+//     connection.transportCommands({ query: 'USE DATABASE ?;', parameters: ['🚀.sqlite'] }, (error, result) => {
+//       if (error) {
+//         expect(error).toBeNull()
+//       } else {
+//         expect(result).toBeDefined()
+//       }
+
+//       connection.close()
+//       done(error)
+//     })
+//   })
+// })

@@ -12,13 +12,13 @@
 
 import { SQLiteCloudConnection } from './connection'
 import { SQLiteCloudRowset } from './rowset'
-import { SQLiteCloudConfig, SQLiteCloudError, RowCountCallback, SQLiteCloudArrayType } from './types'
-import { prepareSql, popCallback } from './utilities'
-import { Statement } from './statement'
+import { SQLiteCloudConfig, SQLiteCloudError, RowCountCallback, SQLiteCloudArrayType, SQLiteCloudCommand } from './types'
+import { popCallback } from './utilities'
 import { ErrorCallback, ResultsCallback, RowCallback, RowsCallback } from './types'
 import EventEmitter from 'eventemitter3'
 import { isBrowser } from './utilities'
 import { PubSub } from './pubsub'
+import { Statement } from './statement'
 
 // Uses eventemitter3 instead of node events for browser compatibility
 // https://github.com/primus/eventemitter3
@@ -204,12 +204,12 @@ export class Database extends EventEmitter {
   public run<T>(sql: string, params: any, callback?: ResultsCallback<T>): this
   public run(sql: string, ...params: any[]): this {
     const { args, callback } = popCallback<ResultsCallback>(params)
-    const preparedSql = args?.length > 0 ? prepareSql(sql, ...args) : sql
+    const command: SQLiteCloudCommand = { query: sql, parameters: args }
     this.getConnection((error, connection) => {
       if (error || !connection) {
         this.handleError(null, error as Error, callback)
       } else {
-        connection.sendCommands(preparedSql, (error, results) => {
+        connection.sendCommands(command, (error, results) => {
           if (error) {
             this.handleError(connection, error, callback)
           } else {
@@ -237,12 +237,12 @@ export class Database extends EventEmitter {
   public get<T>(sql: string, params: any, callback?: RowCallback<T>): this
   public get(sql: string, ...params: any[]): this {
     const { args, callback } = popCallback<RowCallback>(params)
-    const preparedSql = args?.length > 0 ? prepareSql(sql, ...args) : sql
+    const command: SQLiteCloudCommand = { query: sql, parameters: args }
     this.getConnection((error, connection) => {
       if (error || !connection) {
         this.handleError(null, error as Error, callback)
       } else {
-        connection.sendCommands(preparedSql, (error, results) => {
+        connection.sendCommands(command, (error, results) => {
           if (error) {
             this.handleError(connection, error, callback)
           } else {
@@ -275,12 +275,12 @@ export class Database extends EventEmitter {
   public all<T>(sql: string, params: any, callback?: RowsCallback<T>): this
   public all(sql: string, ...params: any[]): this {
     const { args, callback } = popCallback<RowsCallback>(params)
-    const preparedSql = args?.length > 0 ? prepareSql(sql, ...args) : sql
+    const command: SQLiteCloudCommand = { query: sql, parameters: args }
     this.getConnection((error, connection) => {
       if (error || !connection) {
         this.handleError(null, error as Error, callback)
       } else {
-        connection.sendCommands(preparedSql, (error, results) => {
+        connection.sendCommands(command, (error, results) => {
           if (error) {
             this.handleError(connection, error, callback)
           } else {
@@ -316,12 +316,12 @@ export class Database extends EventEmitter {
     // extract optional parameters and one or two callbacks
     const { args, callback, complete } = popCallback<RowCallback>(params)
 
-    const preparedSql = args?.length > 0 ? prepareSql(sql, ...args) : sql
+    const command: SQLiteCloudCommand = { query: sql, parameters: args }
     this.getConnection((error, connection) => {
       if (error || !connection) {
         this.handleError(null, error as Error, callback)
       } else {
-        connection.sendCommands(preparedSql, (error, rowset) => {
+        connection.sendCommands(command, (error, rowset) => {
           if (error) {
             this.handleError(connection, error, callback)
           } else {
@@ -352,8 +352,7 @@ export class Database extends EventEmitter {
    * they are bound to the prepared statement before calling the callback.
    */
   public prepare<T = any>(sql: string, ...params: any[]): Statement<T> {
-    const { args, callback } = popCallback(params)
-    return new Statement(this, sql, ...args, callback)
+    return new Statement(this, sql, ...params)
   }
 
   /**
@@ -444,26 +443,25 @@ export class Database extends EventEmitter {
    * @returns An array of rows in case of selections or an object with
    * metadata in case of insert, update, delete.
    */
-
-  public async sql(sql: TemplateStringsArray | string, ...values: any[]): Promise<any> {
-    let preparedSql = ''
+  public async sql(sql: TemplateStringsArray | string | SQLiteCloudCommand, ...values: any[]): Promise<any> {
+    let commands = { query: '' } as SQLiteCloudCommand
 
     // sql is a TemplateStringsArray, the 'raw' property is specific to TemplateStringsArray
     if (Array.isArray(sql) && 'raw' in sql) {
+      let query = ''
       sql.forEach((string, i) => {
-        preparedSql += string + (i < values.length ? '?' : '')
+        // TemplateStringsArray splits the string before each variable
+        // used in the template. Add the question mark
+        // to the end of the string for the number of used variables.
+        query += string + (i < values.length ? '?' : '')
       })
-      preparedSql = prepareSql(preparedSql, ...values)
+      commands = { query, parameters: values }
+    } else if (typeof sql === 'string') {
+      commands = { query: sql, parameters: values }
+    } else if (typeof sql === 'object') {
+      commands = sql as SQLiteCloudCommand
     } else {
-      if (typeof sql === 'string') {
-        if (values?.length > 0) {
-          preparedSql = prepareSql(sql, ...values)
-        } else {
-          preparedSql = sql
-        }
-      } else {
-        throw new Error('Invalid sql')
-      }
+      throw new Error('Invalid sql')
     }
 
     return new Promise((resolve, reject) => {
@@ -471,7 +469,7 @@ export class Database extends EventEmitter {
         if (error || !connection) {
           reject(error)
         } else {
-          connection.sendCommands(preparedSql, (error, results) => {
+          connection.sendCommands(commands, (error, results) => {
             if (error) {
               reject(error)
             } else {

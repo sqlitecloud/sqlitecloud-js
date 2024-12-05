@@ -1,3 +1,7 @@
 {
-  "recommendations": ["kavod-io.vscode-jest-test-adapter", "esbenp.prettier-vscode", "github.vscode-github-actions", "hbenl.vscode-test-explorer"]
+  "recommendations": [
+    "esbenp.prettier-vscode",
+    "github.vscode-github-actions",
+    "hbenl.vscode-test-explorer"
+  ]
 }
