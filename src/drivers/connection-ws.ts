@@ -52,7 +52,7 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
       commands = { query: commands }
     }
 
-    this.socket.emit('v2/weblite/sql', { sql: commands.query, bind: commands.parameters, row: 'array' }, (response: any) => {
+    this.socket.emit('GET /v2/weblite/sql', { sql: commands.query, bind: commands.parameters, row: 'array' }, (response: any) => {
       if (response?.error) {
         const error = new SQLiteCloudError(response.error.detail, { ...response.error })
         callback?.call(this, error)

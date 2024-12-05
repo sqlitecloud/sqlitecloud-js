@@ -64,12 +64,16 @@ export class Statement<T> {
     if (args?.length > 0) {
       // apply new bindings then execute
       this.bind(...args, () => {
-        this._database.run(this._preparedSql.query || '', this._preparedSql.parameters, callback)
+        const query = this._preparedSql.query || ''
+        const parametes: any = [...this._preparedSql.parameters ?? []]
+        this._database.run(query, ...parametes, callback)
       })
     } else {
       // execute prepared sql with same bindings
-      this._database.run(this._preparedSql.query || '', this._preparedSql.parameters, callback)
-    }
+      const query = this._preparedSql.query || ''
+      const parametes: any = [...this._preparedSql.parameters ?? []]
+      this._database.run(query, ...parametes, callback)
+  }
 
     return this
   }
@@ -89,12 +93,16 @@ export class Statement<T> {
     if (args?.length > 0) {
       // apply new bindings then execute
       this.bind(...args, () => {
-        this._database.get(this._preparedSql.query || '', this._preparedSql.parameters, callback)
+        const query = this._preparedSql.query || ''
+        const parametes: any = [...this._preparedSql.parameters ?? []]
+        this._database.get(query, ...parametes, callback)
       })
     } else {
       // execute prepared sql with same bindings
-      this._database.get(this._preparedSql.query || '', this._preparedSql.parameters, callback)
-    }
+      const query = this._preparedSql.query || ''
+      const parametes: any = [...this._preparedSql.parameters ?? []]
+      this._database.get(query, ...parametes, callback)
+  }
 
     return this
   }
@@ -111,12 +119,16 @@ export class Statement<T> {
     if (args?.length > 0) {
       // apply new bindings then execute
       this.bind(...args, () => {
-        this._database.all(this._preparedSql.query || '', this._preparedSql.parameters, callback)
+        const query = this._preparedSql.query || ''
+        const parametes: any = [...this._preparedSql.parameters ?? []]
+        this._database.all(query, ...parametes, callback)
       })
     } else {
       // execute prepared sql with same bindings
-      this._database.all(this._preparedSql.query || '', this._preparedSql.parameters, callback)
-    }
+      const query = this._preparedSql.query || ''
+      const parametes: any = [...this._preparedSql.parameters ?? []]
+      this._database.all(query, ...parametes, callback)
+  }
 
     return this
   }
@@ -133,12 +145,16 @@ export class Statement<T> {
     if (args?.length > 0) {
       // apply new bindings then execute
       this.bind(...args, () => {
-        this._database.each(this._preparedSql.query || '', this._preparedSql.parameters, callback, complete as RowCountCallback)
+        const query = this._preparedSql.query || ''
+        const parametes: any = [...this._preparedSql.parameters ?? [], ...[callback, complete as RowCountCallback]]
+        this._database.each(query, ...parametes)
       })
     } else {
       // execute prepared sql with same bindings
-      this._database.each(this._preparedSql.query || '', this._preparedSql.parameters, callback, complete as RowCountCallback)
-    }
+      const query = this._preparedSql.query || ''
+      const parametes: any = [...this._preparedSql.parameters ?? [], ...[callback, complete as RowCountCallback]]
+      this._database.each(query, ...parametes)
+  }
 
     return this
   }

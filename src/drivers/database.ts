@@ -204,7 +204,7 @@ export class Database extends EventEmitter {
   public run<T>(sql: string, params: any, callback?: ResultsCallback<T>): this
   public run(sql: string, ...params: any[]): this {
     const { args, callback } = popCallback<ResultsCallback>(params)
-    const command: SQLiteCloudCommand = { query: sql, parameters: args?.flat() }
+    const command: SQLiteCloudCommand = { query: sql, parameters: args }
     this.getConnection((error, connection) => {
       if (error || !connection) {
         this.handleError(null, error as Error, callback)
@@ -237,7 +237,7 @@ export class Database extends EventEmitter {
   public get<T>(sql: string, params: any, callback?: RowCallback<T>): this
   public get(sql: string, ...params: any[]): this {
     const { args, callback } = popCallback<RowCallback>(params)
-    const command: SQLiteCloudCommand = { query: sql, parameters: args?.flat() }
+    const command: SQLiteCloudCommand = { query: sql, parameters: args }
     this.getConnection((error, connection) => {
       if (error || !connection) {
         this.handleError(null, error as Error, callback)
@@ -275,7 +275,7 @@ export class Database extends EventEmitter {
   public all<T>(sql: string, params: any, callback?: RowsCallback<T>): this
   public all(sql: string, ...params: any[]): this {
     const { args, callback } = popCallback<RowsCallback>(params)
-    const command: SQLiteCloudCommand = { query: sql, parameters: args?.flat() }
+    const command: SQLiteCloudCommand = { query: sql, parameters: args }
     this.getConnection((error, connection) => {
       if (error || !connection) {
         this.handleError(null, error as Error, callback)
@@ -316,7 +316,7 @@ export class Database extends EventEmitter {
     // extract optional parameters and one or two callbacks
     const { args, callback, complete } = popCallback<RowCallback>(params)
 
-    const command: SQLiteCloudCommand = { query: sql, parameters: args?.flat() }
+    const command: SQLiteCloudCommand = { query: sql, parameters: args }
     this.getConnection((error, connection) => {
       if (error || !connection) {
         this.handleError(null, error as Error, callback)

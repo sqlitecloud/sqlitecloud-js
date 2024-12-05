@@ -391,7 +391,7 @@ describe('connection-ws', () => {
         const command: SQLiteCloudCommand = { query: 'SELECT * FROM albums WHERE albumId = ?', parameters: [1] }
         chinook.sendCommands(command, (error, results) => {
           expect(error).toBeNull()
-          expect(results.numberOfColumns).toBe(1)
+          expect(results.numberOfColumns).toBe(3)
           done()
         })
       })
