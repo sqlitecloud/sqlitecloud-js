@@ -57,7 +57,7 @@
     "react-native-tcp-socket": "^6.2.0"
   },
   "devDependencies": {
-    "@types/jest": "^29.5.12",
+    "@types/jest": "^29.5.14",
     "@types/lz4": "^0.6.4",
     "@types/node": "^22.10.1",
     "@types/whatwg-url": "^13.0.0",
