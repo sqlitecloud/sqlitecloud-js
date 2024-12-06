@@ -59,7 +59,7 @@
   "devDependencies": {
     "@types/jest": "^29.5.12",
     "@types/lz4": "^0.6.4",
-    "@types/node": "^22.9.3",
+    "@types/node": "^22.10.1",
     "@types/whatwg-url": "^13.0.0",
     "@typescript-eslint/eslint-plugin": "8.15.0",
     "@typescript-eslint/parser": "8.15.0",
