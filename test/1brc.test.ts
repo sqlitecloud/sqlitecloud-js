@@ -173,7 +173,7 @@ async function testChallenge(numberOfRows: number, insertChunks = BRC_INSERT_CHU
 
       if (dataChunk.length === insertChunks || rowCount + 1 === numberOfRows) {
         const insertOn = Date.now()
-        const values = dataChunk.map(({ city, temp }) => `('${city.replaceAll("'", "''")}', ${temp})`).join(',\n')
+        const values = dataChunk.map(({ city, temp }) => `('${city.replace(/'/g, "''")}', ${temp})`).join(',\n')
         const insertSql = `INSERT INTO measurements (city, temp) VALUES \n${values};`
 
         // insert values into database
@@ -203,7 +203,7 @@ async function testChallenge(numberOfRows: number, insertChunks = BRC_INSERT_CHU
     fs.writeFileSync(selectCsvPathname, selectCsv)
   } catch (error) {
     console.error(`Error: ${error}`)
-    if (numberOfRows < 500000 ) {
+    if (numberOfRows < 500000) {
       throw error
     }
   } finally {
