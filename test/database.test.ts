@@ -268,7 +268,7 @@ describe('Database.exec', () => {
           done()
         })
       } catch (error) {
-        done(error)
+        done(error as any)
       }
     },
     LONG_TIMEOUT
