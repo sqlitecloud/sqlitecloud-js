@@ -74,7 +74,6 @@ export function decompressBuffer(buffer: Buffer): { buffer: Buffer; dataType: st
   const compressedBuffer = commandBuffer.subarray(commandBuffer.length - compressedSize)
 
   // lz4js library is javascript and doesn't have types so we silence the type check
-  // eslint-disable-next-line
   const decompressionResult: number = lz4.decompressBlock(compressedBuffer, decompressedBuffer, 0, compressedSize, 0)
   // the entire command is composed of the header (which is not compressed) + the decompressed block
   decompressedBuffer = Buffer.concat([commandBuffer.subarray(0, commandBuffer.length - compressedSize), decompressedBuffer])
