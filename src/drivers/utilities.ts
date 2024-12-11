@@ -183,7 +183,6 @@ export function validateConfiguration(config: SQLiteCloudConfig): SQLiteCloudCon
 
   if (!config.connectionstring) {
     // build connection string from configuration, values are already validated
-    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
     if (config.apikey) {
       config.connectionstring = `sqlitecloud://${config.host}:${config.port}/${config.database || ''}?apikey=${config.apikey}`
     } else {

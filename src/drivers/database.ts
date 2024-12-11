@@ -7,9 +7,6 @@
 // https://github.com/TryGhost/node-sqlite3
 // https://github.com/TryGhost/node-sqlite3/blob/master/lib/sqlite3.d.ts
 
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-
 import { SQLiteCloudConnection } from './connection'
 import { SQLiteCloudRowset } from './rowset'
 import { SQLiteCloudConfig, SQLiteCloudError, RowCountCallback, SQLiteCloudArrayType, SQLiteCloudCommand } from './types'

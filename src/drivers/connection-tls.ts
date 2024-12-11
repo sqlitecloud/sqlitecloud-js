@@ -37,7 +37,6 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
   }
 
   /* Opens a connection with the server and sends the initialization commands. Will throw in case of errors. */
-  /* eslint-disable @typescript-eslint/no-unused-vars */
   connectTransport(config: SQLiteCloudConfig, callback?: ErrorCallback): this {
     console.assert(!this.connected, 'SQLiteCloudTlsConnection.connect - connection already established')
     if (this.config.verbose) {

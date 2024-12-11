@@ -46,7 +46,7 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
     if (!this.socket) {
       callback?.call(this, new SQLiteCloudError('Connection not established', { errorCode: 'ERR_CONNECTION_NOT_ESTABLISHED' }))
       return this
-    } 
+    }
 
     if (typeof commands === 'string') {
       commands = { query: commands }
@@ -62,7 +62,6 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
           if (metadata.numberOfRows !== undefined && metadata.numberOfColumns !== undefined && metadata.columns !== undefined) {
             console.assert(Array.isArray(data), 'SQLiteCloudWebsocketConnection.transportCommands - data is not an array')
             // we can recreate a SQLiteCloudRowset from the response which we know to be an array of arrays
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-call
             const rowset = new SQLiteCloudRowset(metadata, data.flat())
             callback?.call(this, null, rowset)
             return
