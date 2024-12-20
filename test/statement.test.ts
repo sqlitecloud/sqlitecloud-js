@@ -190,7 +190,6 @@ it('Statement.each without bindings', done => {
   statement.each(4, rowCallback, completeCallback)
 })
 
-
 it('Statement.get', done => {
   const chinook = getChinookDatabase()
   expect(chinook).toBeDefined()
@@ -225,7 +224,6 @@ it('Statement.get without bindings', done => {
     })
   })
 })
-
 
 it('Statement.run', done => {
   const chinook = getChinookDatabase()
@@ -268,7 +266,7 @@ it('Statement.run - insert', done => {
   })
 })
 
-it('Statement.run - insert with empty space after semicolon returns null', done => {
+it("Statement.run - insert with empty space after semicolon shouldn't return null", done => {
   // create simple "people" database that we can write in...
   const database = getTestingDatabase(error => {
     expect(error).toBeNull()
@@ -277,13 +275,13 @@ it('Statement.run - insert with empty space after semicolon returns null', done 
 
     // @ts-ignore
     statement.run('John Wayne', 73, 'Horse Riding', (error, results) => {
-      expect(results).toBeNull()
+      expect(results).not.toBeNull()
+      expect(results).toBe('OK')
 
       done()
     })
   })
 })
-
 
 it('Statement.run - update', done => {
   const database = getTestingDatabase(error => {
@@ -300,7 +298,7 @@ it('Statement.run - update', done => {
   })
 })
 
-it('Statement.run - update with empty space after semicolon returns null', done => {
+it("Statement.run - update with empty space after semicolon shouldn't return null", done => {
   const database = getTestingDatabase(error => {
     expect(error).toBeNull()
 
@@ -308,7 +306,8 @@ it('Statement.run - update with empty space after semicolon returns null', done 
 
     // @ts-ignore
     statement.run('John Wayne', 1, (error, results) => {
-      expect(results).toBeNull()
+      expect(results).not.toBeNull()
+      expect(results).toBe('OK')
 
       done()
     })
@@ -330,7 +329,7 @@ it('Statement.run - delete', done => {
   })
 })
 
-it('Statement.run - delete with empty space after semicolon returns null', done => {
+it("Statement.run - delete with empty space after semicolon shouldn't return null", done => {
   const database = getTestingDatabase(error => {
     expect(error).toBeNull()
 
@@ -338,10 +337,10 @@ it('Statement.run - delete with empty space after semicolon returns null', done 
 
     // @ts-ignore
     statement.run(1, (error, results) => {
-      expect(results).toBeNull()
+      expect(results).not.toBeNull()
+      expect(results).toBe('OK')
 
       done()
     })
   })
 })
-
