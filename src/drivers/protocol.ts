@@ -335,6 +335,10 @@ export function popData(buffer: Buffer): { data: SQLiteCloudDataTypes | SQLiteCl
 
 /** Format a command to be sent via SCSP protocol */
 export function formatCommand(command: SQLiteCloudCommand): string {
+  // core returns null if there's a space after the semi column
+  // we want to maintain a compatibility with the standard sqlite3 driver
+  command.query = command.query.trim()
+
   if (command.parameters && command.parameters.length > 0) {
     // by SCSP the string paramenters in the array are zero-terminated
     return serializeCommand([command.query, ...(command.parameters || [])], true)
