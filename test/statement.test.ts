@@ -276,7 +276,8 @@ it("Statement.run - insert with empty space after semicolon shouldn't return nul
     // @ts-ignore
     statement.run('John Wayne', 73, 'Horse Riding', (error, results) => {
       expect(results).not.toBeNull()
-      expect(results).toBe('OK')
+      expect(results.lastID).toBeGreaterThan(1)
+      expect(results.changes).toBe(1)
 
       done()
     })
@@ -307,7 +308,7 @@ it("Statement.run - update with empty space after semicolon shouldn't return nul
     // @ts-ignore
     statement.run('John Wayne', 1, (error, results) => {
       expect(results).not.toBeNull()
-      expect(results).toBe('OK')
+      expect(results.changes).toBe(1)
 
       done()
     })
@@ -338,7 +339,7 @@ it("Statement.run - delete with empty space after semicolon shouldn't return nul
     // @ts-ignore
     statement.run(1, (error, results) => {
       expect(results).not.toBeNull()
-      expect(results).toBe('OK')
+      expect(results.changes).toBe(1)
 
       done()
     })
