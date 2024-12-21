@@ -20,3 +20,4 @@ export {
 export { SQLiteCloudRowset, SQLiteCloudRow } from './drivers/rowset'
 export { parseconnectionstring, validateConfiguration, getInitializationCommands, sanitizeSQLiteIdentifier } from './drivers/utilities'
 export * as protocol from './drivers/protocol'
+export { createClient } from './SQLiteCloudClient'
