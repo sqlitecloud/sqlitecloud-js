@@ -135,7 +135,8 @@ export type ResultsCallback<T = any> = (error: Error | null, results?: T) => voi
 export type RowsCallback<T = Record<string, any>> = (error: Error | null, rows?: T[]) => void
 export type RowCallback<T = Record<string, any>> = (error: Error | null, row?: T) => void
 export type RowCountCallback = (error: Error | null, rowCount?: number) => void
-export type PubSubCallback<T = any> = (error: Error | null, results?: T) => void
+export type PubSubCallback<T = any> = (error: Error | null, results?: T, data?: any) => void
+export type PubSubRefactorCallback<T = any> = (error: Error | null, results?: T) => void
 
 /**
  * Certain responses include arrays with various types of metadata.
@@ -159,4 +160,8 @@ export enum SQLiteCloudArrayType {
   ARRAY_TYPE_BACKUP_END = 42, // used in backupClose (VFS)
 
   ARRAY_TYPE_SQLITE_STATUS = 50 // used in sqlite_status
+}
+
+export type UploadOptions = {
+  replace?: boolean
 }

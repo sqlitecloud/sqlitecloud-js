@@ -1,4 +1,3 @@
-
 const version = '0.0.1'
 let JS_ENV = ''
 // @ts-ignore
@@ -14,7 +13,7 @@ if (typeof Deno !== 'undefined') {
 
 export const DEFAULT_HEADERS = { 'X-Client-Info': `sqlitecloud-js-${JS_ENV}/${version}` }
 export const DEFAULT_GLOBAL_OPTIONS = {
-  headers: DEFAULT_HEADERS,
+  headers: DEFAULT_HEADERS
 }
 
 export const DEFAULT_WEBLITE_VERSION = 'v2'

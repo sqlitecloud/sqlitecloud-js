@@ -2,11 +2,10 @@ import { SQLiteCloudConnection } from './connection'
 import SQLiteCloudTlsConnection from './connection-tls'
 import { PubSubCallback } from './types'
 
-interface PubSubOptions {
-  tableName: string
-  dbName?: string
+export enum PUBSUB_ENTITY_TYPE {
+  TABLE = 'TABLE',
+  CHANNEL = 'CHANNEL'
 }
-
 
 /**
  * Pub/Sub class to receive changes on database tables or to send messages to channels.
@@ -21,31 +20,27 @@ export class PubSub {
   private connectionPubSub: SQLiteCloudConnection
 
   /**
-   * Listen to a channel and start to receive messages to the provided callback.
-   * @param options Options for the listen operation
+   * Listen for a table or channel and start to receive messages to the provided callback.
+   * @param entityType One of TABLE or CHANNEL'
+   * @param entityName Name of the table or the channel
    * @param callback Callback to be called when a message is received
+   * @param data Extra data to be passed to the callback
    */
+  public async listen(entityType: PUBSUB_ENTITY_TYPE, entityName: string, callback: PubSubCallback, data?: any): Promise<any> {
+    // should not force user to import and pass in entity type
+    const entity = entityType === 'TABLE' ? 'TABLE ' : '' // should use PUBSUB_ENTITY_TYPE for check
 
-  public async listen<T>(options: PubSubOptions, callback: PubSubCallback): Promise<T> {
-    if (options.dbName) {
-      try {
-        await this.connection.sql(`USE DATABASE ${options.dbName};`)
-      } catch (error) {
-        console.error(error)
-      }
-    }
-
-    const authCommand: string = await this.connection.sql(`LISTEN TABLE ${options.tableName};`)
+    const authCommand: string = await this.connection.sql(`LISTEN ${entity}${entityName};`)
 
     return new Promise((resolve, reject) => {
       this.connectionPubSub.sendCommands(authCommand, (error, results) => {
         if (error) {
-          callback.call(this, error, null)
+          callback.call(this, error, null, data)
           reject(error)
         } else {
           // skip results from pubSub auth command
           if (results !== 'OK') {
-            callback.call(this, null, results)
+            callback.call(this, null, results, data)
           }
           resolve(results)
         }
