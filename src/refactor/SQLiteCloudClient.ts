@@ -16,6 +16,7 @@ interface SQLiteCloudClientConfig {
 export class SQLiteCloudClient {
   private connectionString: string
   private fetch: Fetch
+  private _db: Database
 
   constructor(config: SQLiteCloudClientConfig | string) {
     let connectionString: string
@@ -31,6 +32,7 @@ export class SQLiteCloudClient {
     this.connectionString = connectionString
     this.fetch = fetchWithAuth(this.connectionString, customFetch)
     this.defaultDb = getDefaultDatabase(this.connectionString) ?? ''
+    this._db = new Database(this.connectionString)
   }
 
   async sql(sql: TemplateStringsArray | string | SQLiteCloudCommand, ...values: any[]) {
@@ -48,7 +50,7 @@ export class SQLiteCloudClient {
   }
 
   get db() {
-    return new Database(this.connectionString)
+    return this._db
   }
 
   get weblite() {
