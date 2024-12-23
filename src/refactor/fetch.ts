@@ -22,6 +22,7 @@ export const resolveHeadersConstructor = () => {
   return Headers
 }
 
+// authorization is the connection string
 export const fetchWithAuth = (authorization: string, customFetch?: Fetch): Fetch => {
   const fetch = resolveFetch(customFetch)
   const HeadersConstructor = resolveHeadersConstructor()

@@ -16,5 +16,5 @@ export const DEFAULT_GLOBAL_OPTIONS = {
   headers: DEFAULT_HEADERS
 }
 
-export const DEFAULT_WEBLITE_VERSION = 'v2'
-export const WEBLITE_PORT = 8090
+export const DEFAULT_API_VERSION = 'v2'
+export const DEFAULT_API_PORT = 8090

@@ -1,65 +1,22 @@
-import { Database } from './drivers/database'
-import { SQLiteCloudError, UploadOptions } from './drivers/types'
-import { Fetch, fetchWithAuth } from './drivers/fetch'
-import { DEFAULT_HEADERS, DEFAULT_WEBLITE_VERSION, WEBLITE_PORT } from './drivers/constants'
-import { PubSub } from './drivers/pubsub-refactor'
+import { SQLiteCloudError, UploadOptions } from '../drivers/types'
+import { Fetch, fetchWithAuth } from './fetch'
+import { DEFAULT_HEADERS } from '../drivers/constants'
 
-interface SQLiteCloudClientConfig {
-  connectionString: string
-  fetch?: Fetch
-}
-
-interface ISQLiteCloudClient {
-  pubSub: PubSub
-  db: Database
-  upload(databaseName: string, file: File | Buffer | Blob | string, opts?: UploadOptions): Promise<Response>
+interface SQLiteCloudWeblite {
+  upload(databaseName: string, file: File | Buffer | Blob | string, opts: UploadOptions): Promise<Response>
   download(databaseName: string): Promise<ArrayBuffer | Blob>
   delete(databaseName: string): Promise<Response>
   listDatabases(): Promise<any>
+  create(databaseName: string): Promise<Response>
 }
 
-const parseConnectionString = (connectionString: string) => {
-  const url = new URL(connectionString)
-  return {
-    host: url.hostname,
-    port: url.port,
-    database: url.pathname.slice(1),
-    apiKey: url.searchParams.get('apikey')
-  }
-}
-
-export class SQLiteCloudClient implements ISQLiteCloudClient {
-  // TODO: Add support for custom fetch
-  private fetch: Fetch
-  private connectionString: string
+export class SQLiteCloudWebliteClient implements SQLiteCloudWeblite {
   private webliteUrl: string
-  private _db: Database
-  private _pubSub: PubSub
+  private fetch: Fetch
 
-  constructor(config: SQLiteCloudClientConfig | string) {
-    let connectionString: string
-    if (typeof config === 'string') {
-      connectionString = config
-    } else {
-      connectionString = config.connectionString
-    }
-
-    this.connectionString = connectionString
-    this._db = new Database(this.connectionString)
-    this._pubSub = new PubSub(this.db)
-    this.fetch = fetchWithAuth(this.connectionString)
-
-    const { host } = parseConnectionString(this.connectionString)
-
-    this.webliteUrl = `https://${host}:${WEBLITE_PORT}/${DEFAULT_WEBLITE_VERSION}/weblite`
-  }
-
-  get pubSub() {
-    return this._pubSub
-  }
-
-  get db() {
-    return this._db
+  constructor(connectionString: string, fetch?: Fetch) {
+    this.webliteUrl = getAPIUrl(connectionString, 'weblite')
+    this.fetch = fetch || fetchWithAuth(connectionString)
   }
 
   async upload(databaseName: string, file: File | Buffer | Blob | string, opts: UploadOptions = {}) {
@@ -119,8 +76,16 @@ export class SQLiteCloudClient implements ISQLiteCloudClient {
     }
     return await response.json()
   }
+
+  async create(databaseName: string) {
+    const response = await fetch(`${this.webliteUrl}/sql?sql=CREATE DATABASE ${databaseName}`, { method: 'POST' })
+    if (!response.ok) {
+      throw new SQLiteCloudError(`Failed to create database: ${response.statusText}`)
+    }
+    return response
+  }
+}
+function getAPIUrl(connectionString: string, arg1: string): string {
+  throw new Error('Function not implemented.')
 }
 
-export function createClient(config: SQLiteCloudClientConfig | string): SQLiteCloudClient {
-  return new SQLiteCloudClient(config)
-}

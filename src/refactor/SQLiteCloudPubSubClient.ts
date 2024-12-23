@@ -1,30 +1,33 @@
-import { SQLiteCloudConnection } from './connection'
-import SQLiteCloudTlsConnection from './connection-tls'
-import { Database } from './database'
-import { PubSubRefactorCallback, SQLiteCloudConfig } from './types'
+import { SQLiteCloudConnection } from '../drivers/connection'
+import SQLiteCloudTlsConnection from '../drivers/connection-tls'
+import { Database } from '../drivers/database'
+import { SQLiteCloudConfig } from '../drivers/types'
+import { formatCommand, getDbFromConfig } from './utils'
 
-export interface PubSubOptions {
-  tableName?: string
-  channelName?: string
+export type PubSubCallback<T = any> = (error: Error | null, results?: T) => void
+
+export interface ListenOptions {
+  tableName: string
   dbName?: string
 }
 
-export enum PUBSUB_ENTITY_TYPE {
-  TABLE = 'TABLE',
-  CHANNEL = 'CHANNEL'
+interface SQLiteCloudPubSub {
+  listen<T>(options: ListenOptions, callback: PubSubCallback): Promise<T>
+  unlisten(options: ListenOptions): void
+  subscribe(channelName: string, callback: PubSubCallback): Promise<any>
+  unsubscribe(channelName: string): void
+  create(channelName: string, failIfExists: boolean): Promise<any>
+  delete(channelName: string): Promise<any>
+  notify(channelName: string, message: string): Promise<any>
+  setPubSubOnly(): Promise<any>
+  connected(): boolean
+  close(): void
 }
-
-const entityTypeModifiers = {
-  [PUBSUB_ENTITY_TYPE.TABLE]: 'TABLE',
-  [PUBSUB_ENTITY_TYPE.CHANNEL]: ''
-}
-const getDbFromConfig = (config: SQLiteCloudConfig) => new URL(config.connectionstring ?? '')?.pathname.split('/').pop() ?? ''
-const formatCommand = (arr: string[]) => arr.reduce((acc, curr) => curr.length > 0 ? (acc + ' ' + curr) : acc, '') + ';'
 
 /**
  * Pub/Sub class to receive changes on database tables or to send messages to channels.
  */
-export class PubSub {
+export class SQLiteCloudPubSubClient implements SQLiteCloudPubSub {
   // instantiate in createConnection?
   constructor(queryConnection: Database) {
     this.queryConnection = queryConnection
@@ -49,17 +52,9 @@ export class PubSub {
     return this._pubSubConnection
   }
 
-  public async listen<T>(options: PubSubOptions, callback: PubSubRefactorCallback): Promise<T> {
+  public async listen<T>(options: ListenOptions, callback: PubSubCallback): Promise<T> {
     const _dbName = options.dbName ? options.dbName : this.defaultDatabaseName;
-    const [entityType, entityName] = options.channelName 
-      ? [PUBSUB_ENTITY_TYPE.CHANNEL, options.channelName] : [PUBSUB_ENTITY_TYPE.TABLE, options.tableName]
-    if (!entityName) {
-      throw new Error('Must provide a channelName or tableName')
-    }
-    const pubSubEntityTypeModifier = entityTypeModifiers[entityType]
-
-
-    const authCommand: string = await this.queryConnection.sql(formatCommand(['LISTEN', pubSubEntityTypeModifier, entityName, 'DATABASE', _dbName]))
+    const authCommand: string = await this.queryConnection.sql`LISTEN ${options.tableName} DATABASE ${_dbName};`
 
     return new Promise((resolve, reject) => {
       this.pubSubConnection.sendCommands(authCommand, (error, results) => {
@@ -82,12 +77,27 @@ export class PubSub {
    * @param entityType One of TABLE or CHANNEL
    * @param entityName Name of the table or the channel
    */
-  public unlisten(options: PubSubOptions): Promise<any> {
-    // type this output
-    const [entityType, entityName] = options.channelName ? [PUBSUB_ENTITY_TYPE.CHANNEL, options.channelName] : [PUBSUB_ENTITY_TYPE.TABLE, options.tableName]
-    const entityTypeModifier = entityTypeModifiers[entityType]
+  public unlisten(options: ListenOptions): void {
+    this.queryConnection.sql`UNLISTEN ${options.tableName} DATABASE ${options.dbName};`
+  }
 
-    return this.queryConnection.sql(`UNLISTEN ${entityTypeModifier} ?;`, entityName)
+  public async subscribe(channelName: string, callback: PubSubCallback): Promise<any> {
+    const authCommand: string = await this.queryConnection.sql`LISTEN ${channelName};`
+
+    return new Promise((resolve, reject) => {
+      this.pubSubConnection.sendCommands(authCommand, (error, results) => {
+        if (error) {
+          callback.call(this, error, null)
+          reject(error)
+        } else {
+          resolve(results)
+        }
+      })
+    })
+  }
+
+  public unsubscribe(channelName: string): void {
+    this.queryConnection.sql`UNLISTEN ${channelName};`
   }
 
   /**
@@ -95,24 +105,24 @@ export class PubSub {
    * @param name Channel name
    * @param failIfExists Raise an error if the channel already exists
    */
-  public async createChannel(name: string, failIfExists: boolean = true): Promise<any> {
+  public async create(channelName: string, failIfExists: boolean = true): Promise<any> {
     // type this output
-    return await this.queryConnection.sql(`CREATE CHANNEL ?${failIfExists ? '' : ' IF NOT EXISTS'};`, name)
+    return await this.queryConnection.sql(`CREATE CHANNEL ?${failIfExists ? '' : ' IF NOT EXISTS'};`, channelName)
   }
 
   /**
    * Deletes a Pub/Sub channel.
    * @param name Channel name
    */
-  public async removeChannel(name: string): Promise<any> {
+  public async delete(channelName: string): Promise<any> {
     // type this output
-    return await this.queryConnection.sql(`REMOVE CHANNEL ?;`, name)
+    return await this.queryConnection.sql(`REMOVE CHANNEL ?;`, channelName)
   }
 
   /**
    * Send a message to the channel.
    */
-  public notifyChannel(channelName: string, message: string): Promise<any> {
+  public notify(channelName: string, message: string): Promise<any> {
     // type this output
     return this.queryConnection.sql`NOTIFY ${channelName} ${message};`
   }
