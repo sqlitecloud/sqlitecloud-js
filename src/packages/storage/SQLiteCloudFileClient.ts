@@ -1,6 +1,6 @@
-import { SQLiteCloudError } from "../drivers/types"
-import { getAPIUrl } from "./utils"
-import { Fetch, fetchWithAuth } from "./fetch"
+import { SQLiteCloudError } from "../../drivers/types"
+import { getAPIUrl } from "../utils"
+import { Fetch, fetchWithAuth } from "../utils/fetch"
 
 interface SQLiteCloudFile {
   createBucket(bucket: string, path: string): Promise<Response>

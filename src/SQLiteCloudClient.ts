@@ -1,17 +1,15 @@
-import { Database } from '../drivers/database'
-import { Fetch, fetchWithAuth } from './fetch'
-import { SQLiteCloudPubSubClient } from './SQLiteCloudPubSubClient'
-import { SQLiteCloudWebliteClient } from './SQLiteCloudWebliteClient'
-import { SQLiteCloudFileClient } from './SQLiteCloudFileClient'
-import { SQLiteCloudCommand } from '../drivers/types'
-import { getDefaultDatabase } from './utils'
+import { Database } from './drivers/database'
+import { Fetch, fetchWithAuth } from './packages/utils/fetch'
+import { SQLiteCloudPubSubClient } from './packages/pubsub/SQLiteCloudPubSubClient'
+import { SQLiteCloudWebliteClient } from './packages/weblite/SQLiteCloudWebliteClient'
+import { SQLiteCloudFileClient } from './packages/storage/SQLiteCloudFileClient'
+import { SQLiteCloudCommand } from './drivers/types'
+import { getDefaultDatabase } from './packages/utils'
 
 interface SQLiteCloudClientConfig {
   connectionString: string
   fetch?: Fetch
 }
-
-
 
 export class SQLiteCloudClient {
   private connectionString: string

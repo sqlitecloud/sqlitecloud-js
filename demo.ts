@@ -48,7 +48,7 @@ pubSub.notifyChannel('messages', 'my message')
  * In the refactor, Database still exists and works as before.
  */
 
-import { createClient } from './src/refactor/SQLiteCloudClient'
+import { createClient } from './src/SQLiteCloudClient'
 
 const client = createClient('connection-string/chinook.db')
 

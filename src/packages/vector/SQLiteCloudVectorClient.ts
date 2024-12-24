@@ -1,4 +1,4 @@
-import { Database } from "../drivers/database";
+import { Database } from "../../drivers/database";
 
 interface Column {
   name: string;

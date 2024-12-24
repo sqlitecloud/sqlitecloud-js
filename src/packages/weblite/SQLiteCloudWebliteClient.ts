@@ -1,6 +1,7 @@
-import { SQLiteCloudError, UploadOptions } from '../drivers/types'
-import { Fetch, fetchWithAuth } from './fetch'
-import { DEFAULT_HEADERS } from '../drivers/constants'
+import { SQLiteCloudError, UploadOptions } from '../../drivers/types'
+import { Fetch, fetchWithAuth } from '../utils/fetch'
+import { DEFAULT_HEADERS } from '../../drivers/constants'
+import { getAPIUrl } from '../utils'
 
 interface SQLiteCloudWeblite {
   upload(databaseName: string, file: File | Buffer | Blob | string, opts: UploadOptions): Promise<Response>
@@ -84,8 +85,5 @@ export class SQLiteCloudWebliteClient implements SQLiteCloudWeblite {
     }
     return response
   }
-}
-function getAPIUrl(connectionString: string, arg1: string): string {
-  throw new Error('Function not implemented.')
 }
 
