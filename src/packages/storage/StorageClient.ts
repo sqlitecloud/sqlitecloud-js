@@ -3,22 +3,40 @@ import { SQLiteCloudError } from "../../drivers/types"
 import { getAPIUrl } from "../utils"
 import { Fetch, fetchWithAuth } from "../utils/fetch"
 
+// TODO: add consistent return types
+
+
+/**
+ * StorageResponse
+ * @param data - The data returned from the operation.
+ * @param error - The error that occurred.
+ */
 interface StorageResponse {
   data: any
   error: any
 }
 
+/**
+ * Storage
+ * @param createBucket - Create a bucket.
+ * @param getBucket - Get a bucket.
+ * @param deleteBucket - Delete a bucket.
+ * @param listBuckets - List all buckets.
+ * @param upload - Upload a file.
+ * @param download - Download a file.
+ * @param remove - Remove a file.
+ * @param list - List all files in a bucket.
+ */
 interface Storage {
   createBucket(bucket: string): Promise<StorageResponse>
   getBucket(bucket: string): Promise<StorageResponse>
   deleteBucket(bucket: string): Promise<StorageResponse>
   listBuckets(): Promise<StorageResponse>
-  upload(bucket: string, pathname: string, file: File | Buffer | Blob | string, options: { contentType: string }): Promise<StorageResponse>
+  upload(bucket: string, pathname: string, file: File | Buffer | Blob | string, options: { headers?: Record<string, string> }): Promise<StorageResponse>
   download(bucket: string, pathname: string): Promise<StorageResponse>
   remove(bucket: string, pathName: string): Promise<StorageResponse>
   list(bucket: string): Promise<StorageResponse>
 }
-
 export class StorageClient implements Storage {
   protected filesUrl: string
   protected webliteSQLUrl: string
@@ -100,10 +118,24 @@ export class StorageClient implements Storage {
     }
   }
 
-  async upload(bucket: string, pathname: string, file: File | Buffer | Blob | string, options: { contentType: string }) {
+  async upload(bucket: string, pathname: string, file: File | Buffer | Blob | string, options: { headers?: Record<string, string> }) {
     const url = `${this.filesUrl}/${bucket}/${pathname}`;
+    let _headers: Record<string, string> = {}
+    if (file instanceof File) {
+      _headers['Content-Type'] = file.type
+    } else if (file instanceof Blob) {
+      _headers['Content-Type'] = file.type
+    } else if (file instanceof Buffer) {
+      _headers['Content-Type'] = 'application/octet-stream'
+    } else if (typeof file === 'string') {
+      _headers['Content-Type'] = 'text/plain'
+    } else {
+      _headers['Content-Type'] = 'application/json'
+    }
     const headers = {
-      'Content-Type': options?.contentType || 'application/octet-stream'
+      ..._headers,
+      ...options.headers,
+      ...this.headers
     }
     try {
       const response = await this.fetch(url, { method: 'POST', body: file, headers })
@@ -125,12 +157,11 @@ export class StorageClient implements Storage {
       }
       let responseType = (response.headers.get('Content-Type') ?? 'text/plain').split(';')[0].trim()
       let data: any
+      // TODO: add appropriate headers based on response type in Gateway
       if (responseType === 'application/json') {
         data = await response.json()
       } else if (responseType === 'application/octet-stream') {
         data = await response.blob()
-      } else if (responseType === 'text/event-stream') {
-        data = response
       } else if (responseType === 'multipart/form-data') {
         data = await response.formData()
       } else {
