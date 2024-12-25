@@ -2,20 +2,18 @@ import { SQLiteCloudError } from "../../drivers/types"
 import { getAPIUrl } from "../utils"
 import { Fetch, fetchWithAuth } from "../utils/fetch"
 
-interface SQLiteCloudFile {
-  createBucket(bucket: string, path: string): Promise<Response>
+interface Storage {
+  createBucket(bucket: string): Promise<any>
   getBucket(bucket: string): Promise<any>
-  deleteBucket(bucket: string): Promise<Response>
+  deleteBucket(bucket: string): Promise<any>
   listBuckets(): Promise<any>
-  upload(bucket: string, pathname: string, file: File | Buffer | Blob | string, options: { contentType: string }): Promise<Response>
+  upload(bucket: string, pathname: string, file: File | Buffer | Blob | string, options: { contentType: string }): Promise<any>
   download(bucket: string, pathname: string): Promise<Blob>
-  remove(bucket: string, pathName: string): Promise<Response>
+  remove(bucket: string, pathName: string): Promise<any>
   list(bucket: string): Promise<any>
 }
 
-const FILES_DATABASE = 'files.sqlite'
-
-export class SQLiteCloudFileClient implements SQLiteCloudFile {
+export class StorageClient implements Storage {
   private filesUrl: string
   private webliteSQLUrl: string
   private fetch: Fetch
@@ -102,4 +100,3 @@ export class SQLiteCloudFileClient implements SQLiteCloudFile {
     return response.json()
   }
 }
-

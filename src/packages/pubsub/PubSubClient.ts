@@ -1,7 +1,6 @@
 import { SQLiteCloudConnection } from '../../drivers/connection'
 import SQLiteCloudTlsConnection from '../../drivers/connection-tls'
-import { Database } from '../../drivers/database'
-import { getDbFromConfig } from '../utils'
+import { SQLiteCloudConfig } from '../../drivers/types'
 
 export type PubSubCallback<T = any> = (error: Error | null, results?: T) => void
 
@@ -10,7 +9,7 @@ export interface ListenOptions {
   dbName?: string
 }
 
-interface SQLiteCloudPubSub {
+export interface PubSub {
   listen<T>(options: ListenOptions, callback: PubSubCallback): Promise<T>
   unlisten(options: ListenOptions): void
   subscribe(channelName: string, callback: PubSubCallback): Promise<any>
@@ -26,17 +25,17 @@ interface SQLiteCloudPubSub {
 /**
  * Pub/Sub class to receive changes on database tables or to send messages to channels.
  */
-export class SQLiteCloudPubSubClient implements SQLiteCloudPubSub {
+export class PubSubClient implements PubSub {
+  protected _pubSubConnection: SQLiteCloudConnection | null
+  protected defaultDatabaseName: string
+  protected config: SQLiteCloudConfig
   // instantiate in createConnection?
-  constructor(queryConnection: Database) {
-    this.queryConnection = queryConnection
+  constructor(config: SQLiteCloudConfig) {
+    this.config = config
     this._pubSubConnection = null
-    this.defaultDatabaseName = getDbFromConfig(queryConnection.getConfiguration())
+    this.defaultDatabaseName = config?.database ?? ''
   }
 
-  private queryConnection: Database
-  private _pubSubConnection: SQLiteCloudConnection | null
-  private defaultDatabaseName: string
   /**
    * Listen to a channel and start to receive messages to the provided callback.
    * @param options Options for the listen operation. If tablename and channelName are provided, channelName is used. 
@@ -44,16 +43,16 @@ export class SQLiteCloudPubSubClient implements SQLiteCloudPubSub {
    * @param callback Callback to be called when a message is received
    */
 
-  private get pubSubConnection(): SQLiteCloudConnection {
+  get pubSubConnection(): SQLiteCloudConnection {
     if (!this._pubSubConnection) {
-      this._pubSubConnection = new SQLiteCloudTlsConnection(this.queryConnection.getConfiguration())
+      this._pubSubConnection = new SQLiteCloudTlsConnection(this.config)
     }
     return this._pubSubConnection
   }
 
-  public async listen<T>(options: ListenOptions, callback: PubSubCallback): Promise<T> {
+  async listen<T>(options: ListenOptions, callback: PubSubCallback): Promise<T> {
     const _dbName = options.dbName ? options.dbName : this.defaultDatabaseName;
-    const authCommand: string = await this.queryConnection.sql`LISTEN ${options.tableName} DATABASE ${_dbName};`
+    const authCommand: string = await this.pubSubConnection.sql`LISTEN ${options.tableName} DATABASE ${_dbName};`
 
     return new Promise((resolve, reject) => {
       this.pubSubConnection.sendCommands(authCommand, (error, results) => {
@@ -77,11 +76,11 @@ export class SQLiteCloudPubSubClient implements SQLiteCloudPubSub {
    * @param entityName Name of the table or the channel
    */
   public unlisten(options: ListenOptions): void {
-    this.queryConnection.sql`UNLISTEN ${options.tableName} DATABASE ${options.dbName};`
+    this.pubSubConnection.sql`UNLISTEN ${options.tableName} DATABASE ${options.dbName};`
   }
 
   public async subscribe(channelName: string, callback: PubSubCallback): Promise<any> {
-    const authCommand: string = await this.queryConnection.sql`LISTEN ${channelName};`
+    const authCommand: string = await this.pubSubConnection.sql`LISTEN ${channelName};`
 
     return new Promise((resolve, reject) => {
       this.pubSubConnection.sendCommands(authCommand, (error, results) => {
@@ -96,7 +95,7 @@ export class SQLiteCloudPubSubClient implements SQLiteCloudPubSub {
   }
 
   public unsubscribe(channelName: string): void {
-    this.queryConnection.sql`UNLISTEN ${channelName};`
+    this.pubSubConnection.sql`UNLISTEN ${channelName};`
   }
 
   /**
@@ -106,7 +105,7 @@ export class SQLiteCloudPubSubClient implements SQLiteCloudPubSub {
    */
   public async create(channelName: string, failIfExists: boolean = true): Promise<any> {
     // type this output
-    return await this.queryConnection.sql(`CREATE CHANNEL ?${failIfExists ? '' : ' IF NOT EXISTS'};`, channelName)
+    return await this.pubSubConnection.sql(`CREATE CHANNEL ?${failIfExists ? '' : ' IF NOT EXISTS'};`, channelName)
   }
 
   /**
@@ -115,7 +114,7 @@ export class SQLiteCloudPubSubClient implements SQLiteCloudPubSub {
    */
   public async delete(channelName: string): Promise<any> {
     // type this output
-    return await this.queryConnection.sql(`REMOVE CHANNEL ?;`, channelName)
+    return await this.pubSubConnection.sql(`REMOVE CHANNEL ?;`, channelName)
   }
 
   /**
@@ -123,7 +122,7 @@ export class SQLiteCloudPubSubClient implements SQLiteCloudPubSub {
    */
   public notify(channelName: string, message: string): Promise<any> {
     // type this output
-    return this.queryConnection.sql`NOTIFY ${channelName} ${message};`
+    return this.pubSubConnection.sql`NOTIFY ${channelName} ${message};`
   }
 
   /**
@@ -137,7 +136,7 @@ export class SQLiteCloudPubSubClient implements SQLiteCloudPubSub {
         if (error) {
           reject(error)
         } else {
-          this.queryConnection.close()
+          this.pubSubConnection.close()
           resolve(results)
         }
       })

@@ -163,4 +163,5 @@ export enum SQLiteCloudArrayType {
 
 export type UploadOptions = {
   replace?: boolean
+  headers?: Record<string, string>
 }
