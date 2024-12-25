@@ -1,8 +1,8 @@
 import { Database } from '../drivers/database'
 import { Fetch, fetchWithAuth } from './utils/fetch'
 import { PubSubClient } from './pubsub/PubSubClient'
-import { SQLiteCloudWebliteClient } from './weblite/SQLiteCloudWebliteClient'
-import { StorageClient } from './storage/SQLiteCloudStorageClient'
+import { WebliteClient } from './weblite/SQLiteCloudWebliteClient'
+import { StorageClient } from './storage/StorageClient'
 import { SQLiteCloudCommand, SQLiteCloudError } from '../drivers/types'
 import { cleanConnectionString, getDefaultDatabase } from './utils'
 
@@ -59,11 +59,11 @@ export class SQLiteCloudClient {
   }
 
   get weblite() {
-    return new SQLiteCloudWebliteClient(this.connectionString, this.fetch)
+    return new WebliteClient(this.connectionString, { customFetch: this.fetch })
   }
 
   get files() {
-    return new StorageClient(this.connectionString, this.fetch)
+      return new StorageClient(this.connectionString, { customFetch: this.fetch })
   }
 
   get functions() {

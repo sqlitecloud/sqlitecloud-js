@@ -125,6 +125,8 @@ export class PubSubClient implements PubSub {
     return this.pubSubConnection.sql`NOTIFY ${channelName} ${message};`
   }
 
+  // DOUBLE CHECK THIS
+
   /**
    * Ask the server to close the connection to the database and
    * to keep only open the Pub/Sub connection.

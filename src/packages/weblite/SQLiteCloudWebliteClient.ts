@@ -4,10 +4,10 @@ import { DEFAULT_HEADERS } from '../../drivers/constants'
 import { getAPIUrl } from '../utils'
 
 interface WebliteResponse {
-  data: any,
+  data: any, // TODO: type this
   error: SQLiteCloudError | null
 }
-interface SQLiteCloudWeblite {
+interface Weblite {
   upload(dbName: string, file: File | Buffer | Blob | string, opts: UploadOptions): Promise<WebliteResponse>
   download(dbName: string): Promise<WebliteResponse>
   delete(dbName: string): Promise<WebliteResponse>
@@ -15,13 +15,21 @@ interface SQLiteCloudWeblite {
   create(dbName: string): Promise<WebliteResponse>
 }
 
-export class SQLiteCloudWebliteClient implements SQLiteCloudWeblite {
-  private webliteUrl: string
-  private fetch: Fetch
+export class WebliteClient implements Weblite {
+  protected webliteUrl: string
+  protected headers: Record<string, string>
+  protected fetch: Fetch
 
-  constructor(connectionString: string, fetch?: Fetch) {
+  constructor(
+    connectionString: string,
+    options: {
+      customFetch?: Fetch,
+      headers?: Record<string, string>
+    } = {}
+  ) {
     this.webliteUrl = getAPIUrl(connectionString, 'weblite')
-    this.fetch = fetch || fetchWithAuth(connectionString)
+    this.fetch = options?.customFetch || fetchWithAuth(connectionString)
+    this.headers = options.headers ? { ...DEFAULT_HEADERS, ...options.headers } : { ...DEFAULT_HEADERS }
   }
 
   async upload(

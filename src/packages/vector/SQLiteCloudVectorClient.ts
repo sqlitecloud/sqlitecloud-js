@@ -22,9 +22,9 @@ interface QueryOptions {
   where?: string[]
 }
 
-interface SQLiteCloudVector {
-  init(options: IndexOptions): Promise<SQLiteCloudVector>
-  upsert(data: UpsertData): Promise<SQLiteCloudVector>
+interface Vector {
+  init(options: IndexOptions): Promise<VectorClient>
+  upsert(data: UpsertData): Promise<VectorClient>
   query(queryEmbedding: number[], options: QueryOptions): Promise<any>
 }
 
@@ -52,8 +52,7 @@ function formatUpsertCommand(data: UpsertData): [any, any] {
 }
 
 
-export class SQLiteCloudVectorClient implements SQLiteCloudVector {
-
+export class VectorClient implements Vector {
   private _db: Database
   private _tableName: string
   private _columns: Column[]
