@@ -2,7 +2,7 @@ import { DEFAULT_HEADERS } from '../../drivers/constants'
 import { SQLiteCloudError } from '../../drivers/types'
 import { FUNCTIONS_ROOT_PATH } from '../constants'
 import { getAPIUrl } from '../utils'
-import { Fetch, resolveFetch, resolveHeadersConstructor } from '../utils/fetch'
+import { Fetch, resolveFetch } from '../utils/fetch'
 
 export class FunctionsClient {
   protected url: string
@@ -26,6 +26,7 @@ export class FunctionsClient {
   }
 
   async invoke(functionId: string, args: any[]) {
+    // add argument handling
     try {    
       const response = await this.fetch(`${this.url}/${functionId}`, {
         method: 'POST',
@@ -57,29 +58,5 @@ export class FunctionsClient {
 }
 
 /**
-       if (
-        functionArgs &&
-        ((headers && !Object.prototype.hasOwnProperty.call(headers, 'Content-Type')) || !headers)
-      ) {
-        if (
-          (typeof Blob !== 'undefined' && functionArgs instanceof Blob) ||
-          functionArgs instanceof ArrayBuffer
-        ) {
-          // will work for File as File inherits Blob
-          // also works for ArrayBuffer as it is the same underlying structure as a Blob
-          _headers['Content-Type'] = 'application/octet-stream'
-          body = functionArgs
-        } else if (typeof functionArgs === 'string') {
-          // plain string
-          _headers['Content-Type'] = 'text/plain'
-          body = functionArgs
-        } else if (typeof FormData !== 'undefined' && functionArgs instanceof FormData) {
-          // don't set content-type headers
-          // Request will automatically add the right boundary value
-          body = functionArgs
-        } else {
-          // default, assume this is JSON
-          _headers['Content-Type'] = 'application/json'
-          body = JSON.stringify(functionArgs)
-        }
+
  */
