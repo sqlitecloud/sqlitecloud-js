@@ -1,95 +1,95 @@
-import { Database } from "../../drivers/database";
+// import { Database } from "../../drivers/database";
 
-interface Column {
-  name: string;
-  type: string;
-  partitionKey?: boolean;
-  primaryKey?: boolean;
-}
+// interface Column {
+//   name: string;
+//   type: string;
+//   partitionKey?: boolean;
+//   primaryKey?: boolean;
+// }
 
-interface IndexOptions {
-  tableName: string;
-  dimensions: number;
-  columns: Column[];
-  binaryQuantization?: boolean;
-  dbName?: string;
-}
+// interface IndexOptions {
+//   tableName: string;
+//   dimensions: number;
+//   columns: Column[];
+//   binaryQuantization?: boolean;
+//   dbName?: string;
+// }
 
-type UpsertData = [Record<string, any> & { id: string | number }][]
+// type UpsertData = [Record<string, any> & { id: string | number }][]
 
-interface QueryOptions {
-  topK: number,
-  where?: string[]
-}
+// interface QueryOptions {
+//   topK: number,
+//   where?: string[]
+// }
 
-interface Vector {
-  init(options: IndexOptions): Promise<VectorClient>
-  upsert(data: UpsertData): Promise<VectorClient>
-  query(queryEmbedding: number[], options: QueryOptions): Promise<any>
-}
+// interface Vector {
+//   init(options: IndexOptions): Promise<VectorClient>
+//   upsert(data: UpsertData): Promise<VectorClient>
+//   query(queryEmbedding: number[], options: QueryOptions): Promise<any>
+// }
 
-const DEFAULT_EMBEDDING_COLUMN_NAME = 'embedding'
+// const DEFAULT_EMBEDDING_COLUMN_NAME = 'embedding'
 
-const buildEmbeddingType = (dimensions: number, binaryQuantization: boolean) => {
-  return `${binaryQuantization ? 'BIT' : 'FLOAT'}[${dimensions}]`
-}
+// const buildEmbeddingType = (dimensions: number, binaryQuantization: boolean) => {
+//   return `${binaryQuantization ? 'BIT' : 'FLOAT'}[${dimensions}]`
+// }
 
-const formatInitColumns = (opts: IndexOptions) => {
-  const { columns, dimensions, binaryQuantization } = opts
-  return columns.reduce((acc, column) => {
-    let _type = column.type.toLowerCase();
-    const { name, primaryKey, partitionKey } = column
-    if (_type === 'embedding') {
-      _type = buildEmbeddingType(dimensions, !!binaryQuantization)
-    }
-    const formattedColumn = `${name} ${_type} ${primaryKey ? 'PRIMARY KEY' : ''}${partitionKey ? 'PARTITION KEY' : ''}`
-    return `${acc}, ${formattedColumn}`
-  }, '')
-}
+// const formatInitColumns = (opts: IndexOptions) => {
+//   const { columns, dimensions, binaryQuantization } = opts
+//   return columns.reduce((acc, column) => {
+//     let _type = column.type.toLowerCase();
+//     const { name, primaryKey, partitionKey } = column
+//     if (_type === 'embedding') {
+//       _type = buildEmbeddingType(dimensions, !!binaryQuantization)
+//     }
+//     const formattedColumn = `${name} ${_type} ${primaryKey ? 'PRIMARY KEY' : ''}${partitionKey ? 'PARTITION KEY' : ''}`
+//     return `${acc}, ${formattedColumn}`
+//   }, '')
+// }
 
-function formatUpsertCommand(data: UpsertData): [any, any] {
-  throw new Error("Function not implemented.");
-}
+// function formatUpsertCommand(data: UpsertData): [any, any] {
+//   throw new Error("Function not implemented.");
+// }
 
 
-export class VectorClient implements Vector {
-  private _db: Database
-  private _tableName: string
-  private _columns: Column[]
-  private _formattedColumns: string
+// export class VectorClient implements Vector {
+//   private _db: Database
+//   private _tableName: string
+//   private _columns: Column[]
+//   private _formattedColumns: string
 
-  constructor(_db: Database) {
-    this._db = _db
-    this._tableName = ''
-    this._columns = []
-    this._formattedColumns = ''
-  }
+//   constructor(_db: Database) {
+//     this._db = _db
+//     this._tableName = ''
+//     this._columns = []
+//     this._formattedColumns = ''
+//   }
 
-  async init(options: IndexOptions) {
-    const formattedColumns = formatInitColumns(options)
-    this._tableName = options.tableName
-    this._columns = options?.columns || []
-    this._formattedColumns = formattedColumns
-    const useDbCommand = options?.dbName ? `USE DATABASE ${options.dbName}; ` : ''
-    const hasTable = await this._db.sql`${useDbCommand}SELECT 1 FROM ${options.tableName} LIMIT 1;`
+//   async init(options: IndexOptions) {
+//     const formattedColumns = formatInitColumns(options)
+//     this._tableName = options.tableName
+//     this._columns = options?.columns || []
+//     this._formattedColumns = formattedColumns
+//     const useDbCommand = options?.dbName ? `USE DATABASE ${options.dbName}; ` : ''
+//     const hasTable = await this._db.sql`${useDbCommand}SELECT 1 FROM ${options.tableName} LIMIT 1;`
 
-    if (hasTable.length === 0) { // TODO - VERIFY CHECK HAS TABLE 
-      const query = `CREATE VIRTUAL TABLE ${options.tableName} USING vec0(${formattedColumns})`
-      await this._db.sql(query)
-    }
-    return this
-  }
+//     if (hasTable.length === 0) { // TODO - VERIFY CHECK HAS TABLE 
+//       const query = `CREATE VIRTUAL TABLE ${options.tableName} USING vec0(${formattedColumns})`
+//       await this._db.sql(query)
+//     }
+//     return this
+//   }
 
-  async upsert(data: UpsertData) {
-    const [formattedColumns, formattedValues] = formatUpsertCommand(data)
-    const query = `INSERT INTO ${this._tableName}(${formattedColumns}) VALUES (${formattedValues})`
-    return await this._db.sql(query)
-  }
+//   async upsert(data: UpsertData) {
+//     const [formattedColumns, formattedValues] = formatUpsertCommand(data)
+//     const query = `INSERT INTO ${this._tableName}(${formattedColumns}) VALUES (${formattedValues})`
+//     return await this._db.sql(query)
+//   }
 
-  async query(queryEmbedding: number[], options: QueryOptions) {
-    const query = `SELECT * FROM ${this._tableName} WHERE ${DEFAULT_EMBEDDING_COLUMN_NAME} match ${JSON.stringify(queryEmbedding)} and k = ${options.topK} and ${(options?.where?.join(' and ') || '')}`
-    const result = await this._db.sql(query)
-    return { data: result, error: null }
-  }
+//   async query(queryEmbedding: number[], options: QueryOptions) {
+//     const query = `SELECT * FROM ${this._tableName} WHERE ${DEFAULT_EMBEDDING_COLUMN_NAME} match ${JSON.stringify(queryEmbedding)} and k = ${options.topK} and ${(options?.where?.join(' and ') || '')}`
+//     const result = await this._db.sql(query)
+//     return { data: result, error: null }
+//   }
 
-}
+// }
