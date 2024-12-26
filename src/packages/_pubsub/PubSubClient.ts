@@ -1,6 +1,8 @@
 import { SQLiteCloudConnection } from '../../drivers/connection'
 import SQLiteCloudTlsConnection from '../../drivers/connection-tls'
+import { Database } from '../../drivers/database'
 import { SQLiteCloudConfig } from '../../drivers/types'
+import { getDefaultDatabase } from '../utils'
 
 /**
  * PubSubCallback
@@ -33,14 +35,13 @@ export interface ListenOptions {
  * @param close - Close the connection.
  */
 export interface PubSub {
-  listen<T>(options: ListenOptions, callback: PubSubCallback): Promise<T>
+  listen<T>(options: ListenOptions, callback: PubSubCallback): Promise<string>
   unlisten(options: ListenOptions): void
   subscribe(channelName: string, callback: PubSubCallback): Promise<any>
   unsubscribe(channelName: string): void
   create(channelName: string, failIfExists: boolean): Promise<any>
   delete(channelName: string): Promise<any>
   notify(channelName: string, message: string): Promise<any>
-  setPubSubOnly(): Promise<any>
   connected(): boolean
   close(): void
 }
@@ -50,13 +51,15 @@ export interface PubSub {
  */
 export class PubSubClient implements PubSub {
   protected _pubSubConnection: SQLiteCloudConnection | null
-  protected defaultDatabaseName: string
+  protected _queryConnection: Database
+  protected defaultDatabase: string
   protected config: SQLiteCloudConfig
 
-  constructor(config: SQLiteCloudConfig) {
-    this.config = config
+  constructor(conn: Database) {
+    this.config = conn.getConfiguration()
+    this.defaultDatabase = this.config.database ?? ''
+    this._queryConnection = conn
     this._pubSubConnection = null
-    this.defaultDatabaseName = config?.database ?? ''
   }
 
   /**
@@ -66,16 +69,16 @@ export class PubSubClient implements PubSub {
    * @param callback Callback to be called when a message is received
    */
 
-  get pubSubConnection(): SQLiteCloudConnection {
+  private get pubSubConnection(): SQLiteCloudConnection {
     if (!this._pubSubConnection) {
       this._pubSubConnection = new SQLiteCloudTlsConnection(this.config)
     }
     return this._pubSubConnection
   }
 
-  async listen<T>(options: ListenOptions, callback: PubSubCallback): Promise<T> {
-    const _dbName = options.dbName ? options.dbName : this.defaultDatabaseName;
-    const authCommand: string = await this.pubSubConnection.sql`LISTEN ${options.tableName} DATABASE ${_dbName};`
+  async listen<T>(options: ListenOptions, callback: PubSubCallback): Promise<string> {
+    const _dbName = options.dbName ? options.dbName : this.defaultDatabase;
+    const authCommand: string = await this._queryConnection.sql`LISTEN TABLE ${options.tableName} DATABASE ${_dbName};`
 
     return new Promise((resolve, reject) => {
       this.pubSubConnection.sendCommands(authCommand, (error, results) => {
@@ -85,6 +88,7 @@ export class PubSubClient implements PubSub {
         } else {
           // skip results from pubSub auth command
           if (results !== 'OK') {
+            console.log(results)
             callback.call(this, null, results)
           }
           resolve(results)
@@ -97,8 +101,8 @@ export class PubSubClient implements PubSub {
    * Unlisten to a table.
    * @param options Options for the unlisten operation.
    */
-  public unlisten(options: ListenOptions): void {
-    this.pubSubConnection.sql`UNLISTEN ${options.tableName} DATABASE ${options.dbName};`
+  public async unlisten(options: ListenOptions): Promise<any> {
+    return this._queryConnection.sql`UNLISTEN ${options.tableName} DATABASE ${options.dbName};`
   }
 
   /**
@@ -107,7 +111,7 @@ export class PubSubClient implements PubSub {
    * @param callback Callback to be called when a message is received.
    */
   public async subscribe(channelName: string, callback: PubSubCallback): Promise<any> {
-    const authCommand: string = await this.pubSubConnection.sql`LISTEN ${channelName};`
+    const authCommand: string = await this._queryConnection.sql`LISTEN ${channelName};`
 
     return new Promise((resolve, reject) => {
       this.pubSubConnection.sendCommands(authCommand, (error, results) => {
@@ -125,8 +129,8 @@ export class PubSubClient implements PubSub {
    * Unsubscribe (unlisten) from a channel.
    * @param channelName The name of the channel to unsubscribe from.
    */
-  public unsubscribe(channelName: string): void {
-    this.pubSubConnection.sql`UNLISTEN ${channelName};`
+  public async unsubscribe(channelName: string): Promise<void> {
+    return this._queryConnection.sql`UNLISTEN ${channelName};`
   }
 
   /**
@@ -135,7 +139,7 @@ export class PubSubClient implements PubSub {
    * @param failIfExists Raise an error if the channel already exists
    */
   public async create(channelName: string, failIfExists: boolean = true): Promise<any> {
-    return await this.pubSubConnection.sql(
+    return this._queryConnection.sql(
       `CREATE CHANNEL ?${failIfExists ? '' : ' IF NOT EXISTS'};`, channelName
     )
   }
@@ -145,34 +149,14 @@ export class PubSubClient implements PubSub {
    * @param name Channel name
    */
   public async delete(channelName: string): Promise<any> {
-    return await this.pubSubConnection.sql`REMOVE CHANNEL ${channelName};`
+    return this._queryConnection.sql`REMOVE CHANNEL ${channelName};`
   }
 
   /**
    * Send a message to the channel.
    */
-  public notify(channelName: string, message: string): Promise<any> {
-    return this.pubSubConnection.sql`NOTIFY ${channelName} ${message};`
-  }
-
-  // DOUBLE CHECK THIS
-
-  /**
-   * Ask the server to close the connection to the database and
-   * to keep only open the Pub/Sub connection.
-   * Only interaction with Pub/Sub commands will be allowed.
-   */
-  public setPubSubOnly(): Promise<any> {
-    return new Promise((resolve, reject) => {
-      this.pubSubConnection.sendCommands('PUBSUB ONLY;', (error, results) => {
-        if (error) {
-          reject(error)
-        } else {
-          this.pubSubConnection.close()
-          resolve(results)
-        }
-      })
-    })
+  public async notify(channelName: string, message: string) {
+    return await this._queryConnection.sql`NOTIFY ${channelName} ${message};`
   }
 
   /** True if Pub/Sub connection is open. */

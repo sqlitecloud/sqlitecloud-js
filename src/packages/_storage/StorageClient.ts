@@ -23,7 +23,7 @@ export class StorageClient implements Storage {
     this.filesUrl = getAPIUrl(connectionString, 'files')
     this.webliteSQLUrl = getAPIUrl(connectionString, 'weblite/sql')
     this.fetch = options.customFetch || fetchWithAuth(connectionString)
-    this.headers = { ...DEFAULT_HEADERS, ...options.headers }
+    this.headers = { ...options.headers }
   }
 
   async createBucket(bucket: string) {

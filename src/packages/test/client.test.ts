@@ -3,10 +3,11 @@ import { SQLiteCloudClient } from '../SQLiteCloudClient'
 
 const DEFAULT_TABLE_NAME = 'albums';
 
-const client = new SQLiteCloudClient(CHINOOK_DATABASE_URL)
+
 
 describe('SQLiteCloudClient test suite', () => {
   it('should be able to create a client', () => {
+    const client = new SQLiteCloudClient(CHINOOK_DATABASE_URL)
     expect(client).toBeDefined()
     expect(client).toBeInstanceOf(SQLiteCloudClient)
   })
@@ -18,8 +19,17 @@ describe('SQLiteCloudClient test suite', () => {
   })
 
   it('should be able to query the database via HTTP', async () => {
+    const client = new SQLiteCloudClient(CHINOOK_DATABASE_URL)
     const { data, error } = await client.sql`SELECT * FROM ${DEFAULT_TABLE_NAME}`;
     expect(data).toBeDefined()
     expect(error).toBeNull()
+  })
+
+  it('should be able to query via database connection', async () => {
+    const client = new SQLiteCloudClient(CHINOOK_DATABASE_URL)
+    const { data, error } = await client.db.sql('SELECT * FROM albums')
+    expect(data).toBeDefined()
+    expect(error).toBeNull()
+    client.close()
   })
 })

@@ -2,10 +2,8 @@ import { Database } from '../drivers/database'
 import { Fetch, fetchWithAuth } from './utils/fetch'
 import { PubSubClient } from './_pubsub/PubSubClient'
 import { WebliteClient } from './weblite/WebliteClient'
-import { StorageClient } from './_storage/StorageClient'
 import { SQLiteCloudDataTypes, SQLiteCloudError } from '../drivers/types'
 import { cleanConnectionString } from './utils'
-import { FunctionsClient } from './_functions/FunctionsClient'
 import { SQLiteCloudClientConfig } from './types'
 import { DEFAULT_HEADERS } from '../drivers/constants'
 
@@ -61,13 +59,6 @@ export class SQLiteCloudClient {
     return await this.weblite.sql(sql, ...values)
   }
 
-  get pubSub() {
-    if (!this._pubSub) {
-      this._pubSub = new PubSubClient(this.db.getConfiguration())
-    }
-    return this._pubSub
-  }
-
   get db() {
     if (!this._db) {
       this._db = new Database(this.connectionString)
@@ -85,18 +76,18 @@ export class SQLiteCloudClient {
     return this._weblite
   }
 
-  get files() {
-      return new StorageClient(this.connectionString, { 
-        customFetch: this.fetch, 
-        headers: this._globalHeaders 
-      })
+  get pubSub() {
+    if (!this._pubSub) {
+      this._pubSub = new PubSubClient(
+        this.db
+      )
+    }
+    return this._pubSub
   }
 
-  get functions() {
-    return new FunctionsClient(this.connectionString, { 
-      customFetch: this.fetch, 
-      headers: this._globalHeaders 
-    })
+  close() {
+    if (this._db) this._db.close()
+    if (this._pubSub) this._pubSub.close()
   }
 }
 

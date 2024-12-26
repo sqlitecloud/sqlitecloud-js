@@ -472,7 +472,8 @@ export class Database extends EventEmitter {
             } else {
               // metadata for operations like insert, update, delete?
               const context = this.processContext(results)
-              resolve(context ? context : results)
+              const result = { data: context ? context : results, error: null }
+              resolve(result)
             }
           })
         }

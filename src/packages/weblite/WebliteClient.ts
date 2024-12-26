@@ -29,9 +29,9 @@ export class WebliteClient {
     const url = `${this.baseUrl}/sql`
 
     try {
-      let _sql = ''
+      let _sql = this._defaultDatabase ? `USE DATABASE ${this._defaultDatabase}; ` : '';
+
       if (Array.isArray(sql) && 'raw' in sql) { // check raw property?
-        _sql = this._defaultDatabase ? `USE DATABASE ${this._defaultDatabase}; ` : '';
         sql.forEach((string, i) => {
           // TemplateStringsArray splits the string before each variable
           // used in the template. Add the question mark
@@ -39,7 +39,7 @@ export class WebliteClient {
           _sql += string + (i < values.length ? '?' : '')
         })
       } else if (typeof sql === 'string') {
-          _sql = sql
+          _sql = _sql + sql
       } else {
         throw new SQLiteCloudError('Invalid sql')
       }
