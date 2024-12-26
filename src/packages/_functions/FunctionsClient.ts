@@ -41,39 +41,38 @@ export class FunctionsClient {
   }
 
   async invoke(functionId: string, options: FunctionInvokeOptions) {
-    const { headers, args } = options
     let body;
     let _headers: Record<string, string> = {}
-    if (args && 
-      ((headers && !Object.prototype.hasOwnProperty.call(headers, 'Content-Type')) || !headers)
+    if (options.args && 
+      ((options.headers && !Object.prototype.hasOwnProperty.call(options.headers, 'Content-Type')) || !options.headers)
     ) {
       if (
-        (typeof Blob !== 'undefined' && args instanceof Blob) ||
-        args instanceof ArrayBuffer
+        (typeof Blob !== 'undefined' && options.args instanceof Blob) ||
+        options.args instanceof ArrayBuffer
       ) {
         // will work for File as File inherits Blob
         // also works for ArrayBuffer as it is the same underlying structure as a Blob
         _headers['Content-Type'] = 'application/octet-stream'
-        body = args
-      } else if (typeof args === 'string') {
+        body = options.args
+      } else if (typeof options.args === 'string') {
         // plain string
         _headers['Content-Type'] = 'text/plain'
-        body = args
-      } else if (typeof FormData !== 'undefined' && args instanceof FormData) {
+        body = options.args
+      } else if (typeof FormData !== 'undefined' && options.args instanceof FormData) {
         _headers['Content-Type'] = 'multipart/form-data'
-        body = args
+        body = options.args
       } else {
         // default, assume this is JSON
         _headers['Content-Type'] = 'application/json'
-        body = JSON.stringify(args)
+        body = JSON.stringify(options.args)
       }
     }
 
     try {    
       const response = await this.fetch(`${this.url}/${functionId}`, {
         method: 'POST',
-        body: JSON.stringify(args),
-        headers: { ..._headers, ...this.headers, ...headers }
+        body: JSON.stringify(options.args),
+        headers: { ..._headers, ...this.headers, ...options.headers }
       })
 
       if (!response.ok) {

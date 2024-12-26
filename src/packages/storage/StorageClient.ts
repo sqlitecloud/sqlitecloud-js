@@ -2,41 +2,9 @@ import { DEFAULT_HEADERS } from "../../drivers/constants"
 import { SQLiteCloudError } from "../../drivers/types"
 import { getAPIUrl } from "../utils"
 import { Fetch, fetchWithAuth } from "../utils/fetch"
+import { Storage } from "../types"
 
 // TODO: add consistent return types
-
-
-/**
- * StorageResponse
- * @param data - The data returned from the operation.
- * @param error - The error that occurred.
- */
-interface StorageResponse {
-  data: any
-  error: any
-}
-
-/**
- * Storage
- * @param createBucket - Create a bucket.
- * @param getBucket - Get a bucket.
- * @param deleteBucket - Delete a bucket.
- * @param listBuckets - List all buckets.
- * @param upload - Upload a file.
- * @param download - Download a file.
- * @param remove - Remove a file.
- * @param list - List all files in a bucket.
- */
-interface Storage {
-  createBucket(bucket: string): Promise<StorageResponse>
-  getBucket(bucket: string): Promise<StorageResponse>
-  deleteBucket(bucket: string): Promise<StorageResponse>
-  listBuckets(): Promise<StorageResponse>
-  upload(bucket: string, pathname: string, file: File | Buffer | Blob | string, options: { headers?: Record<string, string> }): Promise<StorageResponse>
-  download(bucket: string, pathname: string): Promise<StorageResponse>
-  remove(bucket: string, pathName: string): Promise<StorageResponse>
-  list(bucket: string): Promise<StorageResponse>
-}
 export class StorageClient implements Storage {
   protected filesUrl: string
   protected webliteSQLUrl: string
@@ -187,7 +155,7 @@ export class StorageClient implements Storage {
     }
   }
 
-  async list(bucket: string) {
+  async listBucketContents(bucket: string) {
     const sql = `USE DATABASE files.sqlite; SELECT * FROM files WHERE bucket = '${bucket}'`
     try {
       const response = await this.fetch(this.webliteSQLUrl, { 

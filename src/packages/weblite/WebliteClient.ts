@@ -2,18 +2,7 @@ import { SQLiteCloudError, UploadOptions } from '../../drivers/types'
 import { Fetch, fetchWithAuth } from '../utils/fetch'
 import { DEFAULT_HEADERS } from '../../drivers/constants'
 import { getAPIUrl } from '../utils'
-
-interface WebliteResponse {
-  data: any, // TODO: type this
-  error: SQLiteCloudError | null
-}
-interface Weblite {
-  upload(dbName: string, file: File | Buffer | Blob | string, opts: UploadOptions): Promise<WebliteResponse>
-  download(dbName: string): Promise<WebliteResponse>
-  delete(dbName: string): Promise<WebliteResponse>
-  listDatabases(): Promise<WebliteResponse>
-  create(dbName: string): Promise<WebliteResponse>
-}
+import { Weblite } from '../types'
 
 export class WebliteClient implements Weblite {
   protected webliteUrl: string
@@ -25,11 +14,13 @@ export class WebliteClient implements Weblite {
     options: {
       customFetch?: Fetch,
       headers?: Record<string, string>
-    } = {}
+    } = {
+      headers: {}
+    }
   ) {
     this.webliteUrl = getAPIUrl(connectionString, 'weblite')
     this.fetch = options?.customFetch || fetchWithAuth(connectionString)
-    this.headers = options.headers ? { ...DEFAULT_HEADERS, ...options.headers } : { ...DEFAULT_HEADERS }
+    this.headers = { ...DEFAULT_HEADERS, ...options.headers }
   }
 
   async upload(
@@ -39,7 +30,6 @@ export class WebliteClient implements Weblite {
   ) {
       const url = `${this.webliteUrl}/${dbName}`
       let body: File | Buffer | Blob | string
-      let headers = {}
       if (file instanceof File) {
         body = file
 
@@ -52,9 +42,9 @@ export class WebliteClient implements Weblite {
         body = new Blob([file])
       }
   
-      headers = {
+      const headers = {
         ...(opts.headers ?? {}),
-        ...headers,
+        ...this.headers,
         ...DEFAULT_HEADERS,
       }
   
