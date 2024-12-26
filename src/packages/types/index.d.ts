@@ -44,7 +44,6 @@ interface StorageResponse {
  * @param list - List all files in a bucket.
  */
 interface Storage {
-  createBucket(bucket: string): Promise<StorageResponse>
   getBucket(bucket: string): Promise<StorageResponse>
   deleteBucket(bucket: string): Promise<StorageResponse>
   listBuckets(): Promise<StorageResponse>

@@ -1,45 +1,90 @@
-import { SQLiteCloudError, UploadOptions } from '../../drivers/types'
+import { SQLiteCloudDataTypes, SQLiteCloudError, UploadOptions } from '../../drivers/types'
 import { Fetch, fetchWithAuth } from '../utils/fetch'
 import { DEFAULT_HEADERS } from '../../drivers/constants'
-import { getAPIUrl } from '../utils'
-import { Weblite } from '../types'
+import { getAPIUrl, getDefaultDatabase } from '../utils'
 
-export class WebliteClient implements Weblite {
-  protected webliteUrl: string
+// Weblite Client - interact with SQLite Cloud via HTTP
+export class WebliteClient {
+  protected baseUrl?: string // /weblite url
   protected headers: Record<string, string>
   protected fetch: Fetch
+  protected _defaultDatabase?: string
 
   constructor(
-    connectionString: string,
+    connectionString: string, // sqlitecloud://xxx.xxx.xxx:port/database?apikey=xxx
     options: {
-      customFetch?: Fetch,
+      fetch?: Fetch,
       headers?: Record<string, string>
     } = {
       headers: {}
     }
   ) {
-    this.webliteUrl = getAPIUrl(connectionString, 'weblite')
-    this.fetch = options?.customFetch || fetchWithAuth(connectionString)
-    this.headers = { ...DEFAULT_HEADERS, ...options.headers }
+    this.baseUrl = getAPIUrl(connectionString, 'weblite')
+    this.fetch = options?.fetch || fetchWithAuth(connectionString)
+    this.headers = { ...options.headers }
+    this._defaultDatabase = getDefaultDatabase(connectionString)
   }
 
-  async upload(
-    dbName: string, 
-    file: File | Buffer | Blob | string, 
+  async sql(sql: TemplateStringsArray | string, ...values: SQLiteCloudDataTypes[]) {
+    const url = `${this.baseUrl}/sql`
+
+    try {
+      let _sql = ''
+      if (Array.isArray(sql) && 'raw' in sql) { // check raw property?
+        sql.forEach((string, i) => {
+          // TemplateStringsArray splits the string before each variable
+          // used in the template. Add the question mark
+          // to the end of the string for the number of used variables.
+          _sql += string + (i < values.length ? '?' : '')
+        })
+      } else if (typeof sql === 'string') {
+          _sql = sql
+      } else {
+        throw new SQLiteCloudError('Invalid sql')
+      }
+
+      const response = await this.fetch(url, { 
+        method: 'POST', 
+        body: JSON.stringify({ sql: _sql, bind: values }),
+        headers: { ...this.headers, 'Content-Type': 'application/json' }
+      })
+
+      if (!response.ok) {
+        throw new SQLiteCloudError(`Failed to execute sql: ${response.statusText}`)
+      }
+      return await response.json()
+    } catch (error) {
+      return { data: null, error }
+    }
+  }
+
+  get defaultDatabase() {
+    return this._defaultDatabase
+  }
+
+  useDatabase(name: string) {
+    this._defaultDatabase = name
+    return this
+  }
+
+  async uploadDatabase(
+    filename: string, 
+    database: File | Buffer | Blob | string, 
     opts: UploadOptions = {}
   ) {
-      const url = `${this.webliteUrl}/${dbName}`
-      let body: File | Buffer | Blob | string
-      if (file instanceof File) {
-        body = file
+      const filenamePath = encodeURIComponent(filename)
+      const url = `${this.baseUrl}/${filenamePath}`
 
-      } else if (file instanceof Buffer) {
-        body = file
-      } else if (file instanceof Blob) {
-        body = file
+      let body: File | Buffer | Blob | string
+      if (database instanceof File) {
+        body = database
+      } else if (database instanceof Buffer) {
+        body = database
+      } else if (database instanceof Blob) {
+        body = database
       } else {
         // string
-        body = new Blob([file])
+        body = new Blob([database])
       }
   
       const headers = {
@@ -49,52 +94,78 @@ export class WebliteClient implements Weblite {
       }
   
       const method = opts.replace ? 'PATCH' : 'POST'
-      const response = await this.fetch(url, { method, body, headers })
 
-    if (!response.ok) {
-      return { data: null, error: new SQLiteCloudError(`Failed to upload database: ${response.statusText}`) }
+      try {
+        const response = await this.fetch(url, { method, body, headers }) 
+        if (!response.ok) {
+          throw new SQLiteCloudError(`Failed to upload database: ${response.statusText}`)
+        }
+        return await response.json()
+      } catch (error) {
+        return { data: null, error }
     }
-
-    const data = await response.json()
-
-    return { data, error: null }
   }
 
-  async download(dbName: string) {
-    const url = `${this.webliteUrl}/${dbName}`
-    const response = await this.fetch(url, { method: 'GET' })
-    if (!response.ok) {
-      return { data: null, error: new SQLiteCloudError(`Failed to download database: ${response.statusText}`) }
+  async downloadDatabase(
+    filename: string, 
+  ) {
+    const filenamePath = encodeURIComponent(filename)
+    const url = `${this.baseUrl}/${filenamePath}`
+    try {
+      const response = await this.fetch(url, { method: 'GET', headers: { ...this.headers } })
+      if (!response.ok) {
+        throw new SQLiteCloudError(`Failed to download database: ${response.statusText}`)
+      }
+      const isNode = typeof window === 'undefined'
+      return isNode ? await response.arrayBuffer() : await response.blob()
+    } catch (error) {
+      return { data: null, error }
     }
-    const isNode = typeof window === 'undefined'
-    const data = isNode ? await response.arrayBuffer() : await response.blob()
-    return { data, error: null }
   }
 
-  async delete(dbName: string) {
-    const url = `${this.webliteUrl}/${dbName}`
-    const response = await this.fetch(url, { method: 'DELETE' })
-    if (!response.ok) {
-      return { data: null, error: new SQLiteCloudError(`Failed to delete database: ${response.statusText}`) }
+  async deleteDatabase(filename: string) {
+    const filenamePath = encodeURIComponent(filename)
+    const url = `${this.baseUrl}/${filenamePath}`
+    try {
+      const response = await this.fetch(
+        url, 
+        { 
+          method: 'DELETE', 
+          headers: { ...this.headers } 
+        }
+      )
+      if (!response.ok) {
+        throw new SQLiteCloudError(`Failed to delete database: ${response.statusText}`)
+      }
+      return await response.json()
+    } catch (error) {
+      return { data: null, error }
     }
-    return { data: null, error: null }
   }
 
   async listDatabases() {
-    const url = `${this.webliteUrl}/databases`
-    const response = await this.fetch(url, { method: 'GET' })
-    if (!response.ok) {
-      return { data: null, error: new SQLiteCloudError(`Failed to list databases: ${response.statusText}`) }
+    const url = `${this.baseUrl}/databases`
+    try {
+      const response = await this.fetch(url, { method: 'GET', headers: { ...this.headers } })
+      if (!response.ok) {
+        throw new SQLiteCloudError(`Failed to list databases: ${response.statusText}`)
+      }
+      return await response.json()
+    } catch (error) {
+      return { data: null, error }
     }
-    return { data: await response.json(), error: null }
   }
 
-  async create(dbName: string) {
-    const response = await fetch(`${this.webliteUrl}/sql?sql=CREATE DATABASE ${dbName}`, { method: 'POST' })
-    if (!response.ok) {
-      return { data: null, error: new SQLiteCloudError(`Failed to create database: ${response.statusText}`) }
+  async createDatabase(filename: string) {
+    try {
+      const response = await this.sql`CREATE DATABASE ${filename}`
+      if (!response.ok) {
+        throw new SQLiteCloudError(`Failed to create database: ${response.statusText}`)
+      }
+      return await response.json()
+    } catch (error) {
+      return { data: null, error }
     }
-    return { data: null, error: null }
   }
 }
 

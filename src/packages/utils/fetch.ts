@@ -27,7 +27,7 @@ export const fetchWithAuth = (authorization: string, customFetch?: Fetch): Fetch
   const fetch = resolveFetch(customFetch)
   const HeadersConstructor = resolveHeadersConstructor()
 
-  return async (input, init) => {
+  return (input, init) => {
     const headers = new HeadersConstructor(init?.headers)
     if (!headers.has('Authorization')) {
       headers.set('Authorization', `Bearer ${authorization}`)

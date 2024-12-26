@@ -1,94 +1,102 @@
 import { Database } from '../drivers/database'
 import { Fetch, fetchWithAuth } from './utils/fetch'
-import { PubSubClient } from './pubsub/PubSubClient'
+import { PubSubClient } from './_pubsub/PubSubClient'
 import { WebliteClient } from './weblite/WebliteClient'
-import { StorageClient } from './storage/StorageClient'
-import { SQLiteCloudCommand, SQLiteCloudError } from '../drivers/types'
-import { cleanConnectionString, getDefaultDatabase } from './utils'
+import { StorageClient } from './_storage/StorageClient'
+import { SQLiteCloudDataTypes, SQLiteCloudError } from '../drivers/types'
+import { cleanConnectionString } from './utils'
 import { FunctionsClient } from './_functions/FunctionsClient'
 import { SQLiteCloudClientConfig } from './types'
+import { DEFAULT_HEADERS } from '../drivers/constants'
+
+const validateConfig = (config: SQLiteCloudClientConfig | string) => {
+  if (!(config)) throw new SQLiteCloudError('No configuration provided')
+  if (typeof config === 'string') {
+    if (!config.includes('sqlitecloud://')) throw new SQLiteCloudError('Invalid connection string')
+  }
+
+  if (typeof config === 'object') {
+    if (!config.connectionString) throw new SQLiteCloudError('No connection string provided')
+    if (!config.connectionString.includes('sqlitecloud://')) throw new SQLiteCloudError('Invalid connection string')
+  }
+}
 
 export class SQLiteCloudClient {
   protected connectionString: string
   protected fetch: Fetch
-  protected globalHeaders: Record<string, string>
-  protected _defaultDb: string
-  protected _db: Database
+  protected _globalHeaders: Record<string, string>
+  protected _db: Database | null
+  protected _pubSub: PubSubClient | null
+  protected _weblite: WebliteClient | null
 
   constructor(config: SQLiteCloudClientConfig | string) {
     try {
-      if (!config) {
-        throw new SQLiteCloudError('Invalid connection string or config')
-      }
+      validateConfig(config)
       let connectionString: string
       let customFetch: Fetch | undefined
       let globalHeaders: Record<string, string> = {}
-  
+
       if (typeof config === 'string') {
         connectionString = cleanConnectionString(config)
-        globalHeaders = {}
+        globalHeaders = DEFAULT_HEADERS
       } else {
         connectionString = config.connectionString
         customFetch = config.global?.fetch
-        globalHeaders = config.global?.headers ?? {}
+        globalHeaders = config.global?.headers ? { ...DEFAULT_HEADERS, ...config.global.headers } : DEFAULT_HEADERS
       }
 
       this.connectionString = connectionString
       this.fetch = fetchWithAuth(this.connectionString, customFetch)
-      this.globalHeaders = globalHeaders
-      this._defaultDb = getDefaultDatabase(this.connectionString) ?? ''
-      this._db = new Database(this.connectionString)
+      this._globalHeaders = globalHeaders
+      this._db = null
+      this._pubSub = null
+      this._weblite = null
 
     } catch (error) {
       throw new SQLiteCloudError('failed to initialize SQLiteCloudClient')
     }
   }
-
-  async sql(sql: TemplateStringsArray | string | SQLiteCloudCommand, ...values: any[]) {
-    this.db.exec(`USE DATABASE ${this._defaultDb}`)
-    try {
-      const result = await this.db.sql(sql, ...values)
-      return { data: result, error: null }
-    } catch (error) {
-      return { error, data: null }
-    }
+  // Defaults to HTTP API
+  async sql(sql: TemplateStringsArray | string, ...values: SQLiteCloudDataTypes[]) {
+    return await this.weblite.sql(sql, ...values)
   }
 
   get pubSub() {
-    return new PubSubClient(this.db.getConfiguration())
+    if (!this._pubSub) {
+      this._pubSub = new PubSubClient(this.db.getConfiguration())
+    }
+    return this._pubSub
   }
 
   get db() {
+    if (!this._db) {
+      this._db = new Database(this.connectionString)
+    }
     return this._db
   }
 
   get weblite() {
-    return new WebliteClient(this.connectionString, { 
-      customFetch: this.fetch, 
-      headers: this.globalHeaders 
-    })
+    if (!this._weblite) {
+      this._weblite = new WebliteClient(this.connectionString, { 
+        fetch: this.fetch, 
+        headers: this._globalHeaders 
+      })
+    }
+    return this._weblite
   }
 
   get files() {
       return new StorageClient(this.connectionString, { 
         customFetch: this.fetch, 
-        headers: this.globalHeaders 
+        headers: this._globalHeaders 
       })
   }
 
   get functions() {
     return new FunctionsClient(this.connectionString, { 
       customFetch: this.fetch, 
-      headers: this.globalHeaders 
+      headers: this._globalHeaders 
     })
-  }
-
-  set defaultDb(dbName: string) {
-    this._defaultDb = dbName
-  }
-
-  get defaultDb() {
-    return this._defaultDb
   }
 }
 

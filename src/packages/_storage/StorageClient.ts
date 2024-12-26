@@ -5,6 +5,7 @@ import { Fetch, fetchWithAuth } from "../utils/fetch"
 import { Storage } from "../types"
 
 // TODO: add consistent return types
+
 export class StorageClient implements Storage {
   protected filesUrl: string
   protected webliteSQLUrl: string
@@ -16,30 +17,33 @@ export class StorageClient implements Storage {
     options: { 
       customFetch?: Fetch, 
       headers?: Record<string, string> 
-    } = {}) { 
+    } = {
+      headers: {}
+    }) { 
     this.filesUrl = getAPIUrl(connectionString, 'files')
     this.webliteSQLUrl = getAPIUrl(connectionString, 'weblite/sql')
     this.fetch = options.customFetch || fetchWithAuth(connectionString)
-    this.headers = options.headers ? { ...DEFAULT_HEADERS, ...options.headers } : { ...DEFAULT_HEADERS }
+    this.headers = { ...DEFAULT_HEADERS, ...options.headers }
   }
 
   async createBucket(bucket: string) {
-    const sql = `USE DATABASE files; INSERT INTO files (Bucket) VALUES ('${bucket}');`
-
     try {
       const response = await this.fetch(this.webliteSQLUrl, { 
-        method: 'POST', 
-        body: JSON.stringify({ sql }), 
-        headers: this.headers 
+        method: 'POST',
+        body: JSON.stringify({ 
+          database: 'files.sqlite', 
+          sql: `INSERT INTO files (Bucket, Pathname, Data) VALUES ('${bucket}', '/', '' );` }
+        ),
+        headers: this.headers,
       })
 
       if (!response.ok) {
         throw new SQLiteCloudError(`Failed to create bucket: ${response.statusText}`)
       }
 
-      return { data: await response.json(), error: null }
+      return await response.json();
     } catch (error) {
-      return { data: null, error }
+      return { error, data: null, metadata: null }
     }
   }
 

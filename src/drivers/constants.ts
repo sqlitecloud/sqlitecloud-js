@@ -13,7 +13,6 @@ if (typeof Deno !== 'undefined') {
 
 export const DEFAULT_HEADERS = { 
   'X-Client-Info': `sqlitecloud-js-${JS_ENV}/${version}`,
-  'Content-Type': 'application/octet-stream'
 }
 export const DEFAULT_GLOBAL_OPTIONS = {
   headers: DEFAULT_HEADERS

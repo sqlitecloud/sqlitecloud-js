@@ -486,6 +486,7 @@ export class Database extends EventEmitter {
    * data changes in the database table. It also enables sending messages to anyone
    * subscribed to a specific channel.
    * @returns {PubSub} A PubSub object
+   * DEPRECATED: use PubSubClient instead
    */
     public async getPubSub(): Promise<PubSub> {
       return new Promise((resolve, reject) => {
