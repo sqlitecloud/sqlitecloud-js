@@ -19,7 +19,7 @@ describe('SQLiteCloudClient test suite', () => {
 
   it('should be able to query the database', async () => {
     const { data, error } = await client.sql`SELECT * FROM ${DEFAULT_TABLE_NAME}`;
-
+    console.log(data, error)
     expect(data).toBeDefined()
     expect(error).toBeNull()
   })

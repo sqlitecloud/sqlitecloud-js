@@ -31,6 +31,7 @@ export class WebliteClient {
     try {
       let _sql = ''
       if (Array.isArray(sql) && 'raw' in sql) { // check raw property?
+        _sql = this._defaultDatabase ? `USE DATABASE ${this._defaultDatabase}; ` : '';
         sql.forEach((string, i) => {
           // TemplateStringsArray splits the string before each variable
           // used in the template. Add the question mark
@@ -52,7 +53,7 @@ export class WebliteClient {
       if (!response.ok) {
         throw new SQLiteCloudError(`Failed to execute sql: ${response.statusText}`)
       }
-      return await response.json()
+      return { error: null, ...(await response.json()) }
     } catch (error) {
       return { data: null, error }
     }
@@ -61,10 +62,15 @@ export class WebliteClient {
   get defaultDatabase() {
     return this._defaultDatabase
   }
-
+  // Set default database for .sql() calls
   useDatabase(name: string) {
     this._defaultDatabase = name
     return this
+  }
+
+
+  async createDatabase(filename: string) {
+    return await this.sql`CREATE DATABASE ${filename}`;
   }
 
   async uploadDatabase(
@@ -88,6 +94,7 @@ export class WebliteClient {
       }
   
       const headers = {
+        'Content-Type': 'application/octet-stream',
         ...(opts.headers ?? {}),
         ...this.headers,
         ...DEFAULT_HEADERS,
@@ -100,7 +107,8 @@ export class WebliteClient {
         if (!response.ok) {
           throw new SQLiteCloudError(`Failed to upload database: ${response.statusText}`)
         }
-        return await response.json()
+
+        return { error: null, ...(await response.json()) }
       } catch (error) {
         return { data: null, error }
     }
@@ -116,8 +124,10 @@ export class WebliteClient {
       if (!response.ok) {
         throw new SQLiteCloudError(`Failed to download database: ${response.statusText}`)
       }
+
       const isNode = typeof window === 'undefined'
-      return isNode ? await response.arrayBuffer() : await response.blob()
+      const data = isNode ? await response.arrayBuffer() : await response.blob()
+      return { error: null, data }
     } catch (error) {
       return { data: null, error }
     }
@@ -137,7 +147,7 @@ export class WebliteClient {
       if (!response.ok) {
         throw new SQLiteCloudError(`Failed to delete database: ${response.statusText}`)
       }
-      return await response.json()
+      return { error: null, ...(await response.json()) }
     } catch (error) {
       return { data: null, error }
     }
@@ -150,19 +160,7 @@ export class WebliteClient {
       if (!response.ok) {
         throw new SQLiteCloudError(`Failed to list databases: ${response.statusText}`)
       }
-      return await response.json()
-    } catch (error) {
-      return { data: null, error }
-    }
-  }
-
-  async createDatabase(filename: string) {
-    try {
-      const response = await this.sql`CREATE DATABASE ${filename}`
-      if (!response.ok) {
-        throw new SQLiteCloudError(`Failed to create database: ${response.statusText}`)
-      }
-      return await response.json()
+      return { error: null, ...(await response.json()) }
     } catch (error) {
       return { data: null, error }
     }
