@@ -17,11 +17,9 @@ describe('SQLiteCloudClient test suite', () => {
     expect(() => new SQLiteCloudClient({ connectionString: 'invalid' })).toThrow()
   })
 
-  it('should be able to query the database', async () => {
+  it('should be able to query the database via HTTP', async () => {
     const { data, error } = await client.sql`SELECT * FROM ${DEFAULT_TABLE_NAME}`;
-    console.log(data, error)
     expect(data).toBeDefined()
     expect(error).toBeNull()
   })
-
 })
