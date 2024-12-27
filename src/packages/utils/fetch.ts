@@ -7,11 +7,11 @@ export const resolveFetch = (customFetch?: Fetch): Fetch => {
   if (customFetch) {
     _fetch = customFetch
   } else if (typeof fetch !== 'undefined') {
-    _fetch = nodeFetch as unknown as Fetch
-  } else {
     _fetch = fetch
+  } else {
+    _fetch = nodeFetch as unknown as Fetch
   }
-  return (...args: Parameters<Fetch>) => _fetch(...args)
+  return _fetch
 }
 
 export const resolveHeadersConstructor = () => {

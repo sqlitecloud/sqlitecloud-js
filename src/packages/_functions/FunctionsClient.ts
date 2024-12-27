@@ -10,8 +10,9 @@ import { Fetch, resolveFetch } from '../utils/fetch'
  * @param headers - The headers to pass to the function.
  */
 interface FunctionInvokeOptions {
-  args: any[]
+  params: Record<string, any>
   headers?: Record<string, string>
+  apiKey?: string
 }
 
 /**
@@ -27,13 +28,15 @@ export class FunctionsClient {
   constructor(
     connectionString: string,
     options: {
-      customFetch?: Fetch,
+      fetch?: Fetch,
       headers?: Record<string, string>
-    } = {}
+    } = {
+      headers: {}
+    }
   ) {
     this.url = getAPIUrl(connectionString, FUNCTIONS_ROOT_PATH)
-    this.fetch = resolveFetch(options.customFetch)
-    this.headers = options.headers ? { ...DEFAULT_HEADERS, ...options.headers } : { ...DEFAULT_HEADERS }
+    this.fetch = resolveFetch(options.fetch)
+    this.headers = { ...DEFAULT_HEADERS, ...options.headers }
   }
  // TODO: check authorization and api key setup in Gateway
   setAuth(token: string) {
@@ -43,56 +46,42 @@ export class FunctionsClient {
   async invoke(functionId: string, options: FunctionInvokeOptions) {
     let body;
     let _headers: Record<string, string> = {}
-    if (options.args && 
+    if (options.params && 
       ((options.headers && !Object.prototype.hasOwnProperty.call(options.headers, 'Content-Type')) || !options.headers)
     ) {
       if (
-        (typeof Blob !== 'undefined' && options.args instanceof Blob) ||
-        options.args instanceof ArrayBuffer
+        (typeof Blob !== 'undefined' && options.params instanceof Blob) ||
+        options.params instanceof ArrayBuffer
       ) {
         // will work for File as File inherits Blob
         // also works for ArrayBuffer as it is the same underlying structure as a Blob
         _headers['Content-Type'] = 'application/octet-stream'
-        body = options.args
-      } else if (typeof options.args === 'string') {
+        body = options.params
+      } else if (typeof options.params === 'string') {
         // plain string
         _headers['Content-Type'] = 'text/plain'
-        body = options.args
-      } else if (typeof FormData !== 'undefined' && options.args instanceof FormData) {
+        body = options.params
+      } else if (typeof FormData !== 'undefined' && options.params instanceof FormData) {
         _headers['Content-Type'] = 'multipart/form-data'
-        body = options.args
+        body = options.params
       } else {
         // default, assume this is JSON
         _headers['Content-Type'] = 'application/json'
-        body = JSON.stringify(options.args)
+        body = JSON.stringify(options.params)
       }
     }
 
     try {    
       const response = await this.fetch(`${this.url}/${functionId}`, {
         method: 'POST',
-        body: JSON.stringify(options.args),
+        body,
         headers: { ..._headers, ...this.headers, ...options.headers }
       })
 
       if (!response.ok) {
         throw new SQLiteCloudError(`Failed to invoke function: ${response.statusText}`)
       }
-
-      let responseType = (response.headers.get('Content-Type') ?? 'text/plain').split(';')[0].trim()
-      let data: any
-      if (responseType === 'application/json') {
-        data = await response.json()
-      } else if (responseType === 'application/octet-stream') {
-        data = await response.blob()
-      } else if (responseType === 'text/event-stream') {
-        data = response
-      } else if (responseType === 'multipart/form-data') {
-        data = await response.formData()
-      } else {
-        data = await response.text()
-      }
-      return { ...data, error: null }
+      return { error: null, ...(await response.json()) }
     } catch (error) {
       return { data: null, error }
     }

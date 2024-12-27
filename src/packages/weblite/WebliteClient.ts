@@ -21,7 +21,7 @@ export class WebliteClient {
   ) {
     this.baseUrl = getAPIUrl(connectionString, 'weblite')
     this.fetch = options?.fetch || fetchWithAuth(connectionString)
-    this.headers = { ...options.headers }
+    this.headers = { ...DEFAULT_HEADERS, ...options.headers }
     this._defaultDatabase = getDefaultDatabase(connectionString)
   }
 
@@ -120,7 +120,7 @@ export class WebliteClient {
     const filenamePath = encodeURIComponent(filename)
     const url = `${this.baseUrl}/${filenamePath}`
     try {
-      const response = await this.fetch(url, { method: 'GET', headers: { ...this.headers } })
+      const response = await this.fetch(url, { method: 'GET', headers: this.headers })
       if (!response.ok) {
         throw new SQLiteCloudError(`Failed to download database: ${response.statusText}`)
       }
@@ -141,7 +141,7 @@ export class WebliteClient {
         url, 
         { 
           method: 'DELETE', 
-          headers: { ...this.headers } 
+          headers: this.headers 
         }
       )
       if (!response.ok) {
@@ -156,7 +156,7 @@ export class WebliteClient {
   async listDatabases() {
     const url = `${this.baseUrl}/databases`
     try {
-      const response = await this.fetch(url, { method: 'GET', headers: { ...this.headers } })
+      const response = await this.fetch(url, { method: 'GET', headers: this.headers })
       if (!response.ok) {
         throw new SQLiteCloudError(`Failed to list databases: ${response.statusText}`)
       }
