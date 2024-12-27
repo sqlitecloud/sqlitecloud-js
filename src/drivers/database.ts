@@ -14,8 +14,8 @@ import { popCallback } from './utilities'
 import { ErrorCallback, ResultsCallback, RowCallback, RowsCallback } from './types'
 import EventEmitter from 'eventemitter3'
 import { isBrowser } from './utilities'
-import { PubSub } from './pubsub'
 import { Statement } from './statement'
+import { PubSub } from './pubsub'
 
 // Uses eventemitter3 instead of node events for browser compatibility
 // https://github.com/primus/eventemitter3
@@ -472,31 +472,32 @@ export class Database extends EventEmitter {
             } else {
               // metadata for operations like insert, update, delete?
               const context = this.processContext(results)
-              resolve(context ? context : results)
+              const result = { data: context ? context : results, error: null }
+              resolve(result)
             }
           })
         }
       })
     })
   }
-
-  /**
+    /**
    * PubSub class provides a Pub/Sub real-time updates and notifications system to
    * allow multiple applications to communicate with each other asynchronously.
    * It allows applications to subscribe to tables and receive notifications whenever
    * data changes in the database table. It also enables sending messages to anyone
    * subscribed to a specific channel.
    * @returns {PubSub} A PubSub object
+   * DEPRECATED: use PubSubClient instead
    */
-  public async getPubSub(): Promise<PubSub> {
-    return new Promise((resolve, reject) => {
-      this.getConnection((error, connection) => {
-        if (error || !connection) {
-          reject(error)
-        } else {
-          resolve(new PubSub(connection))
-        }
+    public async getPubSub(): Promise<PubSub> {
+      return new Promise((resolve, reject) => {
+        this.getConnection((error, connection) => {
+          if (error || !connection) {
+            reject(error)
+          } else {
+            resolve(new PubSub(connection))
+          }
+        })
       })
-    })
-  }
+    }
 }

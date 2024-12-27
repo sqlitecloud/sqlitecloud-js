@@ -27,7 +27,8 @@ export class PubSub {
    * @param data Extra data to be passed to the callback
    */
   public async listen(entityType: PUBSUB_ENTITY_TYPE, entityName: string, callback: PubSubCallback, data?: any): Promise<any> {
-    const entity = entityType === 'TABLE' ? 'TABLE ' : ''
+    // should not force user to import and pass in entity type
+    const entity = entityType === 'TABLE' ? 'TABLE ' : '' // should use PUBSUB_ENTITY_TYPE for check
 
     const authCommand: string = await this.connection.sql(`LISTEN ${entity}${entityName};`)
 
