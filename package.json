@@ -69,7 +69,7 @@
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
     "typedoc": "^0.27.5",
-    "typedoc-plugin-markdown": "^4.3.3",
+    "typedoc-plugin-markdown": "^4.4.1",
     "typescript": "^5.7.2",
     "webpack": "^5.97.1",
     "webpack-cli": "^6.0.1"
