@@ -8,13 +8,15 @@ env:
 
 jobs:
   code-test:
+    strategy:
+      max-parallel: 1
+      matrix:
+        os: [ubuntu-latest, LinuxARM64]
+
     name: 'Code Test'
     timeout-minutes: 20
     runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        arch: [x64, arm64]
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -38,12 +40,9 @@ jobs:
   examples-test:
     needs: code-test
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        arch: [x64, arm64]
-        exclude:
-          - os: windows-latest
-            arch: arm64
+        os: [ubuntu-latest, macos-latest, windows-latest, LinuxARM64]
 
     defaults:
       run:
@@ -323,6 +322,7 @@ jobs:
   rn-ios-test:
     needs: code-test
     strategy:
+      fail-fast: false
       matrix:
         os: [macos-13, macos-14, macos-15] # macos-12 for ios 15 it's going to be deprecated, it's also using an old version of xcode that is not compatible with react native
         include:
@@ -381,6 +381,7 @@ jobs:
   rn-android-test:
     needs: code-test
     strategy:
+      fail-fast: false
       matrix:
         api-level: [25, 26, 29, 31, 35] #app fail: android 5; driver fail: android 6 and android 7
         include:
@@ -448,6 +449,7 @@ jobs:
   expo-ios-test:
     needs: code-test
     strategy:
+      fail-fast: false
       matrix:
         os: [macos-13, macos-14, macos-15] # macos-12 for ios 15 it's going to be deprecated, it's also using an old version of xcode that is not compatible with react native
         include:
@@ -506,6 +508,7 @@ jobs:
   expo-android-test:
     needs: code-test
     strategy:
+      fail-fast: false
       matrix:
         api-level: [25, 26, 29, 31, 35] #app fail: android 5; driver fail: android 6 and android 7
         include:
