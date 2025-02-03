@@ -515,28 +515,55 @@ describe('Database.sql (async)', () => {
   })
 
   it('should throw exception when using table name as binding', async () => {
-    const database = await getTestingDatabaseAsync()
-    const table = 'people'
-    await expect(database.sql`SELECT * FROM ${table}`).rejects.toThrow('near "?": syntax error')
+    let database
+    try {
+      database = await getTestingDatabaseAsync()
+      const table = 'people'
+      await expect(database.sql`SELECT * FROM ${table}`).rejects.toThrow('near "?": syntax error')
+    } finally {
+      await removeDatabaseAsync(database)
+    }
   })
 
-  it('should built in commands accept bindings', async () => {
-    const database = await getTestingDatabaseAsync()
+  it('should commands accept bindings', async () => {
+    let database
+    try {
+      database = await getTestingDatabaseAsync()
 
-    const databaseName = database.getConfiguration().database || ''
-    await expect(database.sql`USE DATABASE ${databaseName}`).resolves.toBe('OK')
+      const databaseName = database.getConfiguration().database || ''
+      await expect(database.sql`USE DATABASE ${databaseName}`).resolves.toBe('OK')
 
-    const databaseNameInjectSQL = `${databaseName}; SELECT * FROM people`
-    await expect(database.sql`USE DATABASE ${databaseNameInjectSQL}`).rejects.toThrow(`Database name contains invalid characters (${databaseNameInjectSQL}).`)
+      const databaseNameInjectSQL = `${databaseName}; SELECT * FROM people`
+      await expect(database.sql`USE DATABASE ${databaseNameInjectSQL}`).rejects.toThrow(`Database name contains invalid characters (${databaseNameInjectSQL}).`)
 
-    let key = 'logo_level'
-    let value = 'debug'
-    await expect(database.sql`SET KEY ${key} TO ${value}`).resolves.toBe('OK')
+      let key = 'logo_level'
+      let value = 'debug'
+      await expect(database.sql`SET KEY ${key} TO ${value}`).resolves.toBe('OK')
 
-    key = 'logo_level'
-    value = 'debug; DROP TABLE people'
-    await expect(database.sql`SET KEY ${key} TO ${value}`).resolves.toBe('OK')
-    const result = await database.sql`SELECT * FROM people`
-    expect(result.length).toBeGreaterThan(0)
+      key = 'logo_level'
+      value = 'debug; DROP TABLE people'
+      await expect(database.sql`SET KEY ${key} TO ${value}`).resolves.toBe('OK')
+      const result = await database.sql`SELECT * FROM people`
+      expect(result.length).toBeGreaterThan(0)
+    } finally {
+      await removeDatabaseAsync(database)
+    }
+  })
+
+  it('binding should work with unicode character', async () => {
+    let database
+    try {
+      database = await getTestingDatabaseAsync()
+      const name = 'unicorn-🦄'
+
+      let results = await database.sql('INSERT INTO people (name, age, hobby) VALUES (?, 11, "");', name)
+      expect(results.changes).toEqual(1)
+
+      results = await database.sql('SELECT * FROM people WHERE name = ?;', name)
+      expect(results).toHaveLength(1)
+      expect(results[0].name).toEqual(name)
+    } finally {
+      await removeDatabaseAsync(database)
+    }
   })
 })

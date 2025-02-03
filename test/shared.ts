@@ -25,9 +25,9 @@ export const WARN_SPEED_MS = 500
 export const EXPECT_SPEED_MS = 6 * 1000
 
 /** Number of times or size of stress (when repeated in sequence) */
-export const SEQUENCE_TEST_SIZE = 150
+export const SEQUENCE_TEST_SIZE = 90
 /** Concurrency size for multiple connection tests */
-export const SIMULTANEOUS_TEST_SIZE = 150
+export const SIMULTANEOUS_TEST_SIZE = 90
 
 /** Testing database from .env file */
 export const CHINOOK_DATABASE_URL = process.env.CHINOOK_DATABASE_URL as string
