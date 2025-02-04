@@ -282,9 +282,9 @@ jobs:
           VITE_DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
 
       - name: deno with-javascript-vite
-        if: matrix.os == 'ubuntu-latest' #windows: https://github.com/denoland/deno/issues/23524#issuecomment-2292075726 macos: https://github.com/sqlitecloud/sqlitecloud-js/issues/197
+        if: matrix.os != 'windows-latest' #windows: https://github.com/denoland/deno/issues/23524#issuecomment-2292075726 linux-ubuntu: https://github.com/sqlitecloud/sqlitecloud-js/issues/197
         working-directory: examples/with-javascript-vite
-        run: deno add npm:@playwright/test && deno run --allow-all npm:playwright test
+        run: deno add npm:@playwright/test && deno run --allow-all npm:playwright install && deno run --allow-all npm:playwright test
         env:
           VITE_DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
           PW_DISABLE_TS_ESM: true
