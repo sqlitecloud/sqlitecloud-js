@@ -78,7 +78,7 @@ async function createDatabaseAsync(numberOfRows: number): Promise<{ connection: 
   const createSql = `UNUSE DATABASE; CREATE DATABASE ${database}; USE DATABASE ${database};`
   const createResults = await sendCommandsAsync(connection, createSql)
   expect(createResults).toBe('OK')
-  return { database, connection }
+  return { connection, database }
 }
 
 async function destroyDatabaseAsync(connection: SQLiteCloudConnection, database: string) {
@@ -207,7 +207,7 @@ async function testChallenge(numberOfRows: number, insertChunks = BRC_INSERT_CHU
       throw error
     }
   } finally {
-    // await destroyDatabaseAsync(connection, database)
+    await destroyDatabaseAsync(connection, database)
     connection?.close()
   }
 }

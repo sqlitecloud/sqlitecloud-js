@@ -2,19 +2,17 @@
  * database.test.ts - test driver api
  */
 
-import { SQLiteCloudRowset, SQLiteCloudRow, SQLiteCloudError, sanitizeSQLiteIdentifier } from '../src/index'
+import { describe, expect, it } from '@jest/globals'
+import { RowCountCallback } from '../src/drivers/types'
+import { SQLiteCloudError, SQLiteCloudRow, SQLiteCloudRowset, sanitizeSQLiteIdentifier } from '../src/index'
 import {
+  LONG_TIMEOUT,
+  getChinookDatabase,
   getTestingDatabase,
   getTestingDatabaseAsync,
-  getChinookDatabase,
   removeDatabase,
-  removeDatabaseAsync,
-  LONG_TIMEOUT,
-  getChinookWebsocketConnection
+  removeDatabaseAsync
 } from './shared'
-import { RowCountCallback } from '../src/drivers/types'
-import { expect, describe, it } from '@jest/globals'
-import { Database } from 'sqlite3'
 
 //
 // utility methods to setup and destroy temporary test databases
@@ -55,6 +53,7 @@ describe('Database.run', () => {
         expect(error).toBeNull()
         database.run(updateSql, plainCallbackNotALambda)
       })
+      removeDatabase(database)
     },
     LONG_TIMEOUT
   )
@@ -114,6 +113,7 @@ describe('Database.run', () => {
         expect(error).toBeNull()
         database.run(insertSql, plainCallbackNotALambdaOne)
       })
+      removeDatabase(database)
     },
     LONG_TIMEOUT
   )
@@ -317,7 +317,7 @@ describe('Database.sql (async)', () => {
       const results = await database.sql('SELECT * FROM people WHERE name = ?', 'Emma Johnson')
       expect(results).toHaveLength(1)
     } finally {
-      database?.close()
+      await removeDatabaseAsync(database)
     }
   })
 
@@ -337,7 +337,7 @@ describe('Database.sql (async)', () => {
         hobby: 'Collecting clouds'
       })
     } finally {
-      database?.close()
+      await removeDatabaseAsync(database)
     }
   })
 
@@ -487,30 +487,45 @@ describe('Database.sql (async)', () => {
 
   describe('should sanitize identifiers', () => {
     it('should sanitize database name and run the query', async () => {
-      const database = await getTestingDatabaseAsync()
+      let database
+      try {
+        database = await getTestingDatabaseAsync()
 
-      const databaseName = sanitizeSQLiteIdentifier(database.getConfiguration().database || '')
-      await expect(database.sql(`USE DATABASE ${databaseName}`)).resolves.toBe('OK')
+        const databaseName = sanitizeSQLiteIdentifier(database.getConfiguration().database || '')
+        await expect(database.sql(`USE DATABASE ${databaseName}`)).resolves.toBe('OK')
+      } finally {
+        await removeDatabaseAsync(database)
+      }
     })
 
     it('should sanitize table name and run the query', async () => {
-      const database = await getTestingDatabaseAsync()
+      let database
+      try {
+        database = await getTestingDatabaseAsync()
 
-      const table = sanitizeSQLiteIdentifier('people')
-      await expect(database.sql(`SELECT id FROM ${table} LIMIT 1`)).resolves.toMatchObject([{ id: 1 }])
+        const table = sanitizeSQLiteIdentifier('people')
+        await expect(database.sql(`SELECT id FROM ${table} LIMIT 1`)).resolves.toMatchObject([{ id: 1 }])
+      } finally {
+        await removeDatabaseAsync(database)
+      }
     })
 
     it('should sanitize SQL Injection as table name', async () => {
-      const database = await getTestingDatabaseAsync()
-      const databaseName = database.getConfiguration().database
+      let database
+      try {
+        database = await getTestingDatabaseAsync()
+        const databaseName = database.getConfiguration().database
 
-      const sanitizedDBName = sanitizeSQLiteIdentifier(`${databaseName}; SELECT * FROM people; -- `)
-      await expect(database.sql(`USE DATABASE ${sanitizedDBName}`)).rejects.toThrow(
-        `Database name contains invalid characters (${databaseName}; SELECT * FROM people; --).`
-      )
+        const sanitizedDBName = sanitizeSQLiteIdentifier(`${databaseName}; SELECT * FROM people; -- `)
+        await expect(database.sql(`USE DATABASE ${sanitizedDBName}`)).rejects.toThrow(
+          `Database name contains invalid characters (${databaseName}; SELECT * FROM people; --).`
+        )
 
-      const table = sanitizeSQLiteIdentifier('people; -- ')
-      await expect(database.sql(`SELECT * FROM ${table} WHERE people = 1`)).rejects.toThrow('no such table: people; --')
+        const table = sanitizeSQLiteIdentifier('people; -- ')
+        await expect(database.sql(`SELECT * FROM ${table} WHERE people = 1`)).rejects.toThrow('no such table: people; --')
+      } finally {
+        await removeDatabaseAsync(database)
+      }
     })
   })
 

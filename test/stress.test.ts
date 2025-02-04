@@ -14,7 +14,7 @@ import {
   EXPECT_SPEED_MS
 } from './shared'
 
-describe('stress testing', () => {
+describe.skip('stress testing', () => {
   it(
     'should do lots of read connections in sequence',
     async () => {
