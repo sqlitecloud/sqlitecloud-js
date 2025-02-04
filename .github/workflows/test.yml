@@ -283,7 +283,7 @@ jobs:
 
       - name: deno with-javascript-vite
         if: matrix.os != 'windows-latest' #https://github.com/denoland/deno/issues/23524#issuecomment-2292075726
-        working-directory: examples/with-javascript-vite
+        working-directory: examples/with-javascript-vite/test
         run: deno add npm:@playwright/test && deno run --allow-all npm:playwright test
         env:
           VITE_DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
