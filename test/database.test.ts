@@ -5,14 +5,7 @@
 import { describe, expect, it } from '@jest/globals'
 import { RowCountCallback } from '../src/drivers/types'
 import { SQLiteCloudError, SQLiteCloudRow, SQLiteCloudRowset, sanitizeSQLiteIdentifier } from '../src/index'
-import {
-  LONG_TIMEOUT,
-  getChinookDatabase,
-  getTestingDatabase,
-  getTestingDatabaseAsync,
-  removeDatabase,
-  removeDatabaseAsync
-} from './shared'
+import { LONG_TIMEOUT, getChinookDatabase, getTestingDatabase, getTestingDatabaseAsync, removeDatabase, removeDatabaseAsync } from './shared'
 
 //
 // utility methods to setup and destroy temporary test databases
@@ -42,7 +35,6 @@ describe('Database.run', () => {
         expect(context.totalChanges).toBe(22)
         expect(context.finalized).toBe(1)
 
-        done()
         removeDatabase(database, error => {
           expect(error).toBeNull()
           done()
@@ -53,7 +45,6 @@ describe('Database.run', () => {
         expect(error).toBeNull()
         database.run(updateSql, plainCallbackNotALambda)
       })
-      removeDatabase(database)
     },
     LONG_TIMEOUT
   )
@@ -102,7 +93,6 @@ describe('Database.run', () => {
         expect(context.totalChanges).toBe(22)
         expect(context.finalized).toBe(1)
 
-        done()
         removeDatabase(database, error => {
           expect(error).toBeNull()
           done()
@@ -113,7 +103,6 @@ describe('Database.run', () => {
         expect(error).toBeNull()
         database.run(insertSql, plainCallbackNotALambdaOne)
       })
-      removeDatabase(database)
     },
     LONG_TIMEOUT
   )
