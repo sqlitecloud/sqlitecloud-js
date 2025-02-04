@@ -2,19 +2,10 @@
  * database.test.ts - test driver api
  */
 
-import { SQLiteCloudRowset, SQLiteCloudRow, SQLiteCloudError, sanitizeSQLiteIdentifier } from '../src/index'
-import {
-  getTestingDatabase,
-  getTestingDatabaseAsync,
-  getChinookDatabase,
-  removeDatabase,
-  removeDatabaseAsync,
-  LONG_TIMEOUT,
-  getChinookWebsocketConnection
-} from './shared'
+import { describe, expect, it } from '@jest/globals'
 import { RowCountCallback } from '../src/drivers/types'
-import { expect, describe, it } from '@jest/globals'
-import { Database } from 'sqlite3'
+import { SQLiteCloudError, SQLiteCloudRow, SQLiteCloudRowset, sanitizeSQLiteIdentifier } from '../src/index'
+import { LONG_TIMEOUT, getChinookDatabase, getTestingDatabase, getTestingDatabaseAsync, removeDatabase, removeDatabaseAsync } from './shared'
 
 //
 // utility methods to setup and destroy temporary test databases
@@ -44,7 +35,6 @@ describe('Database.run', () => {
         expect(context.totalChanges).toBe(22)
         expect(context.finalized).toBe(1)
 
-        done()
         removeDatabase(database, error => {
           expect(error).toBeNull()
           done()
@@ -103,7 +93,6 @@ describe('Database.run', () => {
         expect(context.totalChanges).toBe(22)
         expect(context.finalized).toBe(1)
 
-        done()
         removeDatabase(database, error => {
           expect(error).toBeNull()
           done()
@@ -317,7 +306,7 @@ describe('Database.sql (async)', () => {
       const results = await database.sql('SELECT * FROM people WHERE name = ?', 'Emma Johnson')
       expect(results).toHaveLength(1)
     } finally {
-      database?.close()
+      await removeDatabaseAsync(database)
     }
   })
 
@@ -337,7 +326,7 @@ describe('Database.sql (async)', () => {
         hobby: 'Collecting clouds'
       })
     } finally {
-      database?.close()
+      await removeDatabaseAsync(database)
     }
   })
 
@@ -487,56 +476,98 @@ describe('Database.sql (async)', () => {
 
   describe('should sanitize identifiers', () => {
     it('should sanitize database name and run the query', async () => {
-      const database = await getTestingDatabaseAsync()
+      let database
+      try {
+        database = await getTestingDatabaseAsync()
 
-      const databaseName = sanitizeSQLiteIdentifier(database.getConfiguration().database || '')
-      await expect(database.sql(`USE DATABASE ${databaseName}`)).resolves.toBe('OK')
+        const databaseName = sanitizeSQLiteIdentifier(database.getConfiguration().database || '')
+        await expect(database.sql(`USE DATABASE ${databaseName}`)).resolves.toBe('OK')
+      } finally {
+        await removeDatabaseAsync(database)
+      }
     })
 
     it('should sanitize table name and run the query', async () => {
-      const database = await getTestingDatabaseAsync()
+      let database
+      try {
+        database = await getTestingDatabaseAsync()
 
-      const table = sanitizeSQLiteIdentifier('people')
-      await expect(database.sql(`SELECT id FROM ${table} LIMIT 1`)).resolves.toMatchObject([{ id: 1 }])
+        const table = sanitizeSQLiteIdentifier('people')
+        await expect(database.sql(`SELECT id FROM ${table} LIMIT 1`)).resolves.toMatchObject([{ id: 1 }])
+      } finally {
+        await removeDatabaseAsync(database)
+      }
     })
 
     it('should sanitize SQL Injection as table name', async () => {
-      const database = await getTestingDatabaseAsync()
-      const databaseName = database.getConfiguration().database
+      let database
+      try {
+        database = await getTestingDatabaseAsync()
+        const databaseName = database.getConfiguration().database
 
-      const sanitizedDBName = sanitizeSQLiteIdentifier(`${databaseName}; SELECT * FROM people; -- `)
-      await expect(database.sql(`USE DATABASE ${sanitizedDBName}`)).rejects.toThrow(
-        `Database name contains invalid characters (${databaseName}; SELECT * FROM people; --).`
-      )
+        const sanitizedDBName = sanitizeSQLiteIdentifier(`${databaseName}; SELECT * FROM people; -- `)
+        await expect(database.sql(`USE DATABASE ${sanitizedDBName}`)).rejects.toThrow(
+          `Database name contains invalid characters (${databaseName}; SELECT * FROM people; --).`
+        )
 
-      const table = sanitizeSQLiteIdentifier('people; -- ')
-      await expect(database.sql(`SELECT * FROM ${table} WHERE people = 1`)).rejects.toThrow('no such table: people; --')
+        const table = sanitizeSQLiteIdentifier('people; -- ')
+        await expect(database.sql(`SELECT * FROM ${table} WHERE people = 1`)).rejects.toThrow('no such table: people; --')
+      } finally {
+        await removeDatabaseAsync(database)
+      }
     })
   })
 
   it('should throw exception when using table name as binding', async () => {
-    const database = await getTestingDatabaseAsync()
-    const table = 'people'
-    await expect(database.sql`SELECT * FROM ${table}`).rejects.toThrow('near "?": syntax error')
+    let database
+    try {
+      database = await getTestingDatabaseAsync()
+      const table = 'people'
+      await expect(database.sql`SELECT * FROM ${table}`).rejects.toThrow('near "?": syntax error')
+    } finally {
+      await removeDatabaseAsync(database)
+    }
   })
 
-  it('should built in commands accept bindings', async () => {
-    const database = await getTestingDatabaseAsync()
+  it('should commands accept bindings', async () => {
+    let database
+    try {
+      database = await getTestingDatabaseAsync()
 
-    const databaseName = database.getConfiguration().database || ''
-    await expect(database.sql`USE DATABASE ${databaseName}`).resolves.toBe('OK')
+      const databaseName = database.getConfiguration().database || ''
+      await expect(database.sql`USE DATABASE ${databaseName}`).resolves.toBe('OK')
 
-    const databaseNameInjectSQL = `${databaseName}; SELECT * FROM people`
-    await expect(database.sql`USE DATABASE ${databaseNameInjectSQL}`).rejects.toThrow(`Database name contains invalid characters (${databaseNameInjectSQL}).`)
+      const databaseNameInjectSQL = `${databaseName}; SELECT * FROM people`
+      await expect(database.sql`USE DATABASE ${databaseNameInjectSQL}`).rejects.toThrow(`Database name contains invalid characters (${databaseNameInjectSQL}).`)
 
-    let key = 'logo_level'
-    let value = 'debug'
-    await expect(database.sql`SET KEY ${key} TO ${value}`).resolves.toBe('OK')
+      let key = 'logo_level'
+      let value = 'debug'
+      await expect(database.sql`SET KEY ${key} TO ${value}`).resolves.toBe('OK')
 
-    key = 'logo_level'
-    value = 'debug; DROP TABLE people'
-    await expect(database.sql`SET KEY ${key} TO ${value}`).resolves.toBe('OK')
-    const result = await database.sql`SELECT * FROM people`
-    expect(result.length).toBeGreaterThan(0)
+      key = 'logo_level'
+      value = 'debug; DROP TABLE people'
+      await expect(database.sql`SET KEY ${key} TO ${value}`).resolves.toBe('OK')
+      const result = await database.sql`SELECT * FROM people`
+      expect(result.length).toBeGreaterThan(0)
+    } finally {
+      await removeDatabaseAsync(database)
+    }
+  })
+
+  it('binding should work with unicode character', async () => {
+    let database
+    try {
+      database = await getTestingDatabaseAsync()
+      const name = 'unicorn-🦄'
+
+      let results = await database.sql('INSERT INTO people (name, age, hobby) VALUES (?, 11, "");', name)
+      expect(results.changes).toEqual(1)
+
+      results = await database.sql('SELECT * FROM people WHERE name = ?;', name)
+      expect(results).toHaveLength(1)
+      expect(results[0].name).toEqual(name)
+    } finally {
+      await removeDatabaseAsync(database)
+    }
   })
 })

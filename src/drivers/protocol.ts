@@ -346,7 +346,7 @@ export function formatCommand(command: SQLiteCloudCommand): string {
   return serializeData(command.query, false)
 }
 
-function serializeCommand(data: any[], zeroString: boolean = false): string {
+function serializeCommand(data: SQLiteCloudDataTypes[], zeroString: boolean = false): string {
   const n = data.length
   let serializedData = `${n} `
 
@@ -356,11 +356,12 @@ function serializeCommand(data: any[], zeroString: boolean = false): string {
     serializedData += serializeData(data[i], zs)
   }
 
-  const header = `${CMD_ARRAY}${serializedData.length} `
+  const bytesTotal = Buffer.byteLength(serializedData, 'utf-8')
+  const header = `${CMD_ARRAY}${bytesTotal} `
   return header + serializedData
 }
 
-function serializeData(data: any, zeroString: boolean = false): string {
+function serializeData(data: SQLiteCloudDataTypes, zeroString: boolean = false): string {
   if (typeof data === 'string') {
     let cmd = CMD_STRING
     if (zeroString) {
