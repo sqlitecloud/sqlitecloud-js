@@ -14,8 +14,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: latest
       - name: Setup Dependencies
         run: |
           corepack enable
@@ -50,8 +48,6 @@ jobs:
 
       #setup node, bun and deno
       - uses: actions/setup-node@v4
-        with:
-          node-version: latest
       - uses: oven-sh/setup-bun@v2
       - uses: denoland/setup-deno@v2
         with:
