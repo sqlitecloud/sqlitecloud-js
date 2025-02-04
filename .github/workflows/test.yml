@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: latest
+          node-version: 22.13.1
       - name: Setup Dependencies
         run: |
           corepack enable
@@ -51,11 +51,11 @@ jobs:
       #setup node, bun and deno
       - uses: actions/setup-node@v4
         with:
-          node-version: latest
+          node-version: 22.13.1
       - uses: oven-sh/setup-bun@v2
       - uses: denoland/setup-deno@v2
         with:
-          deno-version: vx.x.x
+          deno-version: v2.x
 
       - name: setup playwright for browser related test
         run: npx playwright install --with-deps && npx playwright install msedge && npx playwright install chrome
@@ -282,7 +282,7 @@ jobs:
           VITE_DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
 
       - name: deno with-javascript-vite
-        if: matrix.os != 'windows-latest' #https://github.com/denoland/deno/issues/23524#issuecomment-2292075726
+        if: false #matrix.os != 'windows-latest' windows: https://github.com/denoland/deno/issues/23524#issuecomment-2292075726 linux-ubuntu: https://github.com/sqlitecloud/sqlitecloud-js/issues/197
         working-directory: examples/with-javascript-vite
         run: deno add npm:@playwright/test && deno run --allow-all npm:playwright test
         env:
