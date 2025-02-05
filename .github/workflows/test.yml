@@ -8,9 +8,15 @@ env:
 
 jobs:
   code-test:
+    strategy:
+      max-parallel: 1
+      matrix:
+        os: [ubuntu-latest, LinuxARM64]
+
     name: 'Code Test'
     timeout-minutes: 20
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -34,8 +40,9 @@ jobs:
   examples-test:
     needs: code-test
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest, LinuxARM64]
 
     defaults:
       run:
@@ -58,6 +65,7 @@ jobs:
           deno-version: v2.x
 
       - name: setup playwright for browser related test
+        if: matrix.os != 'LinuxARM64'
         run: npx playwright install --with-deps && npx playwright install msedge && npx playwright install chrome
 
       - name: build driver
@@ -266,12 +274,14 @@ jobs:
         run: rm -rf examples/with-typescript-nextjs
 
       - name: node with-javascript-vite
+        if: matrix.os != 'LinuxARM64'
         working-directory: examples/with-javascript-vite
         run: npm i && npx playwright test
         env:
           VITE_DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
 
       - name: bun with-javascript-vite
+        if: matrix.os != 'LinuxARM64'
         working-directory: examples/with-javascript-vite
         run: |
           if [ "$RUNNER_OS" != "Windows" ]; then
@@ -293,16 +303,17 @@ jobs:
         run: rm -rf examples/with-javascript-vite
 
       - name: node with-javascript-browser
+        if: matrix.os != 'LinuxARM64'
         working-directory: examples/with-javascript-browser
         run: npm i && node test.cjs
 
       - name: bun with-javascript-browser
-        if: matrix.os != 'windows-latest' #cannot launch browsers on windows with bash in commonjs?
+        if: matrix.os != 'windows-latest' && matrix.os != 'LinuxARM64' #cannot launch browsers on windows with bash in commonjs?
         working-directory: examples/with-javascript-browser
         run: bun i && bun test.cjs
 
       - name: deno with-javascript-browser
-        if: matrix.os != 'windows-latest' #https://github.com/denoland/deno/issues/23524#issuecomment-2292075726
+        if: matrix.os != 'windows-latest' && matrix.os != 'LinuxARM64' #https://github.com/denoland/deno/issues/23524#issuecomment-2292075726
         uses: nick-fields/retry@v3 #doing this step with the retry action because sometimes in macos it gets stuck without failing
         with:
           timeout_seconds: 45
@@ -315,6 +326,7 @@ jobs:
   rn-ios-test:
     needs: code-test
     strategy:
+      fail-fast: false
       matrix:
         os: [macos-13, macos-14, macos-15] # macos-12 for ios 15 it's going to be deprecated, it's also using an old version of xcode that is not compatible with react native
         include:
@@ -373,6 +385,7 @@ jobs:
   rn-android-test:
     needs: code-test
     strategy:
+      fail-fast: false
       matrix:
         api-level: [25, 26, 29, 31, 35] #app fail: android 5; driver fail: android 6 and android 7
         include:
@@ -440,6 +453,7 @@ jobs:
   expo-ios-test:
     needs: code-test
     strategy:
+      fail-fast: false
       matrix:
         os: [macos-13, macos-14, macos-15] # macos-12 for ios 15 it's going to be deprecated, it's also using an old version of xcode that is not compatible with react native
         include:
@@ -498,6 +512,7 @@ jobs:
   expo-android-test:
     needs: code-test
     strategy:
+      fail-fast: false
       matrix:
         api-level: [25, 26, 29, 31, 35] #app fail: android 5; driver fail: android 6 and android 7
         include:

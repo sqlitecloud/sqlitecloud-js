@@ -1,6 +1,6 @@
 {
   "name": "@sqlitecloud/drivers",
-  "version": "1.0.400",
+  "version": "1.0.401",
   "description": "SQLiteCloud drivers for Typescript/Javascript in edge, web and node clients",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
@@ -59,7 +59,7 @@
   "devDependencies": {
     "@types/jest": "^29.5.14",
     "@types/lz4": "^0.6.4",
-    "@types/node": "^22.10.2",
+    "@types/node": "^22.13.1",
     "@types/whatwg-url": "^13.0.0",
     "dotenv": "^16.4.7",
     "dotenv-cli": "^8.0.0",
@@ -70,9 +70,9 @@
     "sqlite3": "^5.1.7",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
-    "typedoc": "^0.27.5",
-    "typedoc-plugin-markdown": "^4.3.3",
-    "typescript": "^5.7.2",
+    "typedoc": "^0.27.6",
+    "typedoc-plugin-markdown": "^4.4.1",
+    "typescript": "^5.7.3",
     "webpack": "^5.97.1",
     "webpack-cli": "^6.0.1"
   },
