@@ -65,8 +65,12 @@ jobs:
           deno-version: v2.x
 
       - name: setup playwright for browser related test
-        if: matrix.os != 'LinuxARM64'
-        run: npx playwright install --with-deps && npx playwright install msedge && npx playwright install chrome
+        run: |
+          npx playwright install --with-deps
+          if [ "${{matrix.os}}]" != "LinuxARM64" ]; then
+            npx playwright install msedge
+          fi
+          npx playwright install chrome
 
       - name: build driver
         run: npm i && npm run build
@@ -274,14 +278,12 @@ jobs:
         run: rm -rf examples/with-typescript-nextjs
 
       - name: node with-javascript-vite
-        if: matrix.os != 'LinuxARM64'
         working-directory: examples/with-javascript-vite
         run: npm i && npx playwright test
         env:
           VITE_DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
 
       - name: bun with-javascript-vite
-        if: matrix.os != 'LinuxARM64'
         working-directory: examples/with-javascript-vite
         run: |
           if [ "$RUNNER_OS" != "Windows" ]; then
@@ -303,17 +305,16 @@ jobs:
         run: rm -rf examples/with-javascript-vite
 
       - name: node with-javascript-browser
-        if: matrix.os != 'LinuxARM64'
         working-directory: examples/with-javascript-browser
         run: npm i && node test.cjs
 
       - name: bun with-javascript-browser
-        if: matrix.os != 'windows-latest' && matrix.os != 'LinuxARM64' #cannot launch browsers on windows with bash in commonjs?
+        if: matrix.os != 'windows-latest' #cannot launch browsers on windows with bash in commonjs?
         working-directory: examples/with-javascript-browser
         run: bun i && bun test.cjs
 
       - name: deno with-javascript-browser
-        if: matrix.os != 'windows-latest' && matrix.os != 'LinuxARM64' #https://github.com/denoland/deno/issues/23524#issuecomment-2292075726
+        if: matrix.os != 'windows-latest' #https://github.com/denoland/deno/issues/23524#issuecomment-2292075726
         uses: nick-fields/retry@v3 #doing this step with the retry action because sometimes in macos it gets stuck without failing
         with:
           timeout_seconds: 45
