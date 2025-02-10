@@ -2,7 +2,7 @@
  * compare.test.ts - test driver api against sqlite3 equivalents
  */
 
-import { CHINOOK_DATABASE_FILE, CHINOOK_DATABASE_URL, CHINOOK_FIRST_TRACK, LONG_TIMEOUT, TESTING_SQL } from './shared'
+import { CHINOOK_DATABASE_FILE, CHINOOK_FIRST_TRACK, LONG_TIMEOUT, removeDatabase, TESTING_SQL } from './shared'
 import { getChinookDatabase, getTestingDatabase } from './shared'
 
 // https://github.com/TryGhost/node-sqlite3/wiki/API
@@ -149,13 +149,15 @@ describe('Database.run', () => {
       expect(this.totalChanges).toBe(21)
       // @ts-expect-error
       expect(this.finalized).toBe(1)
-
-      testingCloud.close()
-      done()
     }
     const testingCloud = getTestingDatabase(error => {
       expect(error).toBeNull()
       testingCloud.run(INSERT_SQL, onInsert)
+
+      removeDatabase(testingCloud, error => {
+        expect(error).toBeNull()
+        done()
+      })
     })
   })
 
