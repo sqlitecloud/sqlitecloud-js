@@ -3,8 +3,8 @@
  */
 
 import { SQLiteCloudRowset } from '../src'
-import { RowCountCallback, SQLiteCloudError } from '../src/drivers/types'
-import { getChinookDatabase, getTestingDatabase } from './shared'
+import { RowCountCallback } from '../src/drivers/types'
+import { getChinookDatabase, getTestingDatabase, removeDatabase } from './shared'
 
 describe('Database.prepare', () => {
   it('without initial bindings', done => {
@@ -261,7 +261,10 @@ it('Statement.run - insert', done => {
       expect(results.lastID).toBeGreaterThan(1)
       expect(results.changes).toBe(1)
 
-      done()
+      removeDatabase(database, error => {
+        expect(error).toBeNull()
+        done()
+      })
     })
   })
 })
@@ -279,7 +282,10 @@ it("Statement.run - insert with empty space after semicolon shouldn't return nul
       expect(results.lastID).toBeGreaterThan(1)
       expect(results.changes).toBe(1)
 
-      done()
+      removeDatabase(database, error => {
+        expect(error).toBeNull()
+        done()
+      })
     })
   })
 })
@@ -294,7 +300,10 @@ it('Statement.run - update', done => {
     statement.run('John Wayne', 1, (error, results) => {
       expect(results.changes).toBe(1)
 
-      done()
+      removeDatabase(database, error => {
+        expect(error).toBeNull()
+        done()
+      })
     })
   })
 })
@@ -310,7 +319,10 @@ it("Statement.run - update with empty space after semicolon shouldn't return nul
       expect(results).not.toBeNull()
       expect(results.changes).toBe(1)
 
-      done()
+      removeDatabase(database, error => {
+        expect(error).toBeNull()
+        done()
+      })
     })
   })
 })
@@ -325,7 +337,10 @@ it('Statement.run - delete', done => {
     statement.run(1, (error, results) => {
       expect(results.changes).toBe(1)
 
-      done()
+      removeDatabase(database, error => {
+        expect(error).toBeNull()
+        done()
+      })
     })
   })
 })
@@ -341,7 +356,10 @@ it("Statement.run - delete with empty space after semicolon shouldn't return nul
       expect(results).not.toBeNull()
       expect(results.changes).toBe(1)
 
-      done()
+      removeDatabase(database, error => {
+        expect(error).toBeNull()
+        done()
+      })
     })
   })
 })
