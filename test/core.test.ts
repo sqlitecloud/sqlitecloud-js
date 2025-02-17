@@ -1343,7 +1343,9 @@ describe.each([
         fragmentation: expect.any(String),
         pagesize: pagesize ?? expect.any(Number),
         encoding: encoding ?? expect.any(String),
-        status: expect.any(Number)
+        status: expect.any(Number),
+        wal_size: expect.any(Number),
+        shm_size: expect.any(Number)
       })
     )
   })
@@ -1365,7 +1367,9 @@ describe.each([
         fragmentation: expect.any(String),
         pagesize: pagesize ?? expect.any(Number),
         encoding: encoding ?? expect.any(String),
-        status: expect.any(Number)
+        status: expect.any(Number),
+        wal_size: expect.any(Number),
+        shm_size: expect.any(Number)
       })
     )
   })
@@ -1387,7 +1391,9 @@ describe.each([
         fragmentation: expect.any(String),
         pagesize: pagesize ?? expect.any(Number),
         encoding: encoding ?? expect.any(String),
-        status: expect.any(Number)
+        status: expect.any(Number),
+        wal_size: expect.any(Number),
+        shm_size: expect.any(Number)
       })
     )
   })
@@ -3937,7 +3943,9 @@ describe.each([
       fragmentation: 0.0,
       pagesize: 1024,
       encoding: 'UTF-8',
-      status: 1
+      status: 1,
+      wal_size: expect.any(Number),
+      shm_size: expect.any(Number)
     })
 
     chinook.close()

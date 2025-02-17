@@ -1,7 +1,6 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
-// README at: https://github.com/marcosgomesneto/bun-devcontainers/tree/main/src/basic-bun
 {
-  "name": "Bun",
+  "name": "Node",
   "dockerFile": "Dockerfile",
   // Configure tool-specific properties.
   "customizations": {
@@ -9,7 +8,7 @@
     "vscode": {
       // Add the IDs of extensions you want installed when the container is created.
       "extensions": [
-        "oven.bun-vscode"
+        "esbenp.prettier-vscode"
       ]
     }
 },
