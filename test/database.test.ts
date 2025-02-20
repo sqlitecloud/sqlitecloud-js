@@ -138,6 +138,62 @@ describe('Database.all', () => {
     LONG_TIMEOUT
   )
 
+  it(
+    'select with one argument',
+    done => {
+      const chinook = getChinookDatabase()
+      chinook.all('SELECT * FROM tracks LIMIT ?', 1, (err: Error, rows: SQLiteCloudRowset) => {
+        expect(err).toBeNull()
+        expect(rows).toBeDefined()
+        expect(rows[0]).toMatchObject({
+          AlbumId: 1,
+          Bytes: 11170334,
+          Composer: 'Angus Young, Malcolm Young, Brian Johnson',
+          GenreId: 1,
+          MediaTypeId: 1,
+          Milliseconds: 343719,
+          Name: 'For Those About To Rock (We Salute You)',
+          TrackId: 1,
+          UnitPrice: 0.99
+        })
+
+        chinook.close(error => {
+          expect(error).toBeNull()
+          done()
+        })
+      })
+    },
+    LONG_TIMEOUT
+  )
+
+  it(
+    'select with one argument with array like ORMs',
+    done => {
+      const chinook = getChinookDatabase()
+      chinook.all('SELECT * FROM tracks LIMIT ?', [1], (err: Error, rows: SQLiteCloudRowset) => {
+        expect(err).toBeNull()
+        expect(rows).toBeDefined()
+        expect(rows[0]).toMatchObject({
+          AlbumId: 1,
+          Bytes: 11170334,
+          Composer: 'Angus Young, Malcolm Young, Brian Johnson',
+          GenreId: 1,
+          MediaTypeId: 1,
+          Milliseconds: 343719,
+          Name: 'For Those About To Rock (We Salute You)',
+          TrackId: 1,
+          UnitPrice: 0.99
+        })
+
+        chinook.close(error => {
+          expect(error).toBeNull()
+          done()
+        })
+      })
+    },
+    LONG_TIMEOUT
+  )
+
   it('select with empty space after semi-colon', done => {
     const chinook = getChinookDatabase()
     chinook.all('SELECT 1; ', (err: Error, rows: SQLiteCloudRowset) => {

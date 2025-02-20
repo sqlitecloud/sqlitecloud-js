@@ -126,22 +126,13 @@ export function getUpdateResults(results?: any): Record<string, any> | undefined
 }
 
 /**
- * Allow compatibility with ORMs that call methods such as all(), get(), etc.
- * by passing parameters in an array
- */
-function removeDoubleArray(array: any[]): SQLiteCloudDataTypes[] {
-  if (Array.isArray(array) && array.length == 1 && Array.isArray(array[0])) {
-    return array[0]
-  }
-  return array
-}
-
-/**
  * Many of the methods in our API may contain a callback as their last argument.
  * This method will take the arguments array passed to the method and return an object
  * containing the arguments array with the callbacks removed (if any), and the callback itself.
  * If there are multiple callbacks, the first one is returned as 'callback' and the last one
  * as 'completeCallback'.
+ *
+ * @returns args is a simple list of SQLiteCloudDataTypes, we flat them into a single array
  */
 export function popCallback<T extends ErrorCallback = ErrorCallback>(
   args: (SQLiteCloudDataTypes | T | ErrorCallback)[]
@@ -151,11 +142,11 @@ export function popCallback<T extends ErrorCallback = ErrorCallback>(
   if (args && args.length > 0 && typeof args[args.length - 1] === 'function') {
     // at least 2 callbacks?
     if (args.length > 1 && typeof args[args.length - 2] === 'function') {
-      return { args: removeDoubleArray(remaining.slice(0, -2)), callback: args[args.length - 2] as T, complete: args[args.length - 1] as T }
+      return { args: remaining.slice(0, -2).flat(), callback: args[args.length - 2] as T, complete: args[args.length - 1] as T }
     }
-    return { args: removeDoubleArray(remaining.slice(0, -1)), callback: args[args.length - 1] as T }
+    return { args: remaining.slice(0, -1).flat(), callback: args[args.length - 1] as T }
   }
-  return { args: remaining }
+  return { args: remaining.flat() }
 }
 
 //

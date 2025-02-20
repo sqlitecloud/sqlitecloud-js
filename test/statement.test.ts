@@ -110,6 +110,33 @@ it('Statement.all', done => {
   })
 })
 
+it('Statement.all like ORMs where parameters are passed as an array of bindings', done => {
+  const chinook = getChinookDatabase()
+  expect(chinook).toBeDefined()
+  const statement = chinook.prepare('SELECT * FROM tracks WHERE albumId = ?;', (err: Error, results: any) => {
+    expect(err).toBeNull()
+  })
+
+  statement.all([3], (error, rows) => {
+    expect(error).toBeNull()
+    expect(rows).toBeDefined()
+    expect(rows).toHaveLength(3)
+    expect(rows).toBeInstanceOf(SQLiteCloudRowset)
+
+    statement.all([4], (error, rows) => {
+      expect(error).toBeNull()
+      expect(rows).toBeDefined()
+      expect(rows).toHaveLength(8)
+      expect(rows).toBeInstanceOf(SQLiteCloudRowset)
+
+      chinook.close(error => {
+        expect(error).toBeNull()
+        done()
+      })
+    })
+  })
+})
+
 it('Statement.all withtout bindings', done => {
   const chinook = getChinookDatabase()
   expect(chinook).toBeDefined()
