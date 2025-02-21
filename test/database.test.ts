@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from '@jest/globals'
 import { RowCountCallback } from '../src/drivers/types'
-import { SQLiteCloudError, SQLiteCloudRow, SQLiteCloudRowset, sanitizeSQLiteIdentifier } from '../src/index'
+import { Database, SQLiteCloudError, SQLiteCloudRow, SQLiteCloudRowset, sanitizeSQLiteIdentifier } from '../src/index'
 import { LONG_TIMEOUT, getChinookDatabase, getTestingDatabase, getTestingDatabaseAsync, removeDatabase, removeDatabaseAsync } from './shared'
 
 //
@@ -20,12 +20,7 @@ describe('Database.run', () => {
       // lambda callback would "hide" this
       function plainCallbackNotALambda(err: Error, results: any) {
         expect(err).toBeNull()
-        expect(results).toEqual({
-          lastID: 20,
-          changes: 1,
-          totalChanges: 22,
-          finalized: 1
-        })
+        expect(results).toEqual({ lastID: 20, changes: 1, totalChanges: 22, finalized: 1 })
 
         // Database.run should return number of rows modified and lastID
         // @ts-expect-error
@@ -57,12 +52,7 @@ describe('Database.run', () => {
       // lambda callback would "hide" this
       function plainCallbackNotALambdaOne(err: Error, results: any) {
         expect(err).toBeNull()
-        expect(results).toEqual({
-          lastID: 21,
-          changes: 1,
-          totalChanges: 21,
-          finalized: 1
-        })
+        expect(results).toEqual({ lastID: 21, changes: 1, totalChanges: 21, finalized: 1 })
 
         // Database.run should return number of rows modified and lastID
         // @ts-expect-error
@@ -78,12 +68,7 @@ describe('Database.run', () => {
       // lambda callback would "hide" this
       function plainCallbackNotALambdaTwo(err: Error, results: any) {
         expect(err).toBeNull()
-        expect(results).toEqual({
-          lastID: 22,
-          changes: 1,
-          totalChanges: 22,
-          finalized: 1
-        })
+        expect(results).toEqual({ lastID: 22, changes: 1, totalChanges: 22, finalized: 1 })
 
         // Database.run should return number of rows modified and lastID
         // @ts-expect-error
@@ -202,9 +187,7 @@ describe('Database.all', () => {
       expect(err).toBeNull()
       expect(rows).toBeDefined()
       expect(rows).toHaveLength(1)
-      expect(rows[0]).toMatchObject({
-        '1': 1
-      })
+      expect(rows[0]).toMatchObject({ '1': 1 })
 
       chinook.close(error => {
         expect(error).toBeNull()
@@ -377,12 +360,7 @@ describe('Database.sql (async)', () => {
 
       const row = results[0]
       expect(row).toBeDefined()
-      expect(row).toMatchObject({
-        id: 1,
-        name: 'Emma Johnson',
-        age: 28,
-        hobby: 'Collecting clouds'
-      })
+      expect(row).toMatchObject({ id: 1, name: 'Emma Johnson', age: 28, hobby: 'Collecting clouds' })
     } finally {
       await removeDatabaseAsync(database)
     }
@@ -396,12 +374,7 @@ describe('Database.sql (async)', () => {
       expect(results).toBeDefined()
       const row = results[0]
       expect(row).toBeDefined()
-      expect(row).toMatchObject({
-        id: 1,
-        name: 'Emma Johnson',
-        age: 28,
-        hobby: 'Collecting clouds'
-      })
+      expect(row).toMatchObject({ id: 1, name: 'Emma Johnson', age: 28, hobby: 'Collecting clouds' })
     } finally {
       await removeDatabaseAsync(database)
     }
@@ -420,12 +393,7 @@ describe('Database.sql (async)', () => {
         let results = await database.sql`SELECT * FROM people WHERE name = ${name}`
         // => returns { id: 5, name: 'Ava Jones', age: 22, hobby: 'Time traveling' }
 
-        expect(results[0]).toMatchObject({
-          id: 5,
-          name: 'Ava Jones',
-          age: 22,
-          hobby: 'Time traveling'
-        })
+        expect(results[0]).toMatchObject({ id: 5, name: 'Ava Jones', age: 22, hobby: 'Time traveling' })
 
         results = await database.sql`SELECT * FROM people WHERE age < 30`
         expect(results).toHaveLength(11)
@@ -466,12 +434,7 @@ describe('Database.sql (async)', () => {
         database = await getTestingDatabaseAsync()
         const updateSql = "UPDATE people SET name = 'Charlie Brown' WHERE id = 3; UPDATE people SET name = 'David Bowie' WHERE id = 4;"
         let results = await database.sql(updateSql)
-        expect(results).toMatchObject({
-          lastID: 20,
-          changes: 1,
-          totalChanges: 22,
-          finalized: 1
-        })
+        expect(results).toMatchObject({ lastID: 20, changes: 1, totalChanges: 22, finalized: 1 })
       } finally {
         await removeDatabaseAsync(database)
       }
@@ -485,12 +448,7 @@ describe('Database.sql (async)', () => {
       database = await getTestingDatabaseAsync()
       const insertSql = "INSERT INTO people (name, hobby, age) VALUES ('Barnaby Bumblecrump', 'Rubber Duck Dressing', 42); "
       let results = await database.sql(insertSql)
-      expect(results).toMatchObject({
-        lastID: 21,
-        changes: 1,
-        totalChanges: 21,
-        finalized: 1
-      })
+      expect(results).toMatchObject({ lastID: 21, changes: 1, totalChanges: 21, finalized: 1 })
     } finally {
       await removeDatabaseAsync(database)
     }
@@ -504,12 +462,7 @@ describe('Database.sql (async)', () => {
         database = await getTestingDatabaseAsync()
         const insertSql = "INSERT INTO people (name, hobby, age) VALUES ('Barnaby Bumblecrump', 'Rubber Duck Dressing', 42); "
         let results = await database.sql(insertSql)
-        expect(results).toMatchObject({
-          lastID: 21,
-          changes: 1,
-          totalChanges: 21,
-          finalized: 1
-        })
+        expect(results).toMatchObject({ lastID: 21, changes: 1, totalChanges: 21, finalized: 1 })
       } finally {
         await removeDatabaseAsync(database)
       }
@@ -522,11 +475,7 @@ describe('Database.sql (async)', () => {
     try {
       database = await getTestingDatabaseAsync()
       let results = await database.sql`SELECT true`
-      expect(results).toMatchObject([
-        {
-          true: 1
-        }
-      ])
+      expect(results).toMatchObject([{ true: 1 }])
     } finally {
       await removeDatabaseAsync(database)
     }
@@ -628,4 +577,20 @@ describe('Database.sql (async)', () => {
       await removeDatabaseAsync(database)
     }
   })
+})
+
+it('should be connected', async () => {
+  const database: Database = await new Promise((resolve, rejects) => {
+    const conn = getChinookDatabase(error => {
+      if (error) {
+        rejects(error)
+      } else {
+        resolve(conn)
+      }
+    })
+  })
+
+  expect(database.isConnected()).toBe(true)
+  database.close()
+  expect(database.isConnected()).toBe(false)
 })
