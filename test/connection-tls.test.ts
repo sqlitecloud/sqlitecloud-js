@@ -2,22 +2,21 @@
  * connection-tls.test.ts - test low level communication protocol with tls sockets and raw commands
  */
 
-import { SQLiteCloudConnection, SQLiteCloudError, SQLiteCloudRowset } from '../src/index'
 import { SQLiteCloudTlsConnection } from '../src/drivers/connection-tls'
 import { anonimizeCommand } from '../src/drivers/utilities'
+import { SQLiteCloudError, SQLiteCloudRowset } from '../src/index'
 import {
   CHINOOK_DATABASE_URL,
+  EXPECT_SPEED_MS,
+  EXTRA_LONG_TIMEOUT,
+  getChinookApiKeyUrl,
+  getChinookConfig,
+  getChinookTlsConnection,
+  getTestingConfig,
   INSECURE_DATABASE_URL,
   LONG_TIMEOUT,
-  getTestingConfig,
-  getChinookConfig,
-  getChinookApiKeyUrl,
-  getChinookTlsConnection,
   sendCommandsAsync,
-  // clearTestingDatabasesAsync,
-  WARN_SPEED_MS,
-  EXPECT_SPEED_MS,
-  EXTRA_LONG_TIMEOUT
+  WARN_SPEED_MS
 } from './shared'
 
 function getConnection() {
