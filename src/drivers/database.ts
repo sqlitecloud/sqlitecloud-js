@@ -7,15 +7,13 @@
 // https://github.com/TryGhost/node-sqlite3
 // https://github.com/TryGhost/node-sqlite3/blob/master/lib/sqlite3.d.ts
 
-import { SQLiteCloudConnection } from './connection'
-import { SQLiteCloudRowset } from './rowset'
-import { SQLiteCloudConfig, SQLiteCloudError, RowCountCallback, SQLiteCloudArrayType, SQLiteCloudCommand } from './types'
-import { popCallback } from './utilities'
-import { ErrorCallback, ResultsCallback, RowCallback, RowsCallback } from './types'
 import EventEmitter from 'eventemitter3'
-import { isBrowser } from './utilities'
+import { SQLiteCloudConnection } from './connection'
 import { PubSub } from './pubsub'
+import { SQLiteCloudRowset } from './rowset'
 import { Statement } from './statement'
+import { ErrorCallback, ResultsCallback, RowCallback, RowCountCallback, RowsCallback, SQLiteCloudArrayType, SQLiteCloudCommand, SQLiteCloudConfig, SQLiteCloudError } from './types'
+import { isBrowser, popCallback } from './utilities'
 
 // Uses eventemitter3 instead of node events for browser compatibility
 // https://github.com/primus/eventemitter3
@@ -478,6 +476,13 @@ export class Database extends EventEmitter {
         }
       })
     })
+  }
+
+  /**
+   * Returns true if the database connection is open.
+   */
+  public isConnected(): boolean {
+    return this.connections?.length > 0 && this.connections[0].connected
   }
 
   /**
