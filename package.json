@@ -50,9 +50,9 @@
   },
   "peerDependencies": {
     "react-native-quick-base64": "*",
-    "react-native-tcp-socket": "^6.2.0",
-    "@craftzdog/react-native-buffer": "^6.0.5",
-    "react-native-url-polyfill": "^2.0.0"
+    "react-native-tcp-socket": "*",
+    "@craftzdog/react-native-buffer": "*",
+    "react-native-url-polyfill": "*"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
