@@ -142,10 +142,11 @@ describe('Database.all', () => {
     'select with one argument',
     done => {
       const chinook = getChinookDatabase()
-      chinook.all('SELECT * FROM tracks LIMIT ?', 1, (err: Error, rows: SQLiteCloudRowset) => {
+      chinook.all('SELECT * FROM tracks LIMIT ?', 1, (err: Error | null, rows: SQLiteCloudRow[] | undefined) => {
         expect(err).toBeNull()
         expect(rows).toBeDefined()
-        expect(rows[0]).toMatchObject({
+        expect(rows).toHaveLength(1)
+        expect(rows && rows.length > 0 ? rows[0] : rows).toMatchObject({
           AlbumId: 1,
           Bytes: 11170334,
           Composer: 'Angus Young, Malcolm Young, Brian Johnson',
@@ -170,10 +171,11 @@ describe('Database.all', () => {
     'select with one argument with array like ORMs',
     done => {
       const chinook = getChinookDatabase()
-      chinook.all('SELECT * FROM tracks LIMIT ?', [1], (err: Error, rows: SQLiteCloudRowset) => {
+      chinook.all('SELECT * FROM tracks LIMIT ?', [1], (err: Error | null, rows: SQLiteCloudRow[] | undefined) => {
         expect(err).toBeNull()
         expect(rows).toBeDefined()
-        expect(rows[0]).toMatchObject({
+        expect(rows).toHaveLength(1)
+        expect(rows && rows.length > 0 ? rows[0] : rows).toMatchObject({
           AlbumId: 1,
           Bytes: 11170334,
           Composer: 'Angus Young, Malcolm Young, Brian Johnson',
