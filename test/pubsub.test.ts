@@ -191,7 +191,7 @@ describe('pubSub', () => {
 
           await pubSub.setPubSubOnly()
 
-          expect(connection.sql`SELECT 1`).rejects.toThrow('Connection not established')
+          expect(connection.sql`SELECT 1`).rejects.toThrow('Connection unavailable. Maybe it got disconnected?')
           expect(pubSub.connected()).toBeTruthy()
 
           await connection2.sql`UPDATE genres SET Name = ${newName} WHERE GenreId = 1`

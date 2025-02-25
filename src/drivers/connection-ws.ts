@@ -2,10 +2,10 @@
  * transport-ws.ts - handles low level communication with sqlitecloud server via socket.io websocket
  */
 
-import { SQLiteCloudConfig, SQLiteCloudError, ErrorCallback, ResultsCallback, SQLiteCloudCommand, SQLiteCloudDataTypes } from './types'
-import { SQLiteCloudRowset } from './rowset'
-import { SQLiteCloudConnection } from './connection'
 import { io, Socket } from 'socket.io-client'
+import { SQLiteCloudConnection } from './connection'
+import { SQLiteCloudRowset } from './rowset'
+import { ErrorCallback, ResultsCallback, SQLiteCloudCommand, SQLiteCloudConfig, SQLiteCloudError } from './types'
 
 /**
  * Implementation of TransportConnection that connects to the database indirectly
@@ -19,7 +19,7 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
 
   /** True if connection is open */
   get connected(): boolean {
-    return !!this.socket
+    return !!(this.socket && this.socket?.connected)
   }
 
   /* Opens a connection with the server and sends the initialization commands. Will throw in case of errors. */
@@ -32,11 +32,25 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
         const connectionstring = this.config.connectionstring as string
         const gatewayUrl = this.config?.gatewayurl || `${this.config.host === 'localhost' ? 'ws' : 'wss'}://${this.config.host as string}:4000`
         this.socket = io(gatewayUrl, { auth: { token: connectionstring } })
+        
+        this.socket.on('connect', () => {
+          callback?.call(this, null)
+        })
+
+        this.socket.on('disconnect', (reason) => {
+          this.close()
+          callback?.call(this, new SQLiteCloudError('Disconnected', { errorCode: 'ERR_CONNECTION_DISCONNECTED', cause: reason }))
+        })
+
+        this.socket.on('error', (error: Error) => {
+          this.close()
+          callback?.call(this, new SQLiteCloudError('Connection error', { errorCode: 'ERR_CONNECTION_ERROR', cause: error }))
+        })        
       }
-      callback?.call(this, null)
     } catch (error) {
       callback?.call(this, error as Error)
     }
+
     return this
   }
 
@@ -78,11 +92,12 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
   public close(): this {
     console.assert(this.socket !== null, 'SQLiteCloudWebsocketConnection.close - connection already closed')
     if (this.socket) {
+      this.socket?.removeAllListeners()
       this.socket?.close()
       this.socket = undefined
     }
+
     this.operations.clear()
-    this.socket = undefined
     return this
   }
 }

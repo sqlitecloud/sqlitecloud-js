@@ -53,8 +53,23 @@ describe('connect', () => {
   })
 */
 
+it(
+  'should connect with config object string',
+  done => {
+    const configObj = getChinookConfig()
+    const connection = new SQLiteCloudTlsConnection(configObj, error => {
+      expect(error).toBeNull()
+      expect(connection.connected).toBe(true)
+      done()
+      connection.close()
+    })
+    expect(connection).toBeDefined()
+  },
+  LONG_TIMEOUT
+)
+
   it(
-    'should connect with config object string',
+    'should connect with config object string and test command',
     done => {
       const configObj = getChinookConfig()
       const connection = new SQLiteCloudTlsConnection(configObj, error => {
