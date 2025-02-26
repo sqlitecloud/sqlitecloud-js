@@ -228,14 +228,14 @@ jobs:
         working-directory: examples/with-typescript-nextjs
         run: |
           npm i
-          npm run dev &
+          npx next dev -p 3005 &
           sleep 3
-          node_test=$(curl localhost:3003)
-          node_test2=$(curl localhost:3003/api/hello)
+          node_test=$(curl localhost:3005)
+          node_test2=$(curl localhost:3005/api/hello)
 
           if [[ $node_test == *"next.js json route"* && $node_test2 == *"{\"data\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
             echo "✅ node with-typescript-nextjs test passed"
-            npx kill-port 3003 -y
+            npx kill-port 3005 -y
             exit 0
           fi
           echo "❌ node with-typescript-nextjs test failed"
@@ -247,13 +247,13 @@ jobs:
           if [ "$RUNNER_OS" != "Windows" ]; then
             bun i #re-installing dependencies in windows with bash causes a panic
           fi
-          bun run dev &
+          bun next dev -p 3004 &
           sleep 3
-          bun_test=$(curl localhost:3003)
-          bun_test2=$(curl localhost:3003/api/hello)
+          bun_test=$(curl localhost:3004)
+          bun_test2=$(curl localhost:3004/api/hello)
           if [[ $bun_test == *"next.js json route"* && $bun_test2 == *"{\"data\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
             echo "✅ bun with-typescript-nextjs test passed"
-            npx kill-port 3003 -y
+            npx kill-port 3004 -y
             exit 0
           fi
           echo "❌ bun with-typescript-nextjs test failed"
