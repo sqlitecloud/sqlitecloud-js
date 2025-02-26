@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   const database = new Database(DATABASE_URL)
 
   // retrieve rows from chinook database using a plain SQL query
-  const tracks = await database.sql`USE DATABASE chinook.sqlite; SELECT * FROM tracks LIMIT 20;`
+  const tracks = await database.sql('USE DATABASE chinook.sqlite; SELECT * FROM tracks LIMIT 20;')
 
   // return as json response
   return NextResponse.json<{ data: any }>({ data: tracks })

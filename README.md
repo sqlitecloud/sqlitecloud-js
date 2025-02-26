@@ -54,7 +54,7 @@ let database = new Database('sqlitecloud://user:password@xxx.sqlite.cloud:8860/c
 
 let name = 'Breaking The Rules'
 
-let results = await database.sql`SELECT * FROM tracks WHERE name = ${name}`
+let results = await database.sql('SELECT * FROM tracks WHERE name = ?', name)
 // => returns [{ AlbumId: 1, Name: 'Breaking The Rules', Composer: 'Angus Young... }]
 ```
 
@@ -82,7 +82,7 @@ await pubSub.listen(PUBSUB_ENTITY_TYPE.TABLE, 'albums', (error, results, data) =
   }
 })
 
-await database.sql`INSERT INTO albums (Title, ArtistId) values ('Brand new song', 1)`
+await database.sql("INSERT INTO albums (Title, ArtistId) values ('Brand new song', 1)")
 
 // Stop listening changes on the table
 await pubSub.unlisten(PUBSUB_ENTITY_TYPE.TABLE, 'albums')

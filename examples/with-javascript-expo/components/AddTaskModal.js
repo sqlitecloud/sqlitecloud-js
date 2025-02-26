@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, StyleSheet, Alert, Platform } from "react-native";
 import { TextInput, Button, Modal } from "react-native-paper";
 import DropdownMenu from "./DropdownMenu";
-import db from "../db/dbConnection";
+import getDbConnection from "../db/dbConnection";
 
 export default AddTaskModal = ({
   modalVisible,
@@ -30,7 +30,7 @@ export default AddTaskModal = ({
 
   const getTags = async () => {
     try {
-      const tags = await db.sql("SELECT * FROM tags");
+      const tags = await getDbConnection().sql("SELECT * FROM tags");
       setTagsList(tags);
     } catch (error) {
       console.error("Error getting tags", error);

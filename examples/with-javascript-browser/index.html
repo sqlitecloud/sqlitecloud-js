@@ -48,7 +48,7 @@
         var database = null;
 
         sendButton.addEventListener('click', () => {
-            if (!database) {
+            if (!database || !database.isConnected()) {
                 // Get the input element by ID
                 var connectionStringinputElement = document.getElementById('connectionStringInput');
                 var connectionstring = connectionStringinputElement.value;
