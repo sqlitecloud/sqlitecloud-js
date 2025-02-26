@@ -5,7 +5,7 @@ let db = null
 
 function getDatabase() {
   if (!db || !db.isConnected()) {
-    db = new Database("chinook.sqlite");
+    db = new Database(import.meta.env.VITE_DATABASE_URL);
   }
 
   return db;

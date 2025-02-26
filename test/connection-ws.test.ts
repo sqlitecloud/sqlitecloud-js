@@ -40,8 +40,8 @@ describe('connection-ws', () => {
       let connection: SQLiteCloudWebsocketConnection | null = null
       connection = new SQLiteCloudWebsocketConnection(configObj, error => {
         expect(error).toBeNull()
-        done()
         connection?.close()
+        done()
       })
     })
 

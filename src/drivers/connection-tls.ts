@@ -250,7 +250,7 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
   }
 
   /** Disconnect immediately, release connection, no events. */
-  public close(): this {
+  close(): this {
     if (this.socket) {
       this.socket.removeAllListeners()
       this.socket.destroy()

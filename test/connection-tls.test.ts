@@ -60,10 +60,9 @@ it(
     const connection = new SQLiteCloudTlsConnection(configObj, error => {
       expect(error).toBeNull()
       expect(connection.connected).toBe(true)
-      done()
       connection.close()
+      done()
     })
-    expect(connection).toBeDefined()
   },
   LONG_TIMEOUT
 )
@@ -82,7 +81,6 @@ it(
           done()
         })
       })
-      expect(connection).toBeDefined()
     },
     LONG_TIMEOUT
   )
@@ -103,7 +101,6 @@ it(
             done()
           })
         })
-        expect(connection).toBeDefined()
       } catch (error) {
         console.error(`An error occurred while connecting using api key: ${error}`)
         debugger
@@ -142,7 +139,6 @@ it(
         }
       })
     })
-    expect(connection).toBeDefined()
   })
 
   it('should connect with insecure connection string', done => {

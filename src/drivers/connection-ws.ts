@@ -39,7 +39,7 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
 
         this.socket.on('disconnect', (reason) => {
           this.close()
-          callback?.call(this, new SQLiteCloudError('Disconnected', { errorCode: 'ERR_CONNECTION_DISCONNECTED', cause: reason }))
+          callback?.call(this, new SQLiteCloudError('Disconnected', { errorCode: 'ERR_CONNECTION_ENDED', cause: reason }))
         })
 
         this.socket.on('error', (error: Error) => {

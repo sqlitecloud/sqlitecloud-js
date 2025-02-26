@@ -6,7 +6,7 @@ import { Database } from "@sqlitecloud/drivers";
  */
 let database = null;
 
-export function getDbConnection() {
+export default function getDbConnection() {
     if (!database || !database.isConnected()) {
         database = new Database(DATABASE_URL);
     }
