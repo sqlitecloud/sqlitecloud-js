@@ -2,10 +2,14 @@
 # https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
 version: 2
 updates:
-  - package-ecosystem: "npm"
-    directory: "/" # Location of package.json
+  - package-ecosystem: 'npm'
+    directory: '/' # Location of package.json
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
+    groups:
+      all-dependencies:
+        patterns:
+          - '*'
     # Always increase the version requirement
     # to match the new version.
     versioning-strategy: increase

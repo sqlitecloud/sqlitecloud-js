@@ -3,6 +3,10 @@ on:
   push:
   workflow_dispatch:
 
+concurrency:
+  group: all
+  cancel-in-progress: true
+
 env:
   DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
 
@@ -81,7 +85,7 @@ jobs:
           node_test=$(curl localhost:3000)
           if [[ $node_test == *"{\"tracks\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
             echo "✅ node with-javascript-express test passed"
-            npx kill-port 3000
+            npx kill-port 3000 -y
             exit 0
           fi
           echo "❌ node with-javascript-express test failed"
@@ -98,7 +102,7 @@ jobs:
           bun_test=$(curl localhost:3000)
           if [[ $bun_test == *"{\"tracks\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
             echo "✅ bun with-javascript-express test passed"
-            npx kill-port 3000
+            npx kill-port 3000 -y
             exit 0
           fi
           echo "❌ bun with-javascript-express test failed"
@@ -112,7 +116,7 @@ jobs:
           deno_test=$(curl localhost:3000)
           if [[ $deno_test == *"{\"tracks\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
             echo "✅ deno with-javascript-express test passed"
-            npx kill-port 3000
+            npx kill-port 3000 -y
             exit 0
           fi
           echo "❌ deno with-javascript-express test failed"
@@ -231,7 +235,7 @@ jobs:
 
           if [[ $node_test == *"next.js json route"* && $node_test2 == *"{\"data\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
             echo "✅ node with-typescript-nextjs test passed"
-            npx kill-port 3003
+            npx kill-port 3003 -y
             exit 0
           fi
           echo "❌ node with-typescript-nextjs test failed"
@@ -249,7 +253,7 @@ jobs:
           bun_test2=$(curl localhost:3003/api/hello)
           if [[ $bun_test == *"next.js json route"* && $bun_test2 == *"{\"data\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
             echo "✅ bun with-typescript-nextjs test passed"
-            npx kill-port 3003
+            npx kill-port 3003 -y
             exit 0
           fi
           echo "❌ bun with-typescript-nextjs test failed"
@@ -264,7 +268,7 @@ jobs:
           deno_test=$(curl localhost:3003/api/hello)
           if [[ $deno_test == *"{\"data\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
             echo "✅ deno with-typescript-nextjs test passed"
-            npx kill-port 3003
+            npx kill-port 3003 -y
             exit 0
           fi
           echo "❌ deno with-typescript-nextjs test failed"
