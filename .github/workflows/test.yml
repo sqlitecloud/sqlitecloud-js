@@ -275,6 +275,7 @@ jobs:
           exit 1
 
       - name: remove with-typescript-nextjs
+        if: matrix.os != 'ubuntu-latest' #rm: cannot remove examples/with-typescript-nextjs: Directory not empty
         run: rm -rf examples/with-typescript-nextjs
 
       - name: node with-javascript-vite
