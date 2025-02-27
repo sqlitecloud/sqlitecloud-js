@@ -2,21 +2,21 @@
  * connection-tls.ts - connection via tls socket and sqlitecloud protocol
  */
 
-import { type SQLiteCloudConfig, SQLiteCloudError, type ErrorCallback, type ResultsCallback, SQLiteCloudCommand } from './types'
 import { SQLiteCloudConnection } from './connection'
-import { getInitializationCommands } from './utilities'
 import {
+  bufferEndsWith,
+  CMD_COMPRESSED,
+  CMD_ROWSET_CHUNK,
+  decompressBuffer,
   formatCommand,
   hasCommandLength,
   parseCommandLength,
-  popData,
-  decompressBuffer,
   parseRowsetChunks,
-  CMD_COMPRESSED,
-  CMD_ROWSET_CHUNK,
-  bufferEndsWith,
+  popData,
   ROWSET_CHUNKS_END
 } from './protocol'
+import { type ErrorCallback, type ResultsCallback, SQLiteCloudCommand, type SQLiteCloudConfig, SQLiteCloudError } from './types'
+import { getInitializationCommands } from './utilities'
 
 // explicitly importing buffer library to allow cross-platform support by replacing it
 import { Buffer } from 'buffer'
@@ -77,6 +77,10 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
         callback?.call(this, error)
       })
     })
+    this.socket.setKeepAlive(true)
+    // disable Nagle algorithm because we want our writes to be sent ASAP
+    // https://brooker.co.za/blog/2024/05/09/nagle.html
+    this.socket.setNoDelay(true)
 
     this.socket.on('data', data => {
       this.processCommandsData(data)
@@ -95,6 +99,11 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
     this.socket.on('close', () => {
       this.close()
       this.processCommandsFinish(new SQLiteCloudError('Connection closed', { errorCode: 'ERR_CONNECTION_CLOSED' }))
+    })
+
+    this.socket.on('timeout', () => {
+      this.close()
+      this.processCommandsFinish(new SQLiteCloudError('Connection ened due to timeout', { errorCode: 'ERR_CONNECTION_TIMEOUT' }))
     })
 
     return this

@@ -53,8 +53,22 @@ describe('connect', () => {
   })
 */
 
+it(
+  'should connect with config object string',
+  done => {
+    const configObj = getChinookConfig()
+    const connection = new SQLiteCloudTlsConnection(configObj, error => {
+      expect(error).toBeNull()
+      expect(connection.connected).toBe(true)
+      connection.close()
+      done()
+    })
+  },
+  LONG_TIMEOUT
+)
+
   it(
-    'should connect with config object string',
+    'should connect with config object string and test command',
     done => {
       const configObj = getChinookConfig()
       const connection = new SQLiteCloudTlsConnection(configObj, error => {
@@ -67,7 +81,6 @@ describe('connect', () => {
           done()
         })
       })
-      expect(connection).toBeDefined()
     },
     LONG_TIMEOUT
   )
@@ -88,7 +101,6 @@ describe('connect', () => {
             done()
           })
         })
-        expect(connection).toBeDefined()
       } catch (error) {
         console.error(`An error occurred while connecting using api key: ${error}`)
         debugger
@@ -127,7 +139,6 @@ describe('connect', () => {
         }
       })
     })
-    expect(connection).toBeDefined()
   })
 
   it('should connect with insecure connection string', done => {

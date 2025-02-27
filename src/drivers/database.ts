@@ -10,10 +10,11 @@
 import EventEmitter from 'eventemitter3'
 import { SQLiteCloudConnection } from './connection'
 import { PubSub } from './pubsub'
+import { OperationsQueue } from './queue'
 import { SQLiteCloudRowset } from './rowset'
 import { Statement } from './statement'
 import {
-  ErrorCallback,
+  ErrorCallback as ConnectionCallback,
   ResultsCallback,
   RowCallback,
   RowCountCallback,
@@ -36,11 +37,12 @@ import { isBrowser, popCallback } from './utilities'
  */
 export class Database extends EventEmitter {
   /** Create and initialize a database from a full configuration object, or connection string */
-  constructor(config: SQLiteCloudConfig | string, callback?: ErrorCallback)
-  constructor(config: SQLiteCloudConfig | string, mode?: number, callback?: ErrorCallback)
-  constructor(config: SQLiteCloudConfig | string, mode?: number | ErrorCallback, callback?: ErrorCallback) {
+  constructor(config: SQLiteCloudConfig | string, callback?: ConnectionCallback)
+  constructor(config: SQLiteCloudConfig | string, mode?: number, callback?: ConnectionCallback)
+  constructor(config: SQLiteCloudConfig | string, mode?: number | ConnectionCallback, callback?: ConnectionCallback) {
     super()
     this.config = typeof config === 'string' ? { connectionstring: config } : config
+    this.connection = null
 
     // mode is optional and so is callback
     // https://github.com/TryGhost/node-sqlite3/wiki/API#new-sqlite3databasefilename--mode--callback
@@ -51,8 +53,8 @@ export class Database extends EventEmitter {
 
     // mode is ignored for now
 
-    // opens first connection to the database automatically
-    this.getConnection((error, _connection) => {
+    // opens the connection to the database automatically
+    this.createConnection(error => {
       if (callback) {
         callback.call(this, error)
       }
@@ -62,70 +64,84 @@ export class Database extends EventEmitter {
   /** Configuration used to open database connections */
   private config: SQLiteCloudConfig
 
-  /** Database connections */
-  private connections: SQLiteCloudConnection[] = []
+  /** Database connection */
+  private connection: SQLiteCloudConnection | null
+
+  /** Used to syncronize opening of connection and commands */
+  private operations = new OperationsQueue()
 
   //
   // private methods
   //
 
   /** Returns first available connection from connection pool */
-  private getConnection(callback: ResultsCallback<SQLiteCloudConnection>) {
-    // TODO sqlitecloud-js / implement database connection pool #10
-    if (this.connections?.length > 0) {
-      callback?.call(this, null, this.connections[0])
-    } else {
-      // connect using websocket if tls is not supported or if explicitly requested
-      const useWebsocket = isBrowser || this.config?.usewebsocket || this.config?.gatewayurl
-      if (useWebsocket) {
-        // socket.io transport works in both node.js and browser environments and connects via SQLite Cloud Gateway
+  private createConnection(callback: ConnectionCallback) {
+    // connect using websocket if tls is not supported or if explicitly requested
+    const useWebsocket = isBrowser || this.config?.usewebsocket || this.config?.gatewayurl
+    if (useWebsocket) {
+      // socket.io transport works in both node.js and browser environments and connects via SQLite Cloud Gateway
+      this.operations.enqueue(done => {
         import('./connection-ws')
           .then(module => {
-            this.connections.push(
-              new module.default(this.config, error => {
-                if (error) {
-                  this.handleError(this.connections[0], error, callback)
-                } else {
-                  console.assert
-                  callback?.call(this, null, this.connections[0])
-                  this.emitEvent('open')
-                }
-              })
-            )
+            this.connection = new module.default(this.config, (error: Error | null) => {
+              if (error) {
+                this.handleError(error, callback)
+              } else {
+                callback?.call(this, null)
+                this.emitEvent('open')
+              }
+
+              done(error)
+            })
           })
           .catch(error => {
-            this.handleError(null, error, callback)
+            this.handleError(error, callback)
+            done(error)
           })
-      } else {
-        // tls sockets work only in node.js environments
+      })
+    } else {
+      this.operations.enqueue(done => {
         import('./connection-tls')
           .then(module => {
-            this.connections.push(
-              new module.default(this.config, error => {
-                if (error) {
-                  this.handleError(this.connections[0], error, callback)
-                } else {
-                  console.assert
-                  callback?.call(this, null, this.connections[0])
-                  this.emitEvent('open')
-                }
-              })
-            )
+            this.connection = new module.default(this.config, (error: Error | null) => {
+              if (error) {
+                this.handleError(error, callback)
+              } else {
+                callback?.call(this, null)
+                this.emitEvent('open')
+              }
+
+              done(error)
+            })
           })
           .catch(error => {
-            this.handleError(null, error, callback)
+            this.handleError(error, callback)
+            done(error)
           })
-      }
+      })
     }
   }
 
+  private enqueueCommand(command: string | SQLiteCloudCommand, callback?: ResultsCallback): void {
+    this.operations.enqueue(done => {
+      let error: Error | null = null
+
+      // we don't wont to silently open a new connection after a disconnession
+      if (this.connection && this.connection.connected) {
+        this.connection.sendCommands(command, callback)
+      } else {
+        error = new SQLiteCloudError('Connection unavailable. Maybe it got disconnected?', { errorCode: 'ERR_CONNECTION_NOT_ESTABLISHED' })
+        this.handleError(error, callback)
+      }
+
+      done(error)
+    })
+  }
+
   /** Handles an error by closing the connection, calling the callback and/or emitting an error event */
-  private handleError(connection: SQLiteCloudConnection | null, error: Error, callback?: ErrorCallback): void {
+  private handleError(error: Error, callback?: ConnectionCallback): void {
     // an errored connection is thrown out
-    if (connection) {
-      this.connections = this.connections.filter(c => c !== connection)
-      connection.close()
-    }
+    this.connection?.close()
 
     if (callback) {
       callback.call(this, error)
@@ -186,9 +202,8 @@ export class Database extends EventEmitter {
   /** Enable verbose mode */
   public verbose(): this {
     this.config.verbose = true
-    for (const connection of this.connections) {
-      connection.verbose()
-    }
+    this.connection?.verbose()
+
     return this
   }
 
@@ -210,19 +225,13 @@ export class Database extends EventEmitter {
   public run(sql: string, ...params: any[]): this {
     const { args, callback } = popCallback<ResultsCallback>(params)
     const command: SQLiteCloudCommand = { query: sql, parameters: args }
-    this.getConnection((error, connection) => {
-      if (error || !connection) {
-        this.handleError(null, error as Error, callback)
+    this.enqueueCommand(command, (error, results) => {
+      if (error) {
+        this.handleError(error, callback)
       } else {
-        connection.sendCommands(command, (error, results) => {
-          if (error) {
-            this.handleError(connection, error, callback)
-          } else {
-            // context may include id of last row inserted, total changes, etc...
-            const context = this.processContext(results)
-            callback?.call(context || this, null, context ? context : results)
-          }
-        })
+        // context may include id of last row inserted, total changes, etc...
+        const context = this.processContext(results)
+        callback?.call(context || this, null, context ? context : results)
       }
     })
     return this
@@ -243,21 +252,15 @@ export class Database extends EventEmitter {
   public get(sql: string, ...params: any[]): this {
     const { args, callback } = popCallback<RowCallback>(params)
     const command: SQLiteCloudCommand = { query: sql, parameters: args }
-    this.getConnection((error, connection) => {
-      if (error || !connection) {
-        this.handleError(null, error as Error, callback)
+    this.enqueueCommand(command, (error, results) => {
+      if (error) {
+        this.handleError(error, callback)
       } else {
-        connection.sendCommands(command, (error, results) => {
-          if (error) {
-            this.handleError(connection, error, callback)
-          } else {
-            if (results && results instanceof SQLiteCloudRowset && results.length > 0) {
-              callback?.call(this, null, results[0])
-            } else {
-              callback?.call(this, null)
-            }
-          }
-        })
+        if (results && results instanceof SQLiteCloudRowset && results.length > 0) {
+          callback?.call(this, null, results[0])
+        } else {
+          callback?.call(this, null)
+        }
       }
     })
     return this
@@ -281,21 +284,15 @@ export class Database extends EventEmitter {
   public all(sql: string, ...params: any[]): this {
     const { args, callback } = popCallback<RowsCallback>(params)
     const command: SQLiteCloudCommand = { query: sql, parameters: args }
-    this.getConnection((error, connection) => {
-      if (error || !connection) {
-        this.handleError(null, error as Error, callback)
+    this.enqueueCommand(command, (error, results) => {
+      if (error) {
+        this.handleError(error, callback)
       } else {
-        connection.sendCommands(command, (error, results) => {
-          if (error) {
-            this.handleError(connection, error, callback)
-          } else {
-            if (results && results instanceof SQLiteCloudRowset) {
-              callback?.call(this, null, results)
-            } else {
-              callback?.call(this, null)
-            }
-          }
-        })
+        if (results && results instanceof SQLiteCloudRowset) {
+          callback?.call(this, null, results)
+        } else {
+          callback?.call(this, null)
+        }
       }
     })
     return this
@@ -322,28 +319,22 @@ export class Database extends EventEmitter {
     const { args, callback, complete } = popCallback<RowCallback>(params)
 
     const command: SQLiteCloudCommand = { query: sql, parameters: args }
-    this.getConnection((error, connection) => {
-      if (error || !connection) {
-        this.handleError(null, error as Error, callback)
+    this.enqueueCommand(command, (error, rowset) => {
+      if (error) {
+        this.handleError(error, callback)
       } else {
-        connection.sendCommands(command, (error, rowset) => {
-          if (error) {
-            this.handleError(connection, error, callback)
-          } else {
-            if (rowset && rowset instanceof SQLiteCloudRowset) {
-              if (callback) {
-                for (const row of rowset) {
-                  callback.call(this, null, row)
-                }
-              }
-              if (complete) {
-                ;(complete as RowCountCallback).call(this, null, rowset.numberOfRows)
-              }
-            } else {
-              callback?.call(this, new SQLiteCloudError('Invalid rowset'))
+        if (rowset && rowset instanceof SQLiteCloudRowset) {
+          if (callback) {
+            for (const row of rowset) {
+              callback.call(this, null, row)
             }
           }
-        })
+          if (complete) {
+            ;(complete as RowCountCallback).call(this, null, rowset.numberOfRows)
+          }
+        } else {
+          callback?.call(this, new SQLiteCloudError('Invalid rowset'))
+        }
       }
     })
     return this
@@ -370,19 +361,13 @@ export class Database extends EventEmitter {
    * object. When no callback is provided and an error occurs, an error event
    * will be emitted on the database object.
    */
-  public exec(sql: string, callback?: ErrorCallback): this {
-    this.getConnection((error, connection) => {
-      if (error || !connection) {
-        this.handleError(null, error as Error, callback)
+  public exec(sql: string, callback?: ConnectionCallback): this {
+    this.enqueueCommand(sql, (error, results) => {
+      if (error) {
+        this.handleError(error, callback)
       } else {
-        connection.sendCommands(sql, (error, results) => {
-          if (error) {
-            this.handleError(connection, error, callback)
-          } else {
-            const context = this.processContext(results)
-            callback?.call(context ? context : this, null)
-          }
-        })
+        const context = this.processContext(results)
+        callback?.call(context ? context : this, null)
       }
     })
     return this
@@ -396,12 +381,10 @@ export class Database extends EventEmitter {
    * will be emitted on the database object. If closing succeeded, a close event with no
    * parameters is emitted, regardless of whether a callback was provided or not.
    */
-  public close(callback?: ErrorCallback): void {
-    if (this.connections?.length > 0) {
-      for (const connection of this.connections) {
-        connection.close()
-      }
-    }
+  public close(callback?: ConnectionCallback): void {
+    this.operations.clear()
+    this.connection?.close()
+
     callback?.call(this, null)
     this.emitEvent('close')
   }
@@ -415,7 +398,7 @@ export class Database extends EventEmitter {
    * and an error occurred, an error event with the error object as the only parameter
    * will be emitted on the database object.
    */
-  public loadExtension(_path: string, callback?: ErrorCallback): this {
+  public loadExtension(_path: string, callback?: ConnectionCallback): this {
     // TODO sqlitecloud-js / implement database loadExtension #17
     if (callback) {
       callback.call(this, new Error('Database.loadExtension - Not implemented'))
@@ -470,19 +453,13 @@ export class Database extends EventEmitter {
     }
 
     return new Promise((resolve, reject) => {
-      this.getConnection((error, connection) => {
-        if (error || !connection) {
+      this.enqueueCommand(commands, (error, results) => {
+        if (error) {
           reject(error)
         } else {
-          connection.sendCommands(commands, (error, results) => {
-            if (error) {
-              reject(error)
-            } else {
-              // metadata for operations like insert, update, delete?
-              const context = this.processContext(results)
-              resolve(context ? context : results)
-            }
-          })
+          // metadata for operations like insert, update, delete?
+          const context = this.processContext(results)
+          resolve(context ? context : results)
         }
       })
     })
@@ -492,7 +469,7 @@ export class Database extends EventEmitter {
    * Returns true if the database connection is open.
    */
   public isConnected(): boolean {
-    return this.connections?.length > 0 && this.connections[0].connected
+    return this.connection != null && this.connection.connected
   }
 
   /**
@@ -505,11 +482,17 @@ export class Database extends EventEmitter {
    */
   public async getPubSub(): Promise<PubSub> {
     return new Promise((resolve, reject) => {
-      this.getConnection((error, connection) => {
-        if (error || !connection) {
-          reject(error)
-        } else {
-          resolve(new PubSub(connection))
+      this.operations.enqueue(done => {
+        let error = null
+        try {
+          if (!this.connection) {
+            error = new SQLiteCloudError('Connection not established', { errorCode: 'ERR_CONNECTION_NOT_ESTABLISHED' })
+            reject(error)
+          } else {
+            resolve(new PubSub(this.connection))
+          }
+        } finally {
+          done(error)
         }
       })
     })

@@ -40,9 +40,9 @@ describe('connection-ws', () => {
       let connection: SQLiteCloudWebsocketConnection | null = null
       connection = new SQLiteCloudWebsocketConnection(configObj, error => {
         expect(error).toBeNull()
+        connection?.close()
         done()
       })
-      connection?.close()
     })
 
     it('should not connect with incorrect credentials', done => {
@@ -55,8 +55,8 @@ describe('connection-ws', () => {
       const connection = new SQLiteCloudWebsocketConnection(configObj, error => {
         expect(error).toBeDefined()
         done()
+        connection?.close()
       })
-      connection?.close()
     })
     /* TODO RESTORE TEST
     it('should connect with connection string', done => {

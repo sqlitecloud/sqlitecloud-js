@@ -77,14 +77,14 @@ export class PubSub {
    * @param name Channel name
    */
   public async removeChannel(name: string): Promise<any> {
-    return this.connection.sql(`REMOVE CHANNEL ?;`, name)
+    return this.connection.sql('REMOVE CHANNEL ?;', name)
   }
 
   /**
    * Send a message to the channel.
    */
   public notifyChannel(channelName: string, message: string): Promise<any> {
-    return this.connection.sql`NOTIFY ${channelName} ${message};`
+    return this.connection.sql('NOTIFY ? ?;', channelName, message)
   }
 
   /**

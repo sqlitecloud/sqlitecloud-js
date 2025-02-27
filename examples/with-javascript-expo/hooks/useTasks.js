@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import db from "../db/dbConnection";
+import getDbConnection from "../db/dbConnection";
 
 const useTasks = (tag = null) => {
   const [taskList, setTaskList] = useState([]);
@@ -8,7 +8,7 @@ const useTasks = (tag = null) => {
     try {
       let result;
       if (tag) {
-        result = await db.sql(
+        result = await getDbConnection().sql(
           `
           SELECT tasks.*, tags.id AS tag_id, tags.name AS tag_name 
           FROM tasks 
@@ -19,11 +19,11 @@ const useTasks = (tag = null) => {
         );
         setTaskList(result);
       } else {
-        result = await db.sql`
+        result = await getDbConnection().sql(`
           SELECT tasks.*, tags.id AS tag_id, tags.name AS tag_name 
           FROM tasks 
           JOIN tasks_tags ON tasks.id = tasks_tags.task_id 
-          JOIN tags ON tags.id = tasks_tags.tag_id`;
+          JOIN tags ON tags.id = tasks_tags.tag_id`);
         setTaskList(result);
       }
     } catch (error) {
@@ -33,7 +33,7 @@ const useTasks = (tag = null) => {
 
   const updateTask = async (completedStatus, taskId) => {
     try {
-      await db.sql(
+      await getDbConnection().sql(
         "UPDATE tasks SET isCompleted=? WHERE id=? RETURNING *",
         completedStatus,
         taskId
@@ -47,7 +47,7 @@ const useTasks = (tag = null) => {
   const addTaskTag = async (newTask, tag) => {
     try {
       if (tag.id) {
-        const addNewTask = await db.sql(
+        const addNewTask = await getDbConnection().sql(
           "INSERT INTO tasks (title, isCompleted) VALUES (?, ?) RETURNING *",
           newTask.title,
           newTask.isCompleted
@@ -55,13 +55,13 @@ const useTasks = (tag = null) => {
         addNewTask[0].tag_id = tag.id;
         addNewTask[0].tag_name = tag.name;
         setTaskList([...taskList, addNewTask[0]]);
-        await db.sql(
+        await getDbConnection().sql(
           "INSERT INTO tasks_tags (task_id, tag_id) VALUES (?, ?)",
           addNewTask[0].id,
           tag.id
         );
       } else {
-        const addNewTaskNoTag = await db.sql(
+        const addNewTaskNoTag = await getDbConnection().sql(
           "INSERT INTO tasks (title, isCompleted) VALUES (?, ?) RETURNING *",
           newTask.title,
           newTask.isCompleted
@@ -75,8 +75,8 @@ const useTasks = (tag = null) => {
 
   const deleteTask = async (taskId) => {
     try {
-      await db.sql("DELETE FROM tasks_tags WHERE task_id=?", taskId);
-      const result = await db.sql("DELETE FROM tasks WHERE id=?", taskId);
+      await getDbConnection().sql("DELETE FROM tasks_tags WHERE task_id=?", taskId);
+      const result = await getDbConnection().sql("DELETE FROM tasks WHERE id=?", taskId);
       console.log(`Deleted ${result.totalChanges} task`);
       getTasks();
     } catch (error) {

@@ -13,7 +13,7 @@ async function selectTracks() {
   var database = new sqlitecloud.Database(DATABASE_URL)
 
   // run async query
-  var tracks = await database.sql`USE DATABASE chinook.sqlite; SELECT * FROM tracks LIMIT 20;`
+  var tracks = await database.sql('USE DATABASE chinook.sqlite; SELECT * FROM tracks LIMIT 20;')
   console.log(`selectTracks returned:`, tracks)
 
   // You can also use all the regular sqlite3 api with callbacks, see:

@@ -15,7 +15,7 @@ app.use(express.json())
 /* http://localhost:3001/ returns chinook tracks as json */
 app.get('/', async function (req, res, next) {
   var database = new sqlitecloud.Database(DATABASE_URL)
-  var tracks = await database.sql`USE DATABASE chinook.sqlite; SELECT * FROM tracks LIMIT 20;`
+  var tracks = await database.sql('USE DATABASE chinook.sqlite; SELECT * FROM tracks LIMIT 20;')
   res.send({ tracks })
 })
 
