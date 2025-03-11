@@ -14,9 +14,18 @@ app.use(express.json())
 
 /* http://localhost:3001/ returns chinook tracks as json */
 app.get('/', async function (req, res, next) {
-  var database = new sqlitecloud.Database(DATABASE_URL)
-  var tracks = await database.sql('USE DATABASE chinook.sqlite; SELECT * FROM tracks LIMIT 20;')
-  res.send({ tracks })
+  var database = null
+  try {
+    database = new sqlitecloud.Database(DATABASE_URL)
+    var tracks = await database.sql('USE DATABASE chinook.sqlite; SELECT * FROM tracks LIMIT 20;')
+    res.send({ tracks })
+  } catch (error) {
+    res.send({ error: error.message })
+  } finally {
+    if (database) {
+      database.close()
+    }
+  }
 })
 
 const port = process.env.PORT || 3000

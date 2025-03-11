@@ -1,30 +1,28 @@
 import { useEffect, useState } from "react";
 import { Database } from "@sqlitecloud/drivers";
 
-let db = null
-
-function getDatabase() {
-  if (!db || !db.isConnected()) {
-    db = new Database(import.meta.env.VITE_DATABASE_URL);
-  }
-
-  return db;
-}
-
 
 function App() {
   const [data, setData] = useState([]);
 
   const getAlbums = async () => {
-    const result = await getDatabase().sql(`
-      USE DATABASE chinook.sqlite; 
-      SELECT albums.AlbumId as id, albums.Title as title, artists.name as artist
-      FROM albums 
-      INNER JOIN artists 
-      WHERE artists.ArtistId = albums.ArtistId
-      LIMIT 20;
-    `);
-    setData(result);
+    let database = null;
+    try {
+      database = new Database(import.meta.env.VITE_DATABASE_URL)
+      const result = await database.sql(`
+        USE DATABASE chinook.sqlite; 
+        SELECT albums.AlbumId as id, albums.Title as title, artists.name as artist
+        FROM albums 
+        INNER JOIN artists 
+        WHERE artists.ArtistId = albums.ArtistId
+        LIMIT 20;
+      `);
+      setData(result);
+    } catch (error) {
+      console.error("Error getting albums", error);
+    } finally {
+      database.close();
+    }
   };
 
   useEffect(() => {

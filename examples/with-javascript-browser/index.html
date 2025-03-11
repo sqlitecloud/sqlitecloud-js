@@ -44,33 +44,28 @@
             messages.prepend(item);
         };
 
-        // socket is connected the first time the sql button is clicked and stays connected until the page is refreshed
-        var database = null;
-
         sendButton.addEventListener('click', () => {
-            if (!database || !database.isConnected()) {
-                // Get the input element by ID
-                var connectionStringinputElement = document.getElementById('connectionStringInput');
-                var connectionstring = connectionStringinputElement.value;
-                // connect via websocket to the gateway on the same server
-                const connectionConfig = {
-                    gatewayUrl: `${window.location.protocol === 'https:' ? 'wss' : 'ws'
-                        }://${window.location.hostname}:4000`,
-                    connectionstring: connectionstring,
-                };
-                database = new window.sqlitecloud.Database(
-                    connectionConfig,
-                    (error) => {
-                        if (error) {
-                            database = null;
-                            appendMessage(`connection error:  ${error}`);
-                        } else {
-                            console.log('connected');
-                            appendMessage(`connected`);
-                        }
+            // Get the input element by ID
+            var connectionStringinputElement = document.getElementById('connectionStringInput');
+            var connectionstring = connectionStringinputElement.value;
+            // connect via websocket to the gateway on the same server
+            const connectionConfig = {
+                gatewayUrl: `${window.location.protocol === 'https:' ? 'wss' : 'ws'
+                    }://${window.location.hostname}:4000`,
+                connectionstring: connectionstring,
+            };
+            var database = new window.sqlitecloud.Database(
+                connectionConfig,
+                (error) => {
+                    if (error) {
+                        database = null;
+                        appendMessage(`connection error:  ${error}`);
+                    } else {
+                        console.log('connected');
+                        appendMessage(`connected`);
                     }
-                );
-            }
+                }
+            );
 
             var messageInputElement = document.getElementById('messageInput');
             const sql = messageInputElement.value;

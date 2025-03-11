@@ -1,14 +1,7 @@
 import { DATABASE_URL } from "@env";
 import { Database } from "@sqlitecloud/drivers";
 
-/**
- * @type {Database}
- */
-let database = null;
 
 export default function getDbConnection() {
-    if (!database || !database.isConnected()) {
-        database = new Database(DATABASE_URL);
-    }
-    return database;
+    return new Database(DATABASE_URL);
 }

@@ -12,11 +12,18 @@ console.assert(DATABASE_URL, 'Please configure a .env file with DATABASE_URL poi
 // route for /api/hello
 export async function GET(request: NextRequest) {
   // connect to database using connection string provided in https://dashboard.sqlitecloud.io/
-  const database = new Database(DATABASE_URL)
+  let database 
+  try {
+    database = new Database(DATABASE_URL)
 
-  // retrieve rows from chinook database using a plain SQL query
-  const tracks = await database.sql('USE DATABASE chinook.sqlite; SELECT * FROM tracks LIMIT 20;')
+    // retrieve rows from chinook database using a plain SQL query
+    const tracks = await database.sql('USE DATABASE chinook.sqlite; SELECT * FROM tracks LIMIT 20;')
 
-  // return as json response
-  return NextResponse.json<{ data: any }>({ data: tracks })
+    // return as json response
+    return NextResponse.json<{ data: any }>({ data: tracks })
+  } catch (error) {
+    return NextResponse.json({ error }, { status: 500 })
+  } finally {
+    database?.close()
+  }
 }
