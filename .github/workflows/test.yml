@@ -39,7 +39,7 @@ jobs:
       - name: Upload Code Coverage
         uses: codecov/codecov-action@v4
         env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   examples-test:
     needs: code-test
@@ -129,17 +129,7 @@ jobs:
         working-directory: examples/with-plain-javascript
         run: |
           npm i
-          echo "Dependencies installed"
-          app_log=$(mktemp)
-          npm start > "$app_log" 2>&1 &
-
-          app_pid=$!
-          echo "App started"
-          sleep 3
-          kill "$app_pid" 2>/dev/null
-
-          node_test=$(<"$app_log")
-          rm "$app_log"
+          node_test=$(npm start)
 
           if [[ "$node_test" == *"Composer: 'Angus Young, Malcolm Young, Brian Johnson',"* ]]; then
             echo "✅ node with-plain-javascript test passed"
@@ -154,15 +144,8 @@ jobs:
           if [ "$RUNNER_OS" != "Windows" ]; then
             bun i #re-installing dependencies in windows with bash causes a panic
           fi
-          app_log=$(mktemp)
-          bun start > "$app_log" 2>&1 &
-
-          app_pid=$!
-          sleep 3
-          kill "$app_pid" 2>/dev/null
-
-          bun_test=$(<"$app_log")
-          rm "$app_log"
+          
+          bun_test=$(bun start)
 
           if [[ "$bun_test" == *"Composer: 'Angus Young, Malcolm Young, Brian Johnson',"* ]]; then
             echo "✅ bun with-plain-javascript test passed"
@@ -174,15 +157,7 @@ jobs:
       - name: deno with-plain-javascript
         working-directory: examples/with-plain-javascript
         run: |
-          app_log=$(mktemp)
-          deno run start > "$app_log" 2>&1 &
-
-          app_pid=$!
-          sleep 3
-          kill "$app_pid" 2>/dev/null
-
-          deno_test=$(<"$app_log")
-          rm "$app_log"
+          deno_test=$(deno run start)
 
           if [[ "$deno_test" == *"Composer: 'Angus Young, Malcolm Young, Brian Johnson',"* ]]; then
             echo "✅ deno with-plain-javascript test passed"
@@ -491,8 +466,8 @@ jobs:
           xcode-version: 14.3
 
       - name: build driver
-        # distutils is required for the driver build and it was removed since python 3.13
-        run: python3 -m pip install setuptools && npm i && npm run build && echo "DRIVER=$(npm pack --json | jq '.[0].filename')" >> $GITHUB_ENV
+        # distutils is required for the driver build (dep. `node-gyp`) and it was removed since python 3.13
+        run: brew install python-setuptools && npm i && npm run build && echo "DRIVER=$(npm pack --json | jq '.[0].filename')" >> $GITHUB_ENV
 
       - name: install driver
         working-directory: examples/with-javascript-expo
