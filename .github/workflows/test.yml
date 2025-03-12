@@ -123,7 +123,7 @@ jobs:
           exit 1
 
       - name: remove with-javascript-express
-        run: rm -rf examples/with-javascript-express
+        run: rm -rf examples/with-javascript-express/*
 
       - name: node with-plain-javascript
         working-directory: examples/with-plain-javascript
@@ -168,7 +168,7 @@ jobs:
 
       - name: remove with-plain-javascript
         if: matrix.os != 'windows-latest' #kill command doesn not work on windows with bash, we can skip this step
-        run: rm -rf examples/with-plain-javascript
+        run: rm -rf examples/with-plain-javascript/*
 
       - name: node with-typescript-knex
         working-directory: examples/with-typescript-knex
@@ -199,7 +199,7 @@ jobs:
           exit 1
 
       - name: remove with-typescript-knex
-        run: rm -rf examples/with-typescript-knex
+        run: rm -rf examples/with-typescript-knex/*
 
       - name: node with-typescript-nextjs
         working-directory: examples/with-typescript-nextjs
@@ -253,7 +253,7 @@ jobs:
 
       - name: remove with-typescript-nextjs
         if: matrix.os != 'ubuntu-latest' #rm: cannot remove examples/with-typescript-nextjs: Directory not empty
-        run: rm -rf examples/with-typescript-nextjs
+        run: rm -rf examples/with-typescript-nextjs/*
 
       - name: node with-javascript-vite
         if: matrix.os != 'LinuxARM64'
@@ -282,7 +282,7 @@ jobs:
           PW_DISABLE_TS_ESM: true
 
       - name: remove with-javascript-vite
-        run: rm -rf examples/with-javascript-vite
+        run: rm -rf examples/with-javascript-vite/*
 
       - name: node with-javascript-browser
         if: matrix.os != 'LinuxARM64'
@@ -303,7 +303,7 @@ jobs:
           command: cd examples/with-javascript-browser && deno --allow-all test.cjs
 
       - name: remove with-javascript-browser
-        run: rm -rf examples/with-javascript-browser
+        run: rm -rf examples/with-javascript-browser/*
 
   rn-ios-test:
     needs: code-test
