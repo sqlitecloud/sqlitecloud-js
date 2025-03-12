@@ -57,7 +57,7 @@ describe('parseconnectionstring', () => {
     expect(config4).toEqual({
       host: 'host',
       apikey: 'yyy',
-      maxrows: '42' // only parsing here, validation is later in validateConfiguration
+      maxrows: 42 // only parsing here, validation is later in validateConfiguration
     })
   })
 
