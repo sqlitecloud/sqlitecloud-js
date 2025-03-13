@@ -29,11 +29,15 @@ export default AddTaskModal = ({
   };
 
   const getTags = async () => {
+    let db = null;
     try {
-      const tags = await getDbConnection().sql("SELECT * FROM tags");
+      db = getDbConnection();
+      const tags = await db.sql("SELECT * FROM tags");
       setTagsList(tags);
     } catch (error) {
       console.error("Error getting tags", error);
+    } finally {
+      db?.close();
     }
   };
 
