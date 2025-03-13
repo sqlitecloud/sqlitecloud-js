@@ -57,7 +57,7 @@
   "devDependencies": {
     "@types/jest": "^29.5.14",
     "@types/lz4": "^0.6.4",
-    "@types/node": "^22.13.8",
+    "@types/node": "^22.13.10",
     "@types/whatwg-url": "^13.0.0",
     "dotenv": "^16.4.7",
     "dotenv-cli": "^8.0.0",
