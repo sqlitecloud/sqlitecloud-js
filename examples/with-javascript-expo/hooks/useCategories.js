@@ -7,6 +7,7 @@ const useCategories = () => {
   const getCategories = async () => {
     let db = null;
     try {
+      db = getDbConnection();
       const tags = await db.sql('SELECT * FROM tags')
       const filteredTags = tags.filter(tag => {
         return tag['name'] !== 'Work' && tag['name'] !== 'Personal'
