@@ -57,7 +57,7 @@ describe('parseconnectionstring', () => {
     expect(config4).toEqual({
       host: 'host',
       apikey: 'yyy',
-      maxrows: '42' // only parsing here, validation is later in validateConfiguration
+      maxrows: 42 // only parsing here, validation is later in validateConfiguration
     })
   })
 
@@ -137,6 +137,30 @@ describe('parseconnectionstring', () => {
       port: 1234,
       database: 'database'
     })
+  })
+
+  it('should parse connection with insecure as bool or number', () => {
+    let connectionstring = `sqlitecloud://host:1234/database?insecure=true`
+    let config = parseconnectionstring(connectionstring)
+
+    expect(config.insecure).toBe(true)
+
+    connectionstring = `sqlitecloud://host:1234/database?insecure=1`
+    config = parseconnectionstring(connectionstring)
+
+    expect(config.insecure).toBe(true)
+
+    connectionstring = `sqlitecloud://host:1234/database?insecure=0`
+    config = parseconnectionstring(connectionstring)
+
+    expect(config.insecure).toBe(false)
+  })
+
+  it('should parse connection with timeout as number', () => {
+    let connectionstring = `sqlitecloud://host:1234/database?timeout=123`
+    let config = parseconnectionstring(connectionstring)
+
+    expect(config.timeout).toBe(123)
   })
 })
 
