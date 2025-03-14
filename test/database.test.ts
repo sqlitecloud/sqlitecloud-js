@@ -246,6 +246,33 @@ describe('Database.get', () => {
       })
     })
   })
+
+  it('close() is executed after the previous commands', done => {
+    // the database enqueue the close command
+    const chinook = getChinookDatabase()
+    chinook.get('SELECT * FROM tracks', (err: Error, row?: SQLiteCloudRow) => {
+      expect(err).toBeNull()
+      expect(row).toBeDefined()
+      expect(row).toMatchObject({
+        AlbumId: 1,
+        Bytes: 11170334,
+        Composer: 'Angus Young, Malcolm Young, Brian Johnson',
+        GenreId: 1,
+        MediaTypeId: 1,
+        Milliseconds: 343719,
+        Name: 'For Those About To Rock (We Salute You)',
+        TrackId: 1,
+        UnitPrice: 0.99
+      })
+    })
+
+    // call close() right after the execution 
+    // of the query not in its callback
+    chinook.close(error => {
+      expect(error).toBeNull()
+      done()
+    })
+  })
 })
 
 describe('Database.each', () => {

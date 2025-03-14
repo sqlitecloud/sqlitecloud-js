@@ -2,19 +2,17 @@
  * connection-ws.test.ts - test connection via socket.io based gateway
  */
 
-import { SQLiteCloudError } from '../src/index'
 import { SQLiteCloudConnection } from '../src/drivers/connection'
 import { SQLiteCloudWebsocketConnection } from '../src/drivers/connection-ws'
+import { SQLiteCloudCommand } from '../src/drivers/types'
+import { SQLiteCloudError } from '../src/index'
 import {
-  //
-  CHINOOK_DATABASE_URL,
-  LONG_TIMEOUT,
+  EXPECT_SPEED_MS,
   getChinookConfig,
   getChinookWebsocketConnection,
-  WARN_SPEED_MS,
-  EXPECT_SPEED_MS
+  LONG_TIMEOUT,
+  WARN_SPEED_MS
 } from './shared'
-import { SQLiteCloudCommand } from '../src/drivers/types'
 
 describe('connection-ws', () => {
   let chinook: SQLiteCloudConnection
