@@ -96,6 +96,7 @@ export class Database extends EventEmitter {
           })
           .catch(error => {
             this.handleError(error, callback)
+            this.close()
             done(error)
           })
       })
@@ -116,6 +117,7 @@ export class Database extends EventEmitter {
           })
           .catch(error => {
             this.handleError(error, callback)
+            this.close()
             done(error)
           })
       })
@@ -128,21 +130,20 @@ export class Database extends EventEmitter {
 
       // we don't wont to silently open a new connection after a disconnession
       if (this.connection && this.connection.connected) {
-        this.connection.sendCommands(command, callback)
+        this.connection.sendCommands(command, (error, results) => {
+          callback?.call(this, error, results)
+          done(error)
+        })
       } else {
         error = new SQLiteCloudError('Connection unavailable. Maybe it got disconnected?', { errorCode: 'ERR_CONNECTION_NOT_ESTABLISHED' })
-        this.handleError(error, callback)
+        callback?.call(this, error, null)
+        done(error)
       }
-
-      done(error)
     })
   }
 
   /** Handles an error by closing the connection, calling the callback and/or emitting an error event */
   private handleError(error: Error, callback?: ConnectionCallback): void {
-    // an errored connection is thrown out
-    this.connection?.close()
-
     if (callback) {
       callback.call(this, error)
     } else {
@@ -382,11 +383,15 @@ export class Database extends EventEmitter {
    * parameters is emitted, regardless of whether a callback was provided or not.
    */
   public close(callback?: ConnectionCallback): void {
-    this.operations.clear()
-    this.connection?.close()
+    this.operations.enqueue(done => {
+      this.connection?.close()
+  
+      callback?.call(this, null)
+      this.emitEvent('close')
 
-    callback?.call(this, null)
-    this.emitEvent('close')
+      this.operations.clear()
+      done(null)
+    })
   }
 
   /**
