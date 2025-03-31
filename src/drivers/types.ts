@@ -26,6 +26,8 @@ export interface SQLiteCloudConfig {
   password_hashed?: boolean
   /** API key can be provided instead of username and password */
   apikey?: string
+  /** Access Token provided in place of API Key or username/password */
+  token?: string
 
   /** Host name is required unless connectionstring is provided, eg: xxx.sqlitecloud.io */
   host?: string

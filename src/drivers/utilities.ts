@@ -2,12 +2,10 @@
 // utilities.ts - utility methods to manipulate SQL statements
 //
 
-import { SQLiteCloudConfig, SQLiteCloudError, SQLiteCloudDataTypes, DEFAULT_PORT, DEFAULT_TIMEOUT } from './types'
-import { SQLiteCloudArrayType } from './types'
+import { DEFAULT_PORT, DEFAULT_TIMEOUT, SQLiteCloudArrayType, SQLiteCloudConfig, SQLiteCloudDataTypes, SQLiteCloudError } from './types'
 
 // explicitly importing these libraries to allow cross-platform support by replacing them
 import { URL } from 'whatwg-url'
-import { Buffer } from 'buffer'
 
 //
 // determining running environment, thanks to browser-or-node
@@ -44,6 +42,7 @@ export function getInitializationCommands(config: SQLiteCloudConfig): string {
   // then we bring back linearizability unless specified otherwise
   let commands = 'SET CLIENT KEY NONLINEARIZABLE TO 1; '
 
+  // TODO: include authentication via token
   // first user authentication, then all other commands
   if (config.apikey) {
     commands += `AUTH APIKEY ${config.apikey}; `
@@ -177,16 +176,19 @@ export function validateConfiguration(config: SQLiteCloudConfig): SQLiteCloudCon
   config.non_linearizable = parseBoolean(config.non_linearizable)
   config.insecure = parseBoolean(config.insecure)
 
-  const hasCredentials = (config.username && config.password) || config.apikey
+  const hasCredentials = (config.username && config.password) || config.apikey || config.token
   if (!config.host || !hasCredentials) {
     console.error('SQLiteCloudConnection.validateConfiguration - missing arguments', config)
-    throw new SQLiteCloudError('The user, password and host arguments or the ?apikey= must be specified.', { errorCode: 'ERR_MISSING_ARGS' })
+    throw new SQLiteCloudError('The user, password and host arguments, the ?apikey= or the ?token= must be specified.', { errorCode: 'ERR_MISSING_ARGS' })
   }
 
   if (!config.connectionstring) {
     // build connection string from configuration, values are already validated
+    config.connectionstring = `sqlitecloud://${config.host}:${config.port}/${config.database || ''}`
     if (config.apikey) {
-      config.connectionstring = `sqlitecloud://${config.host}:${config.port}/${config.database || ''}?apikey=${config.apikey}`
+      config.connectionstring += `?apikey=${config.apikey}`
+    } else if (config.token) {
+      config.connectionstring += `?token=${config.token}`
     } else {
       config.connectionstring = `sqlitecloud://${encodeURIComponent(config.username || '')}:${encodeURIComponent(config.password || '')}@${config.host}:${
         config.port
@@ -215,7 +217,7 @@ export function parseconnectionstring(connectionstring: string): SQLiteCloudConf
     // all lowecase options
     const options: { [key: string]: string } = {}
     url.searchParams.forEach((value, key) => {
-      options[key.toLowerCase().replace(/-/g, '_')] = value
+      options[key.toLowerCase().replace(/-/g, '_')] = value.trim()
     })
 
     const config: SQLiteCloudConfig = {
@@ -243,6 +245,10 @@ export function parseconnectionstring(connectionstring: string): SQLiteCloudConf
 
     // either you use an apikey or username and password
     if (config.apikey) {
+      if (config.token) {
+        console.error('SQLiteCloudConnection.parseconnectionstring - apikey and token cannot be both specified')
+        throw new SQLiteCloudError('apikey and token cannot be both specified')
+      }
       if (config.username || config.password) {
         console.warn('SQLiteCloudConnection.parseconnectionstring - apikey and username/password are both specified, using apikey')
       }
@@ -257,7 +263,7 @@ export function parseconnectionstring(connectionstring: string): SQLiteCloudConf
 
     return config
   } catch (error) {
-    throw new SQLiteCloudError(`Invalid connection string: ${connectionstring}`)
+    throw new SQLiteCloudError(`Invalid connection string: ${connectionstring} - error: ${error}`)
   }
 }
 
