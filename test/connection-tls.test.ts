@@ -174,7 +174,7 @@ it(
         expect(error).toBeDefined()
         expect(error).toBeInstanceOf(SQLiteCloudError)
         const sqliteCloudError = error as SQLiteCloudError
-        expect(sqliteCloudError.message).toBe('The user, password and host arguments or the ?apikey= must be specified.')
+        expect(sqliteCloudError.message).toBe('The user, password and host arguments, the ?apikey= or the ?token= must be specified.')
         expect(sqliteCloudError.errorCode).toBe('ERR_MISSING_ARGS')
         expect(sqliteCloudError.externalErrorCode).toBeUndefined()
         expect(sqliteCloudError.offsetCode).toBeUndefined()

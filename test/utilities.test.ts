@@ -3,7 +3,7 @@
 //
 
 import { SQLiteCloudError } from '../src/index'
-import { parseconnectionstring, sanitizeSQLiteIdentifier } from '../src/drivers/utilities'
+import { getInitializationCommands, parseconnectionstring, sanitizeSQLiteIdentifier } from '../src/drivers/utilities'
 import { getTestingDatabaseName } from './shared'
 
 import { expect, describe, it } from '@jest/globals'
@@ -188,5 +188,19 @@ describe('sanitizeSQLiteIdentifier()', () => {
     const identifier = ' chinook.sql; DROP TABLE "albums" '
     const sanitized = sanitizeSQLiteIdentifier(identifier)
     expect(sanitized).toBe('"chinook.sql; DROP TABLE \"\"albums\"\""')
+  })
+})
+
+describe('getInitializationCommands()', () => {
+  it('should return commands with auth token command', () => {
+    const config = {
+      token: 'mytoken',
+      database: 'mydb',
+    }
+
+    const result = getInitializationCommands(config)
+
+    expect(result).toContain('AUTH TOKEN mytoken;')
+    expect(result).not.toContain('AUTH APIKEY')
   })
 })

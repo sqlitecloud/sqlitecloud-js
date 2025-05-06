@@ -40,46 +40,47 @@ export function anonimizeError(error: Error): Error {
 export function getInitializationCommands(config: SQLiteCloudConfig): string {
   // we check the credentials using non linearizable so we're quicker
   // then we bring back linearizability unless specified otherwise
-  let commands = 'SET CLIENT KEY NONLINEARIZABLE TO 1; '
+  let commands = 'SET CLIENT KEY NONLINEARIZABLE TO 1;'
 
-  // TODO: include authentication via token
   // first user authentication, then all other commands
   if (config.apikey) {
-    commands += `AUTH APIKEY ${config.apikey}; `
+    commands += `AUTH APIKEY ${config.apikey};`
+  } else if (config.token) {
+    commands += `AUTH TOKEN ${config.token};`
   } else {
-    commands += `AUTH USER ${config.username || ''} ${config.password_hashed ? 'HASH' : 'PASSWORD'} ${config.password || ''}; `
+    commands += `AUTH USER ${config.username || ''} ${config.password_hashed ? 'HASH' : 'PASSWORD'} ${config.password || ''};`
   }
 
   if (config.compression) {
-    commands += 'SET CLIENT KEY COMPRESSION TO 1; '
+    commands += 'SET CLIENT KEY COMPRESSION TO 1;'
   }
   if (config.zerotext) {
-    commands += 'SET CLIENT KEY ZEROTEXT TO 1; '
+    commands += 'SET CLIENT KEY ZEROTEXT TO 1;'
   }
   if (config.noblob) {
-    commands += 'SET CLIENT KEY NOBLOB TO 1; '
+    commands += 'SET CLIENT KEY NOBLOB TO 1;'
   }
   if (config.maxdata) {
-    commands += `SET CLIENT KEY MAXDATA TO ${config.maxdata}; `
+    commands += `SET CLIENT KEY MAXDATA TO ${config.maxdata};`
   }
   if (config.maxrows) {
-    commands += `SET CLIENT KEY MAXROWS TO ${config.maxrows}; `
+    commands += `SET CLIENT KEY MAXROWS TO ${config.maxrows};`
   }
   if (config.maxrowset) {
-    commands += `SET CLIENT KEY MAXROWSET TO ${config.maxrowset}; `
+    commands += `SET CLIENT KEY MAXROWSET TO ${config.maxrowset};`
   }
 
   // we ALWAYS set non linearizable to 1 when we start so we can be quicker on login
   // but then we need to put it back to its default value if "linearizable" unless set
   if (!config.non_linearizable) {
-    commands += 'SET CLIENT KEY NONLINEARIZABLE TO 0; '
+    commands += 'SET CLIENT KEY NONLINEARIZABLE TO 0;'
   }
 
   if (config.database) {
     if (config.create && !config.memory) {
-      commands += `CREATE DATABASE ${config.database} IF NOT EXISTS; `
+      commands += `CREATE DATABASE ${config.database} IF NOT EXISTS;`
     }
-    commands += `USE DATABASE ${config.database}; `
+    commands += `USE DATABASE ${config.database};`
   }
 
   return commands
