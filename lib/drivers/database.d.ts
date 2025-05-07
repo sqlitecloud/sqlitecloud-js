@@ -1,7 +1,7 @@
 import EventEmitter from 'eventemitter3';
 import { PubSub } from './pubsub';
 import { Statement } from './statement';
-import { ErrorCallback as ConnectionCallback, ResultsCallback, RowCallback, RowCountCallback, RowsCallback, SQLiteCloudCommand, SQLiteCloudConfig } from './types';
+import { ErrorCallback as ConnectionCallback, ResultsCallback, RowCallback, RowCountCallback, RowsCallback, SQLiteCloudCommand, SQLiteCloudConfig, SQLiteCloudDataTypes } from './types';
 /**
  * Creating a Database object automatically opens a connection to the SQLite database.
  * When the connection is established the Database object emits an open event and calls
@@ -153,7 +153,7 @@ export declare class Database extends EventEmitter {
      * @returns An array of rows in case of selections or an object with
      * metadata in case of insert, update, delete.
      */
-    sql(sql: TemplateStringsArray | string | SQLiteCloudCommand, ...values: any[]): Promise<any>;
+    sql(sql: TemplateStringsArray | string | SQLiteCloudCommand, ...values: SQLiteCloudDataTypes[]): Promise<any>;
     /**
      * Returns true if the database connection is open.
      */

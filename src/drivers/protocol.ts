@@ -334,7 +334,7 @@ export function popData(buffer: Buffer): { data: SQLiteCloudDataTypes | SQLiteCl
 }
 
 /** Format a command to be sent via SCSP protocol */
-export function formatCommand(command: SQLiteCloudCommand): string {
+export function formatCommand(command: SQLiteCloudCommand): Buffer {
   // core returns null if there's a space after the semi column
   // we want to maintain a compatibility with the standard sqlite3 driver
   command.query = command.query.trim()
@@ -346,22 +346,23 @@ export function formatCommand(command: SQLiteCloudCommand): string {
   return serializeData(command.query, false)
 }
 
-function serializeCommand(data: SQLiteCloudDataTypes[], zeroString: boolean = false): string {
+function serializeCommand(data: SQLiteCloudDataTypes[], zeroString: boolean = false): Buffer {
   const n = data.length
-  let serializedData = `${n} `
+  let serializedData = Buffer.from(`${n} `)
 
   for (let i = 0; i < n; i++) {
     // the first string is the sql and it must be zero-terminated
     const zs = i == 0 || zeroString
-    serializedData += serializeData(data[i], zs)
+    serializedData = Buffer.concat([serializedData, serializeData(data[i], zs)])
   }
 
-  const bytesTotal = Buffer.byteLength(serializedData, 'utf-8')
-  const header = `${CMD_ARRAY}${bytesTotal} `
-  return header + serializedData
+  const bytesTotal = serializedData.byteLength
+  const header = Buffer.from(`${CMD_ARRAY}${bytesTotal} `)
+
+  return Buffer.concat([header, serializedData])
 }
 
-function serializeData(data: SQLiteCloudDataTypes, zeroString: boolean = false): string {
+function serializeData(data: SQLiteCloudDataTypes, zeroString: boolean = false): Buffer {
   if (typeof data === 'string') {
     let cmd = CMD_STRING
     if (zeroString) {
@@ -370,24 +371,24 @@ function serializeData(data: SQLiteCloudDataTypes, zeroString: boolean = false):
     }
 
     const header = `${cmd}${Buffer.byteLength(data, 'utf-8')} `
-    return header + data
+    return Buffer.from(header + data)
   }
 
   if (typeof data === 'number') {
     if (Number.isInteger(data)) {
-      return `${CMD_INT}${data} `
+      return Buffer.from(`${CMD_INT}${data} `)
     } else {
-      return `${CMD_FLOAT}${data} `
+      return Buffer.from(`${CMD_FLOAT}${data} `)
     }
   }
 
   if (Buffer.isBuffer(data)) {
-    const header = `${CMD_BLOB}${data.length} `
-    return header + data.toString('utf-8')
+    const header = `${CMD_BLOB}${data.byteLength} `
+    return Buffer.concat([Buffer.from(header), data])
   }
 
   if (data === null || data === undefined) {
-    return `${CMD_NULL} `
+    return Buffer.from(`${CMD_NULL} `)
   }
 
   if (Array.isArray(data)) {

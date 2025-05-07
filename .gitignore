@@ -118,7 +118,7 @@ dist
 # Compiled code
 coverage/
 docs/
-lib/
+#lib/
 
 # Mac files
 .DS_Store

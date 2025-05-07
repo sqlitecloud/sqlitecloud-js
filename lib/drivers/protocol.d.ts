@@ -50,4 +50,4 @@ export declare function popData(buffer: Buffer): {
     fwdBuffer: Buffer;
 };
 /** Format a command to be sent via SCSP protocol */
-export declare function formatCommand(command: SQLiteCloudCommand): string;
+export declare function formatCommand(command: SQLiteCloudCommand): Buffer;

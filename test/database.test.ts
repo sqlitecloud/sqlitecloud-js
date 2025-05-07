@@ -6,6 +6,7 @@ import { describe, expect, it } from '@jest/globals'
 import { RowCountCallback } from '../src/drivers/types'
 import { Database, SQLiteCloudError, SQLiteCloudRow, SQLiteCloudRowset, sanitizeSQLiteIdentifier } from '../src/index'
 import { LONG_TIMEOUT, getChinookDatabase, getTestingDatabase, getTestingDatabaseAsync, removeDatabase, removeDatabaseAsync } from './shared'
+const crypto = require('crypto')
 
 //
 // utility methods to setup and destroy temporary test databases
@@ -600,6 +601,26 @@ describe('Database.sql (async)', () => {
       results = await database.sql('SELECT * FROM people WHERE name = ?;', name)
       expect(results).toHaveLength(1)
       expect(results[0].name).toEqual(name)
+    } finally {
+      await removeDatabaseAsync(database)
+    }
+  })
+
+  it('binding should work with blob', async () => {
+    let database
+    try {
+      database = await getTestingDatabaseAsync()
+      const hash = crypto.createHash('sha256').update('my blob data').digest()
+
+      await database.sql('CREATE TABLE IF NOT EXISTS blobs (id INTEGER PRIMARY KEY, hash BLOB NOT NULL, myindex INTEGER NOT NULL);')
+      let results = await database.sql('INSERT INTO blobs (hash, myindex) VALUES (?, ?);', hash, 1)
+      expect(results.changes).toEqual(1)
+
+      results = await database.sql('SELECT * FROM blobs WHERE id = ? and hash = ?;', results.lastID, hash)
+
+      expect(results).toHaveLength(1)
+      expect(results[0].hash).toEqual(hash)
+      expect(results[0].myindex).toEqual(1)
     } finally {
       await removeDatabaseAsync(database)
     }

@@ -50,7 +50,7 @@ describe('Format command', () => {
     it(`should serialize ${JSON.stringify([query, ...parameters])}`, () => {
       const command: SQLiteCloudCommand = { query, parameters }
       const serialized = formatCommand(command)
-      expect(serialized).toEqual(expected)
+      expect(serialized).toEqual(Buffer.from(expected))
     })
   })
 })

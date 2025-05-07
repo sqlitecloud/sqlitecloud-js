@@ -141,11 +141,11 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
         this.socket = undefined
       }, timeoutMs)
 
-      this.socket?.write(formattedCommands, 'utf-8', () => {
+      this.socket?.write(formattedCommands, () => {
         clearTimeout(timeout) // Clear the timeout on successful write
       })
     } else {
-      this.socket?.write(formattedCommands, 'utf-8')
+      this.socket?.write(formattedCommands)
     }
 
     return this

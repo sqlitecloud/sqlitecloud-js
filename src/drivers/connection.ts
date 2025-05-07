@@ -2,7 +2,7 @@
  * connection.ts - base abstract class for sqlitecloud server connections
  */
 
-import { SQLiteCloudConfig, SQLiteCloudError, ErrorCallback, ResultsCallback, SQLiteCloudCommand } from './types'
+import { SQLiteCloudConfig, SQLiteCloudError, ErrorCallback, ResultsCallback, SQLiteCloudCommand, SQLiteCloudDataTypes } from './types'
 import { validateConfiguration } from './utilities'
 import { OperationsQueue } from './queue'
 import { anonimizeCommand, getUpdateResults } from './utilities'
@@ -112,7 +112,7 @@ export abstract class SQLiteCloudConnection {
    * @returns An array of rows in case of selections or an object with
    * metadata in case of insert, update, delete.
    */
-  public async sql(sql: TemplateStringsArray | string | SQLiteCloudCommand, ...values: any[]): Promise<any> {
+  public async sql(sql: TemplateStringsArray | string | SQLiteCloudCommand, ...values: SQLiteCloudDataTypes[]): Promise<any> {
     let commands = { query: '' } as SQLiteCloudCommand
 
     // sql is a TemplateStringsArray, the 'raw' property is specific to TemplateStringsArray

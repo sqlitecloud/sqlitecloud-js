@@ -1,7 +1,7 @@
 /**
  * connection.ts - base abstract class for sqlitecloud server connections
  */
-import { SQLiteCloudConfig, ErrorCallback, ResultsCallback, SQLiteCloudCommand } from './types';
+import { SQLiteCloudConfig, ErrorCallback, ResultsCallback, SQLiteCloudCommand, SQLiteCloudDataTypes } from './types';
 import { OperationsQueue } from './queue';
 /**
  * Base class for SQLiteCloudConnection handles basics and defines methods.
@@ -39,7 +39,7 @@ export declare abstract class SQLiteCloudConnection {
      * @returns An array of rows in case of selections or an object with
      * metadata in case of insert, update, delete.
      */
-    sql(sql: TemplateStringsArray | string | SQLiteCloudCommand, ...values: any[]): Promise<any>;
+    sql(sql: TemplateStringsArray | string | SQLiteCloudCommand, ...values: SQLiteCloudDataTypes[]): Promise<any>;
     /** Disconnect from server, release transport. */
     abstract close(): this;
 }

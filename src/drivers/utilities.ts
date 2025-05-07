@@ -82,7 +82,7 @@ export function getInitializationCommands(config: SQLiteCloudConfig): string {
     }
     commands += `USE DATABASE ${config.database};`
   }
-
+  
   return commands
 }
 
