@@ -162,6 +162,21 @@ describe('parseconnectionstring', () => {
 
     expect(config.timeout).toBe(123)
   })
+
+  it('expect error when both user/pass and api key are set', () => {
+    const connectionstring = 'sqlitecloud://user:password@host:1234/database?apikey=yyy'
+    expect(() => parseconnectionstring(connectionstring)).toThrowError('Choose between apikey, token or username/password')
+  })
+
+  it('expect error when both user/pass and token are set', () => {
+    const connectionstring = 'sqlitecloud://user:password@host:1234/database?token=yyy'
+    expect(() => parseconnectionstring(connectionstring)).toThrowError('Choose between apikey, token or username/password')
+  })
+
+  it('expect error when both apikey and token are set', () => {
+    const connectionstring = 'sqlitecloud://host:1234/database?apikey=xxx&token=yyy'
+    expect(() => parseconnectionstring(connectionstring)).toThrowError('Choose between apikey, token or username/password')
+  })
 })
 
 describe('getTestingDatabaseName', () => {

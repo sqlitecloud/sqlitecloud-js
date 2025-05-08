@@ -82,7 +82,7 @@ export function getInitializationCommands(config: SQLiteCloudConfig): string {
     }
     commands += `USE DATABASE ${config.database};`
   }
-  
+
   return commands
 }
 
@@ -244,17 +244,10 @@ export function parseconnectionstring(connectionstring: string): SQLiteCloudConf
       verbose: options.verbose ? parseBoolean(options.verbose) : undefined
     }
 
-    // either you use an apikey or username and password
-    if (config.apikey) {
-      if (config.token) {
-        console.error('SQLiteCloudConnection.parseconnectionstring - apikey and token cannot be both specified')
-        throw new SQLiteCloudError('apikey and token cannot be both specified')
-      }
-      if (config.username || config.password) {
-        console.warn('SQLiteCloudConnection.parseconnectionstring - apikey and username/password are both specified, using apikey')
-      }
-      delete config.username
-      delete config.password
+    // either you use an apikey, token or username and password
+    if (Number(!!config.apikey) + Number(!!config.token) + Number(!!(config.username || config.password)) > 1) {
+      console.error('SQLiteCloudConnection.parseconnectionstring - choose between apikey, token or username/password')
+      throw new SQLiteCloudError('Choose between apikey, token or username/password')
     }
 
     const database = url.pathname.replace('/', '') // pathname is database name, remove the leading slash
