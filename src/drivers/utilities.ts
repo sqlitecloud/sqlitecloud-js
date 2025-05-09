@@ -223,8 +223,8 @@ export function parseconnectionstring(connectionstring: string): SQLiteCloudConf
 
     const config: SQLiteCloudConfig = {
       ...options,
-      username: decodeURIComponent(url.username),
-      password: decodeURIComponent(url.password),
+      username: url.username ? decodeURIComponent(url.username) : undefined,
+      password: url.password ? decodeURIComponent(url.password) : undefined,
       password_hashed: options.password_hashed ? parseBoolean(options.password_hashed) : undefined,
       host: url.hostname,
       // type cast values
