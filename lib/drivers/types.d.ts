@@ -7,6 +7,16 @@ export declare const DEFAULT_TIMEOUT: number;
 /** Default tls connection port */
 export declare const DEFAULT_PORT = 8860;
 /**
+ * Support to SQLite 64bit integer
+ *
+ * number - (default) always return Number type (max: 2^53 - 1)
+ *   Precision is lost when selecting greater numbers from SQLite
+ * bigint - always return BigInt type (max: 2^63 - 1) for all numbers from SQLite
+ *  (inlcuding `lastID` from WRITE statements)
+ * mixed - use BigInt and Number types depending on the value size
+ */
+export declare const SAFE_INTEGER_MODE: string | undefined;
+/**
  * Configuration for SQLite cloud connection
  * @note Options are all lowecase so they 1:1 compatible with C SDK
  */

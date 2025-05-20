@@ -11,6 +11,23 @@ export const DEFAULT_TIMEOUT = 300 * 1000
 export const DEFAULT_PORT = 8860
 
 /**
+ * Support to SQLite 64bit integer
+ *
+ * number - (default) always return Number type (max: 2^53 - 1)
+ *   Precision is lost when selecting greater numbers from SQLite
+ * bigint - always return BigInt type (max: 2^63 - 1) for all numbers from SQLite
+ *  (inlcuding `lastID` from WRITE statements)
+ * mixed - use BigInt and Number types depending on the value size
+ */
+export const SAFE_INTEGER_MODE = process.env['SAFE_INTEGER_MODE']?.toLowerCase()
+if (SAFE_INTEGER_MODE == 'bigint') {
+  console.debug('BigInt mode: Using Number for all INTEGER values from SQLite, including meta information from WRITE statements.')
+}
+if (SAFE_INTEGER_MODE == 'mixed') {
+  console.debug('Mixed mode: Using BigInt for INTEGER values from SQLite (including meta information from WRITE statements) bigger then 2^53, Number otherwise.')
+}
+
+/**
  * Configuration for SQLite cloud connection
  * @note Options are all lowecase so they 1:1 compatible with C SDK
  */

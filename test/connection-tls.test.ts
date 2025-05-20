@@ -53,19 +53,19 @@ describe('connect', () => {
   })
 */
 
-it(
-  'should connect with config object string',
-  done => {
-    const configObj = getChinookConfig()
-    const connection = new SQLiteCloudTlsConnection(configObj, error => {
-      expect(error).toBeNull()
-      expect(connection.connected).toBe(true)
-      connection.close()
-      done()
-    })
-  },
-  LONG_TIMEOUT
-)
+  it(
+    'should connect with config object string',
+    done => {
+      const configObj = getChinookConfig()
+      const connection = new SQLiteCloudTlsConnection(configObj, error => {
+        expect(error).toBeNull()
+        expect(connection.connected).toBe(true)
+        connection.close()
+        done()
+      })
+    },
+    LONG_TIMEOUT
+  )
 
   it(
     'should connect with config object string and test command',
@@ -323,6 +323,23 @@ describe('send test commands', () => {
     },
     LONG_TIMEOUT
   )
+
+  it('should use Number as default behavior for integer INT64', done => {
+    const chinook = getConnection()
+    chinook.sendCommands('TEST INT64', (error, results) => {
+      let err = null
+      try {
+        expect(error).toBeNull()
+        expect(typeof results).toBe('number')
+        expect(results).toBe(9223372036854776000)
+      } catch (error) {
+        err = error
+      } finally {
+        chinook.close()
+        err ? done(err) : done()
+      }
+    })
+  })
 
   it('should test null', done => {
     const connection = getConnection()

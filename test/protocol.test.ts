@@ -36,13 +36,13 @@ const testCases = [
   {
     query: 'SELECT ?, ?, ?, ?, ?',
     parameters: ['world', 123, 3.14, null, Buffer.from('hello')],
-    expected: '=57 6 !21 SELECT ?, ?, ?, ?, ?\x00!6 world\x00:123 ,3.14 _ $5 hello',
+    expected: '=57 6 !21 SELECT ?, ?, ?, ?, ?\x00!6 world\x00:123 ,3.14 _ $5 hello'
   },
   {
     query: 'SELECT ?',
     parameters: ["'hello world'"],
-    expected: "=32 2 !9 SELECT ?\x00!14 'hello world'\x00",
-  },
+    expected: "=32 2 !9 SELECT ?\x00!14 'hello world'\x00"
+  }
 ]
 
 describe('Format command', () => {

@@ -2,8 +2,8 @@
 // protocol.ts - low level protocol handling for SQLiteCloud transport
 //
 
-import { SQLiteCloudCommand, SQLiteCloudError, type SQLCloudRowsetMetadata, type SQLiteCloudDataTypes } from './types'
 import { SQLiteCloudRowset } from './rowset'
+import { SAFE_INTEGER_MODE, SQLiteCloudCommand, SQLiteCloudError, type SQLCloudRowsetMetadata, type SQLiteCloudDataTypes } from './types'
 
 // explicitly importing buffer library to allow cross-platform support by replacing it
 import { Buffer } from 'buffer'
@@ -302,7 +302,17 @@ export function popData(buffer: Buffer): { data: SQLiteCloudDataTypes | SQLiteCl
   // console.debug(`popData - dataType: ${dataType}, spaceIndex: ${spaceIndex}, commandLength: ${commandLength}, commandEnd: ${commandEnd}`)
   switch (dataType) {
     case CMD_INT:
-      return popResults(parseInt(buffer.subarray(1, spaceIndex).toString()))
+      // SQLite uses 64-bit INTEGER, but JS uses 53-bit Number
+      const value = BigInt(buffer.subarray(1, spaceIndex).toString())
+      if (SAFE_INTEGER_MODE === 'bigint') {
+        return popResults(value)
+      }
+      if (SAFE_INTEGER_MODE === 'mixed') {
+        if (value <= BigInt(Number.MIN_SAFE_INTEGER) || BigInt(Number.MAX_SAFE_INTEGER) <= value) {
+          return popResults(value)
+        }
+      }
+      return popResults(Number(value))
     case CMD_FLOAT:
       return popResults(parseFloat(buffer.subarray(1, spaceIndex).toString()))
     case CMD_NULL:
@@ -380,6 +390,10 @@ function serializeData(data: SQLiteCloudDataTypes, zeroString: boolean = false):
     } else {
       return Buffer.from(`${CMD_FLOAT}${data} `)
     }
+  }
+
+  if (typeof data === 'bigint') {
+    return Buffer.from(`${CMD_INT}${data} `)
   }
 
   if (Buffer.isBuffer(data)) {

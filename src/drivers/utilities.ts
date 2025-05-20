@@ -109,13 +109,12 @@ export function getUpdateResults(results?: any): Record<string, any> | undefined
       switch (results[0]) {
         case SQLiteCloudArrayType.ARRAY_TYPE_SQLITE_EXEC:
           return {
-            type: results[0],
-            index: results[1],
+            type: Number(results[0]),
+            index: Number(results[1]),
             lastID: results[2], // ROWID (sqlite3_last_insert_rowid)
             changes: results[3], // CHANGES(sqlite3_changes)
             totalChanges: results[4], // TOTAL_CHANGES (sqlite3_total_changes)
-            finalized: results[5], // FINALIZED
-            //
+            finalized: Number(results[5]), // FINALIZED
             rowId: results[2] // same as lastId
           }
       }

@@ -267,7 +267,7 @@ describe('Database.get', () => {
       })
     })
 
-    // call close() right after the execution 
+    // call close() right after the execution
     // of the query not in its callback
     chinook.close(error => {
       expect(error).toBeNull()
@@ -621,6 +621,25 @@ describe('Database.sql (async)', () => {
       expect(results).toHaveLength(1)
       expect(results[0].hash).toEqual(hash)
       expect(results[0].myindex).toEqual(1)
+    } finally {
+      await removeDatabaseAsync(database)
+    }
+  })
+
+  it('should insert bigInt value as a full 64 bit integer', async () => {
+    let database
+    try {
+      database = await getTestingDatabaseAsync()
+      const bigIntValue = BigInt(2 ** 63) - BigInt(1) // 9223372036854775807
+
+      await database.sql('CREATE TABLE IF NOT EXISTS bigints (id INTEGER PRIMARY KEY, value BIGINT NOT NULL);')
+      const meta = await database.sql('INSERT INTO bigints (value) VALUES (?);', bigIntValue)
+
+      // by default, BigInt values are returned as Number loosing precision
+      // retrieving it as text preserves the value
+      const results = await database.sql('SELECT CAST(value AS TEXT) as bigIntAsString FROM bigints WHERE id = ?;', meta.lastID)
+      expect(results).toHaveLength(1)
+      expect(results[0].bigIntAsString).toEqual(bigIntValue.toString())
     } finally {
       await removeDatabaseAsync(database)
     }
