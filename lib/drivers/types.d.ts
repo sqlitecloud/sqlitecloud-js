@@ -15,7 +15,7 @@ export declare const DEFAULT_PORT = 8860;
  *  (inlcuding `lastID` from WRITE statements)
  * mixed - use BigInt and Number types depending on the value size
  */
-export declare const SAFE_INTEGER_MODE: string | undefined;
+export declare let SAFE_INTEGER_MODE: string;
 /**
  * Configuration for SQLite cloud connection
  * @note Options are all lowecase so they 1:1 compatible with C SDK

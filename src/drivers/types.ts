@@ -19,7 +19,10 @@ export const DEFAULT_PORT = 8860
  *  (inlcuding `lastID` from WRITE statements)
  * mixed - use BigInt and Number types depending on the value size
  */
-export const SAFE_INTEGER_MODE = process.env['SAFE_INTEGER_MODE']?.toLowerCase()
+export let SAFE_INTEGER_MODE = 'number'
+if (typeof process !== 'undefined') {
+   SAFE_INTEGER_MODE = process.env['SAFE_INTEGER_MODE']?.toLowerCase() || 'number'
+}
 if (SAFE_INTEGER_MODE == 'bigint') {
   console.debug('BigInt mode: Using Number for all INTEGER values from SQLite, including meta information from WRITE statements.')
 }
