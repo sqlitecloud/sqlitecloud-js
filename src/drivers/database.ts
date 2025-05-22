@@ -22,6 +22,7 @@ import {
   SQLiteCloudArrayType,
   SQLiteCloudCommand,
   SQLiteCloudConfig,
+  SQLiteCloudDataTypes,
   SQLiteCloudError
 } from './types'
 import { isBrowser, popCallback } from './utilities'

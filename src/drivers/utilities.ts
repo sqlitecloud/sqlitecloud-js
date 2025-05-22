@@ -2,12 +2,10 @@
 // utilities.ts - utility methods to manipulate SQL statements
 //
 
-import { SQLiteCloudConfig, SQLiteCloudError, SQLiteCloudDataTypes, DEFAULT_PORT, DEFAULT_TIMEOUT } from './types'
-import { SQLiteCloudArrayType } from './types'
+import { DEFAULT_PORT, DEFAULT_TIMEOUT, SQLiteCloudArrayType, SQLiteCloudConfig, SQLiteCloudDataTypes, SQLiteCloudError } from './types'
 
 // explicitly importing these libraries to allow cross-platform support by replacing them
 import { URL } from 'whatwg-url'
-import { Buffer } from 'buffer'
 
 //
 // determining running environment, thanks to browser-or-node
@@ -42,45 +40,47 @@ export function anonimizeError(error: Error): Error {
 export function getInitializationCommands(config: SQLiteCloudConfig): string {
   // we check the credentials using non linearizable so we're quicker
   // then we bring back linearizability unless specified otherwise
-  let commands = 'SET CLIENT KEY NONLINEARIZABLE TO 1; '
+  let commands = 'SET CLIENT KEY NONLINEARIZABLE TO 1;'
 
   // first user authentication, then all other commands
   if (config.apikey) {
-    commands += `AUTH APIKEY ${config.apikey}; `
+    commands += `AUTH APIKEY ${config.apikey};`
+  } else if (config.token) {
+    commands += `AUTH TOKEN ${config.token};`
   } else {
-    commands += `AUTH USER ${config.username || ''} ${config.password_hashed ? 'HASH' : 'PASSWORD'} ${config.password || ''}; `
+    commands += `AUTH USER ${config.username || ''} ${config.password_hashed ? 'HASH' : 'PASSWORD'} ${config.password || ''};`
   }
 
   if (config.compression) {
-    commands += 'SET CLIENT KEY COMPRESSION TO 1; '
+    commands += 'SET CLIENT KEY COMPRESSION TO 1;'
   }
   if (config.zerotext) {
-    commands += 'SET CLIENT KEY ZEROTEXT TO 1; '
+    commands += 'SET CLIENT KEY ZEROTEXT TO 1;'
   }
   if (config.noblob) {
-    commands += 'SET CLIENT KEY NOBLOB TO 1; '
+    commands += 'SET CLIENT KEY NOBLOB TO 1;'
   }
   if (config.maxdata) {
-    commands += `SET CLIENT KEY MAXDATA TO ${config.maxdata}; `
+    commands += `SET CLIENT KEY MAXDATA TO ${config.maxdata};`
   }
   if (config.maxrows) {
-    commands += `SET CLIENT KEY MAXROWS TO ${config.maxrows}; `
+    commands += `SET CLIENT KEY MAXROWS TO ${config.maxrows};`
   }
   if (config.maxrowset) {
-    commands += `SET CLIENT KEY MAXROWSET TO ${config.maxrowset}; `
+    commands += `SET CLIENT KEY MAXROWSET TO ${config.maxrowset};`
   }
 
   // we ALWAYS set non linearizable to 1 when we start so we can be quicker on login
   // but then we need to put it back to its default value if "linearizable" unless set
   if (!config.non_linearizable) {
-    commands += 'SET CLIENT KEY NONLINEARIZABLE TO 0; '
+    commands += 'SET CLIENT KEY NONLINEARIZABLE TO 0;'
   }
 
   if (config.database) {
     if (config.create && !config.memory) {
-      commands += `CREATE DATABASE ${config.database} IF NOT EXISTS; `
+      commands += `CREATE DATABASE ${config.database} IF NOT EXISTS;`
     }
-    commands += `USE DATABASE ${config.database}; `
+    commands += `USE DATABASE ${config.database};`
   }
 
   return commands
@@ -109,13 +109,12 @@ export function getUpdateResults(results?: any): Record<string, any> | undefined
       switch (results[0]) {
         case SQLiteCloudArrayType.ARRAY_TYPE_SQLITE_EXEC:
           return {
-            type: results[0],
-            index: results[1],
+            type: Number(results[0]),
+            index: Number(results[1]),
             lastID: results[2], // ROWID (sqlite3_last_insert_rowid)
             changes: results[3], // CHANGES(sqlite3_changes)
             totalChanges: results[4], // TOTAL_CHANGES (sqlite3_total_changes)
-            finalized: results[5], // FINALIZED
-            //
+            finalized: Number(results[5]), // FINALIZED
             rowId: results[2] // same as lastId
           }
       }
@@ -177,16 +176,19 @@ export function validateConfiguration(config: SQLiteCloudConfig): SQLiteCloudCon
   config.non_linearizable = parseBoolean(config.non_linearizable)
   config.insecure = parseBoolean(config.insecure)
 
-  const hasCredentials = (config.username && config.password) || config.apikey
+  const hasCredentials = (config.username && config.password) || config.apikey || config.token
   if (!config.host || !hasCredentials) {
     console.error('SQLiteCloudConnection.validateConfiguration - missing arguments', config)
-    throw new SQLiteCloudError('The user, password and host arguments or the ?apikey= must be specified.', { errorCode: 'ERR_MISSING_ARGS' })
+    throw new SQLiteCloudError('The user, password and host arguments, the ?apikey= or the ?token= must be specified.', { errorCode: 'ERR_MISSING_ARGS' })
   }
 
   if (!config.connectionstring) {
     // build connection string from configuration, values are already validated
+    config.connectionstring = `sqlitecloud://${config.host}:${config.port}/${config.database || ''}`
     if (config.apikey) {
-      config.connectionstring = `sqlitecloud://${config.host}:${config.port}/${config.database || ''}?apikey=${config.apikey}`
+      config.connectionstring += `?apikey=${config.apikey}`
+    } else if (config.token) {
+      config.connectionstring += `?token=${config.token}`
     } else {
       config.connectionstring = `sqlitecloud://${encodeURIComponent(config.username || '')}:${encodeURIComponent(config.password || '')}@${config.host}:${
         config.port
@@ -215,13 +217,13 @@ export function parseconnectionstring(connectionstring: string): SQLiteCloudConf
     // all lowecase options
     const options: { [key: string]: string } = {}
     url.searchParams.forEach((value, key) => {
-      options[key.toLowerCase().replace(/-/g, '_')] = value
+      options[key.toLowerCase().replace(/-/g, '_')] = value.trim()
     })
 
     const config: SQLiteCloudConfig = {
       ...options,
-      username: decodeURIComponent(url.username),
-      password: decodeURIComponent(url.password),
+      username: url.username ? decodeURIComponent(url.username) : undefined,
+      password: url.password ? decodeURIComponent(url.password) : undefined,
       password_hashed: options.password_hashed ? parseBoolean(options.password_hashed) : undefined,
       host: url.hostname,
       // type cast values
@@ -241,13 +243,10 @@ export function parseconnectionstring(connectionstring: string): SQLiteCloudConf
       verbose: options.verbose ? parseBoolean(options.verbose) : undefined
     }
 
-    // either you use an apikey or username and password
-    if (config.apikey) {
-      if (config.username || config.password) {
-        console.warn('SQLiteCloudConnection.parseconnectionstring - apikey and username/password are both specified, using apikey')
-      }
-      delete config.username
-      delete config.password
+    // either you use an apikey, token or username and password
+    if (Number(!!config.apikey) + Number(!!config.token) + Number(!!(config.username || config.password)) > 1) {
+      console.error('SQLiteCloudConnection.parseconnectionstring - choose between apikey, token or username/password')
+      throw new SQLiteCloudError('Choose between apikey, token or username/password')
     }
 
     const database = url.pathname.replace('/', '') // pathname is database name, remove the leading slash
@@ -257,7 +256,7 @@ export function parseconnectionstring(connectionstring: string): SQLiteCloudConf
 
     return config
   } catch (error) {
-    throw new SQLiteCloudError(`Invalid connection string: ${connectionstring}`)
+    throw new SQLiteCloudError(`Invalid connection string: ${connectionstring} - error: ${error}`)
   }
 }
 

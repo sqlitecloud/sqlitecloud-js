@@ -2,7 +2,7 @@
  * connection.ts - base abstract class for sqlitecloud server connections
  */
 
-import { SQLiteCloudConfig, SQLiteCloudError, ErrorCallback, ResultsCallback, SQLiteCloudCommand } from './types'
+import { SQLiteCloudConfig, SQLiteCloudError, ErrorCallback, ResultsCallback, SQLiteCloudCommand, SQLiteCloudDataTypes } from './types'
 import { validateConfiguration } from './utilities'
 import { OperationsQueue } from './queue'
 import { anonimizeCommand, getUpdateResults } from './utilities'

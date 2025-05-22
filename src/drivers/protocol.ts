@@ -2,8 +2,8 @@
 // protocol.ts - low level protocol handling for SQLiteCloud transport
 //
 
-import { SQLiteCloudCommand, SQLiteCloudError, type SQLCloudRowsetMetadata, type SQLiteCloudDataTypes } from './types'
 import { SQLiteCloudRowset } from './rowset'
+import { SAFE_INTEGER_MODE, SQLiteCloudCommand, SQLiteCloudError, type SQLCloudRowsetMetadata, type SQLiteCloudDataTypes } from './types'
 
 // explicitly importing buffer library to allow cross-platform support by replacing it
 import { Buffer } from 'buffer'
@@ -302,7 +302,17 @@ export function popData(buffer: Buffer): { data: SQLiteCloudDataTypes | SQLiteCl
   // console.debug(`popData - dataType: ${dataType}, spaceIndex: ${spaceIndex}, commandLength: ${commandLength}, commandEnd: ${commandEnd}`)
   switch (dataType) {
     case CMD_INT:
-      return popResults(parseInt(buffer.subarray(1, spaceIndex).toString()))
+      // SQLite uses 64-bit INTEGER, but JS uses 53-bit Number
+      const value = BigInt(buffer.subarray(1, spaceIndex).toString())
+      if (SAFE_INTEGER_MODE === 'bigint') {
+        return popResults(value)
+      }
+      if (SAFE_INTEGER_MODE === 'mixed') {
+        if (value <= BigInt(Number.MIN_SAFE_INTEGER) || BigInt(Number.MAX_SAFE_INTEGER) <= value) {
+          return popResults(value)
+        }
+      }
+      return popResults(Number(value))
     case CMD_FLOAT:
       return popResults(parseFloat(buffer.subarray(1, spaceIndex).toString()))
     case CMD_NULL:
@@ -334,7 +344,7 @@ export function popData(buffer: Buffer): { data: SQLiteCloudDataTypes | SQLiteCl
 }
 
 /** Format a command to be sent via SCSP protocol */
-export function formatCommand(command: SQLiteCloudCommand): string {
+export function formatCommand(command: SQLiteCloudCommand): Buffer {
   // core returns null if there's a space after the semi column
   // we want to maintain a compatibility with the standard sqlite3 driver
   command.query = command.query.trim()
@@ -346,22 +356,23 @@ export function formatCommand(command: SQLiteCloudCommand): string {
   return serializeData(command.query, false)
 }
 
-function serializeCommand(data: SQLiteCloudDataTypes[], zeroString: boolean = false): string {
+function serializeCommand(data: SQLiteCloudDataTypes[], zeroString: boolean = false): Buffer {
   const n = data.length
-  let serializedData = `${n} `
+  let serializedData = Buffer.from(`${n} `)
 
   for (let i = 0; i < n; i++) {
     // the first string is the sql and it must be zero-terminated
     const zs = i == 0 || zeroString
-    serializedData += serializeData(data[i], zs)
+    serializedData = Buffer.concat([serializedData, serializeData(data[i], zs)])
   }
 
-  const bytesTotal = Buffer.byteLength(serializedData, 'utf-8')
-  const header = `${CMD_ARRAY}${bytesTotal} `
-  return header + serializedData
+  const bytesTotal = serializedData.byteLength
+  const header = Buffer.from(`${CMD_ARRAY}${bytesTotal} `)
+
+  return Buffer.concat([header, serializedData])
 }
 
-function serializeData(data: SQLiteCloudDataTypes, zeroString: boolean = false): string {
+function serializeData(data: SQLiteCloudDataTypes, zeroString: boolean = false): Buffer {
   if (typeof data === 'string') {
     let cmd = CMD_STRING
     if (zeroString) {
@@ -370,24 +381,28 @@ function serializeData(data: SQLiteCloudDataTypes, zeroString: boolean = false):
     }
 
     const header = `${cmd}${Buffer.byteLength(data, 'utf-8')} `
-    return header + data
+    return Buffer.from(header + data)
   }
 
   if (typeof data === 'number') {
     if (Number.isInteger(data)) {
-      return `${CMD_INT}${data} `
+      return Buffer.from(`${CMD_INT}${data} `)
     } else {
-      return `${CMD_FLOAT}${data} `
+      return Buffer.from(`${CMD_FLOAT}${data} `)
     }
   }
 
+  if (typeof data === 'bigint') {
+    return Buffer.from(`${CMD_INT}${data} `)
+  }
+
   if (Buffer.isBuffer(data)) {
-    const header = `${CMD_BLOB}${data.length} `
-    return header + data.toString('utf-8')
+    const header = `${CMD_BLOB}${data.byteLength} `
+    return Buffer.concat([Buffer.from(header), data])
   }
 
   if (data === null || data === undefined) {
-    return `${CMD_NULL} `
+    return Buffer.from(`${CMD_NULL} `)
   }
 
   if (Array.isArray(data)) {

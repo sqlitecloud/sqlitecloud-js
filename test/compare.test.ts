@@ -2,12 +2,11 @@
  * compare.test.ts - test driver api against sqlite3 equivalents
  */
 
-import { CHINOOK_DATABASE_FILE, CHINOOK_FIRST_TRACK, LONG_TIMEOUT, removeDatabase, TESTING_SQL } from './shared'
-import { getChinookDatabase, getTestingDatabase } from './shared'
+import { CHINOOK_DATABASE_FILE, CHINOOK_FIRST_TRACK, getChinookDatabase, getTestingDatabase, LONG_TIMEOUT, removeDatabase, TESTING_SQL } from './shared'
 
 // https://github.com/TryGhost/node-sqlite3/wiki/API
-import sqlite3 from 'sqlite3'
 import { join } from 'path'
+import sqlite3 from 'sqlite3'
 
 const INSERT_SQL = "INSERT INTO people (name, hobby, age) VALUES ('Fantozzi Ugo', 'Competitive unicorn farting', 42); "
 const TESTING_DATABASE_FILE = join(__dirname, 'assets/testing.db')
@@ -244,6 +243,29 @@ describe('Database.get', () => {
       chinookFile.get(sql, (fileError, fileRows) => {
         expect(fileError).toBeTruthy()
         expect(fileRows).toBeFalsy()
+
+        chinookCloud.close()
+        chinookFile.close()
+        done()
+      })
+    })
+  })
+
+  it('should handle big integer (>= 2^53) as Number by default', done => {
+    const chinookCloud = getChinookDatabase()
+    const chinookFile = getChinookDatabaseFile()
+
+    const sql = 'SELECT 5876026397369593117 as bignumber;'
+    chinookCloud.get<any>(sql, (cloudError, cloudRow) => {
+      expect(cloudError).toBeFalsy()
+      expect(typeof (cloudRow as any)['bignumber']).toBe('number')
+      expect((cloudRow as any)['bignumber']).toBe(5876026397369593000)
+
+      chinookFile.get<any>(sql, (fileError, fileRow) => {
+        expect(fileError).toBeNull()
+        // node-sqlite3 does not support bigint: https://github.com/TryGhost/node-sqlite3/issues/922
+        expect(typeof (fileRow as any)['bignumber']).toBe('number')
+        expect((fileRow as any)['bignumber']).toBe(5876026397369593000)
 
         chinookCloud.close()
         chinookFile.close()

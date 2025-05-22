@@ -3,7 +3,7 @@
 //
 
 import { SQLiteCloudError } from '../src/index'
-import { parseconnectionstring, sanitizeSQLiteIdentifier } from '../src/drivers/utilities'
+import { getInitializationCommands, parseconnectionstring, sanitizeSQLiteIdentifier } from '../src/drivers/utilities'
 import { getTestingDatabaseName } from './shared'
 
 import { expect, describe, it } from '@jest/globals'
@@ -162,6 +162,21 @@ describe('parseconnectionstring', () => {
 
     expect(config.timeout).toBe(123)
   })
+
+  it('expect error when both user/pass and api key are set', () => {
+    const connectionstring = 'sqlitecloud://user:password@host:1234/database?apikey=yyy'
+    expect(() => parseconnectionstring(connectionstring)).toThrowError('Choose between apikey, token or username/password')
+  })
+
+  it('expect error when both user/pass and token are set', () => {
+    const connectionstring = 'sqlitecloud://user:password@host:1234/database?token=yyy'
+    expect(() => parseconnectionstring(connectionstring)).toThrowError('Choose between apikey, token or username/password')
+  })
+
+  it('expect error when both apikey and token are set', () => {
+    const connectionstring = 'sqlitecloud://host:1234/database?apikey=xxx&token=yyy'
+    expect(() => parseconnectionstring(connectionstring)).toThrowError('Choose between apikey, token or username/password')
+  })
 })
 
 describe('getTestingDatabaseName', () => {
@@ -188,5 +203,19 @@ describe('sanitizeSQLiteIdentifier()', () => {
     const identifier = ' chinook.sql; DROP TABLE "albums" '
     const sanitized = sanitizeSQLiteIdentifier(identifier)
     expect(sanitized).toBe('"chinook.sql; DROP TABLE \"\"albums\"\""')
+  })
+})
+
+describe('getInitializationCommands()', () => {
+  it('should return commands with auth token command', () => {
+    const config = {
+      token: 'mytoken',
+      database: 'mydb',
+    }
+
+    const result = getInitializationCommands(config)
+
+    expect(result).toContain('AUTH TOKEN mytoken;')
+    expect(result).not.toContain('AUTH APIKEY')
   })
 })
