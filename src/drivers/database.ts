@@ -437,7 +437,7 @@ export class Database extends EventEmitter {
    * @returns An array of rows in case of selections or an object with
    * metadata in case of insert, update, delete.
    */
-  public async sql(sql: TemplateStringsArray | string | SQLiteCloudCommand, ...values: SQLiteCloudDataTypes[]): Promise<any> {
+  public async sql(sql: TemplateStringsArray | string | SQLiteCloudCommand, ...values: any[]): Promise<any> {
     let commands = { query: '' } as SQLiteCloudCommand
 
     // sql is a TemplateStringsArray, the 'raw' property is specific to TemplateStringsArray
