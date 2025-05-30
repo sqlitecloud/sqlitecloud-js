@@ -1345,7 +1345,8 @@ describe.each([
         encoding: encoding ?? expect.any(String),
         status: expect.any(Number),
         wal_size: expect.any(Number),
-        shm_size: expect.any(Number)
+        shm_size: expect.any(Number),
+        cloudsync: null
       })
     )
   })
@@ -1369,7 +1370,8 @@ describe.each([
         encoding: encoding ?? expect.any(String),
         status: expect.any(Number),
         wal_size: expect.any(Number),
-        shm_size: expect.any(Number)
+        shm_size: expect.any(Number),
+        cloudsync: null
       })
     )
   })
@@ -1393,7 +1395,8 @@ describe.each([
         encoding: encoding ?? expect.any(String),
         status: expect.any(Number),
         wal_size: expect.any(Number),
-        shm_size: expect.any(Number)
+        shm_size: expect.any(Number),
+        cloudsync: null
       })
     )
   })
@@ -3945,7 +3948,8 @@ describe.each([
       encoding: 'UTF-8',
       status: 1,
       wal_size: expect.any(Number),
-      shm_size: expect.any(Number)
+      shm_size: expect.any(Number),
+      cloudsync: null
     })
 
     chinook.close()
