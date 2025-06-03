@@ -39,7 +39,7 @@ jobs:
       - name: Upload Code Coverage
         uses: codecov/codecov-action@v4
         env:
-         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   examples-test:
     needs: code-test
@@ -144,7 +144,7 @@ jobs:
           if [ "$RUNNER_OS" != "Windows" ]; then
             bun i #re-installing dependencies in windows with bash causes a panic
           fi
-          
+
           bun_test=$(bun start)
 
           if [[ "$bun_test" == *"Composer: 'Angus Young, Malcolm Young, Brian Johnson',"* ]]; then
@@ -383,7 +383,7 @@ jobs:
             version: '15'
 
     name: 'React Native Android ${{matrix.version}} Test'
-    timeout-minutes: 30
+    timeout-minutes: 40
     runs-on: ubuntu-latest #android emulator on github actions works only on linux and old macos x86 builds, we can skip other os since the build and test process is going to be the same
 
     steps:
@@ -511,7 +511,7 @@ jobs:
             version: '15'
 
     name: 'Expo Android ${{matrix.version}} Test'
-    timeout-minutes: 30
+    timeout-minutes: 40
     runs-on: ubuntu-latest #android emulator on github actions works only on linux and old macos x86 builds, we can skip other os since the build and test process is going to be the same
 
     steps:

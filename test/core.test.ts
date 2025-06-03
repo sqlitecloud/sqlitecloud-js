@@ -1346,7 +1346,9 @@ describe.each([
         status: expect.any(Number),
         wal_size: expect.any(Number),
         shm_size: expect.any(Number),
-        cloudsync: null
+        cloudsync: null,
+        rls: null,
+        udf: null
       })
     )
   })
@@ -1371,7 +1373,9 @@ describe.each([
         status: expect.any(Number),
         wal_size: expect.any(Number),
         shm_size: expect.any(Number),
-        cloudsync: null
+        cloudsync: null,
+        rls: null,
+        udf: null
       })
     )
   })
@@ -1396,7 +1400,9 @@ describe.each([
         status: expect.any(Number),
         wal_size: expect.any(Number),
         shm_size: expect.any(Number),
-        cloudsync: null
+        cloudsync: null,
+        rls: null,
+        udf: null
       })
     )
   })
@@ -3949,7 +3955,9 @@ describe.each([
       status: 1,
       wal_size: expect.any(Number),
       shm_size: expect.any(Number),
-      cloudsync: null
+      cloudsync: null,
+      rls: null,
+      udf: null
     })
 
     chinook.close()
