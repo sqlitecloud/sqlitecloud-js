@@ -57,7 +57,7 @@
   "devDependencies": {
     "@types/jest": "^29.5.14",
     "@types/lz4": "^0.6.4",
-    "@types/node": "^22.14.1",
+    "@types/node": "^22.15.30",
     "@types/whatwg-url": "^13.0.0",
     "dotenv": "^16.5.0",
     "dotenv-cli": "^8.0.0",
@@ -68,8 +68,8 @@
     "sqlite3": "^5.1.7",
     "ts-jest": "^29.3.2",
     "ts-node": "^10.9.2",
-    "typedoc": "^0.28.2",
-    "typedoc-plugin-markdown": "^4.6.2",
+    "typedoc": "^0.28.5",
+    "typedoc-plugin-markdown": "^4.6.4",
     "typescript": "^5.8.3",
     "webpack": "^5.99.5",
     "webpack-cli": "^6.0.1"
