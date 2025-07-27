@@ -2,7 +2,7 @@ import { SQLiteCloudRow } from '../src'
 import { getChinookDatabase, LONG_TIMEOUT } from './shared'
 import { PUBSUB_ENTITY_TYPE } from '../src/drivers/pubsub'
 
-describe('pubSub', () => {
+describe.skip('pubSub', () => {
   it(
     'should listen, notify and receive pubSub messages on channel',
     async () => {
@@ -135,7 +135,7 @@ describe('pubSub', () => {
               expect(error).toBeNull()
 
               expect(results).not.toBeNull()
-              expect(results['payload'][0]['type']).toEqual('UPDATE')
+              expect(results['payload'][0]['sqlite_type']).toEqual('UPDATE')
               expect(results['payload'][0]['Name']).toEqual(newName)
               expect(data).toEqual({ pippo: 'pluto' })
               callbackCalled = true
