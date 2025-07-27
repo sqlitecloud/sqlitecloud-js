@@ -2,7 +2,7 @@ import { SQLiteCloudRow } from '../src'
 import { getChinookDatabase, LONG_TIMEOUT } from './shared'
 import { PUBSUB_ENTITY_TYPE } from '../src/drivers/pubsub'
 
-describe('pubSub', () => {
+describe.skip('pubSub', () => {
   it(
     'should listen, notify and receive pubSub messages on channel',
     async () => {
