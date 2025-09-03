@@ -13,9 +13,8 @@ module.exports = {
       }
     ]
   },
-  // Other Jest configuration options
   reporters: [
-    'default',
+    './jest-custom-reporter.js',
     [
       'jest-html-reporter',
       {
