@@ -59,7 +59,7 @@ module.exports = {
     simulator_18: {
       type: 'ios.simulator',
       device: {
-        type: 'iPhone SE (3rd generation)',
+        type: 'iPhone 14',
         os: 'iOS 18.0'
       }
     },
