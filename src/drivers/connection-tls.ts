@@ -66,6 +66,8 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
       connector = tls.connectTLS
     }
 
+    this.processCallback = callback
+
     this.socket = connector(connectionOptions, () => {
       if (this.config.verbose) {
         console.debug(`SQLiteCloudTlsConnection - connected to ${this.config.host}, authorized: ${this.socket?.authorized}`)
