@@ -8,7 +8,7 @@
     "lib/**/*"
   ],
   "scripts": {
-    "test": "jest --silent --forceExit --coverage --testPathIgnorePatterns=core",
+    "test": "jest --silent --coverage --testPathIgnorePatterns=core",
     "build": "rm -rf ./lib/ && tsc --project tsconfig.build.json && npx webpack",
     "publish": "npm run build && npm publish --access public",
     "prettier": "prettier --write 'src/**/*'",
