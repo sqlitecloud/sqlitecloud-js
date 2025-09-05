@@ -1,6 +1,6 @@
 {
   "name": "@sqlitecloud/drivers",
-  "version": "1.0.611",
+  "version": "1.0.613",
   "description": "SQLiteCloud drivers for Typescript/Javascript in edge, web and node clients",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
@@ -8,7 +8,7 @@
     "lib/**/*"
   ],
   "scripts": {
-    "test": "jest --forceExit --coverage --testPathIgnorePatterns=core",
+    "test": "jest --silent --forceExit --coverage --testPathIgnorePatterns=core",
     "build": "rm -rf ./lib/ && tsc --project tsconfig.build.json && npx webpack",
     "publish": "npm run build && npm publish --access public",
     "prettier": "prettier --write 'src/**/*'",

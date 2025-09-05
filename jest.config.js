@@ -14,7 +14,7 @@ module.exports = {
     ]
   },
   reporters: [
-    './jest-custom-reporter.js',
+    'default',
     [
       'jest-html-reporter',
       {
