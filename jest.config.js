@@ -13,7 +13,6 @@ module.exports = {
       }
     ]
   },
-  // Other Jest configuration options
   reporters: [
     'default',
     [
