@@ -575,12 +575,12 @@ describe('Database.sql (async)', () => {
       const databaseNameInjectSQL = `${databaseName}; SELECT * FROM people`
       await expect(database.sql`USE DATABASE ${databaseNameInjectSQL}`).rejects.toThrow(`Database name contains invalid characters (${databaseNameInjectSQL}).`)
 
-      let key = 'log_level'
-      let value = 'debug'
+      let key = 'test_key'
+      let value = 'test_value'
       await expect(database.sql`SET KEY ${key} TO ${value}`).resolves.toBe('OK')
 
-      key = 'log_level'
-      value = 'debug; DROP TABLE people'
+      key = 'test_key'
+      value = 'test_value; DROP TABLE people'
       await expect(database.sql`SET KEY ${key} TO ${value}`).resolves.toBe('OK')
       const result = await database.sql`SELECT * FROM people`
       expect(result.length).toBeGreaterThan(0)
