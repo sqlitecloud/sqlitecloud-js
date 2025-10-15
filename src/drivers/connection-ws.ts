@@ -32,20 +32,28 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
         const connectionstring = this.config.connectionstring as string
         const gatewayUrl = this.config?.gatewayurl || `${this.config.host === 'localhost' ? 'ws' : 'wss'}://${this.config.host as string}:4000`
         this.socket = io(gatewayUrl, { auth: { token: connectionstring } })
-        
+
         this.socket.on('connect', () => {
           callback?.call(this, null)
         })
 
-        this.socket.on('disconnect', (reason) => {
+        this.socket.on('disconnect', reason => {
           this.close()
           callback?.call(this, new SQLiteCloudError('Disconnected', { errorCode: 'ERR_CONNECTION_ENDED', cause: reason }))
+        })
+
+        this.socket.on('connect_error', (error: any) => {
+          this.close()
+          callback?.call(
+            this,
+            new SQLiteCloudError(JSON.parse(error.context.responseText).message || 'Connection error', { errorCode: 'ERR_CONNECTION_ERROR' })
+          )
         })
 
         this.socket.on('error', (error: Error) => {
           this.close()
           callback?.call(this, new SQLiteCloudError('Connection error', { errorCode: 'ERR_CONNECTION_ERROR', cause: error }))
-        })        
+        })
       }
     } catch (error) {
       callback?.call(this, error as Error)
