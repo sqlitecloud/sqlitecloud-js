@@ -309,10 +309,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-13, macos-14, macos-15] # macos-12 for ios 15 it's going to be deprecated, it's also using an old version of xcode that is not compatible with react native
+        os: [macos-14, macos-15]
         include:
-          - os: macos-13
-            version: '16.4'
           - os: macos-14
             version: '17'
           - os: macos-15
@@ -437,10 +435,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-13, macos-14, macos-15] # macos-12 for ios 15 it's going to be deprecated, it's also using an old version of xcode that is not compatible with react native
+        os: [macos-14, macos-15]
         include:
-          - os: macos-13
-            version: '16.4'
           - os: macos-14
             version: '17'
           - os: macos-15

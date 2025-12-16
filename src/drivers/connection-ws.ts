@@ -44,10 +44,16 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
 
         this.socket.on('connect_error', (error: any) => {
           this.close()
-          callback?.call(
-            this,
-            new SQLiteCloudError(JSON.parse(error.context.responseText).message || 'Connection error', { errorCode: 'ERR_CONNECTION_ERROR' })
-          )
+          let message = error.message || 'Connection error'
+          if (typeof error.context == 'object' && error.context.responseText) {
+            try {
+              const parsed = JSON.parse(error.context.responseText)
+              message = parsed?.message || error.context.responseText
+            } catch {
+              message = error.context.responseText
+            }
+          }
+          callback?.call(this, new SQLiteCloudError(message, { errorCode: 'ERR_CONNECTION_ERROR' }))
         })
 
         this.socket.on('error', (error: Error) => {
