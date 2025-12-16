@@ -6,13 +6,7 @@ import { SQLiteCloudConnection } from '../src/drivers/connection'
 import { SQLiteCloudWebsocketConnection } from '../src/drivers/connection-ws'
 import { SQLiteCloudCommand } from '../src/drivers/types'
 import { SQLiteCloudError } from '../src/index'
-import {
-  EXPECT_SPEED_MS,
-  getChinookConfig,
-  getChinookWebsocketConnection,
-  LONG_TIMEOUT,
-  WARN_SPEED_MS
-} from './shared'
+import { EXPECT_SPEED_MS, getChinookConfig, getChinookWebsocketConnection, LONG_TIMEOUT, WARN_SPEED_MS } from './shared'
 
 describe('connection-ws', () => {
   let chinook: SQLiteCloudConnection
@@ -78,6 +72,48 @@ describe('connection-ws', () => {
     })
   })
 */
+
+    it(
+      'should catch connect_error on connection errors',
+      done => {
+        const configObj = getChinookConfig()
+        configObj.usewebsocket = true
+        configObj.host = 'non.existing.host.name'
+        let connection: SQLiteCloudWebsocketConnection | null = null
+        connection = new SQLiteCloudWebsocketConnection(configObj, error => {
+          try {
+            expect(error).toBeDefined()
+            expect(error?.message).toContain('Error: getaddrinfo ENOTFOUND non.existing.host.name')
+            connection?.close()
+          } finally {
+            done()
+          }
+        })
+      },
+      LONG_TIMEOUT
+    )
+
+    // skip this test since it requires a paused free node
+    it.skip(
+      'should catch connect_error when node is scaled down',
+      done => {
+        const configObj = getChinookConfig("sqlitecloud://paused-node")
+        configObj.usewebsocket = true
+        let connection: SQLiteCloudWebsocketConnection | null = null
+        connection = new SQLiteCloudWebsocketConnection(configObj, error => {
+          try {
+            expect(error).toBeDefined()
+            const m = error?.message
+            expect(error?.message.startsWith('Your free node has been paused due to inactivity. To resume usage, please restart your node from your dashboard: https://dashboard.sqlitecloud.io')).toBe(true)
+            connection?.close()
+          } finally {
+            done()
+          }
+        })
+      },
+      LONG_TIMEOUT
+    )
+
     describe('send test commands', () => {
       it('should test integer', done => {
         chinook.sendCommands('TEST INTEGER', (error, results) => {
