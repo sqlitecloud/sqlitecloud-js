@@ -4,9 +4,12 @@
 
 import { SQLiteCloudRowset } from './rowset'
 import { SAFE_INTEGER_MODE, SQLiteCloudCommand, SQLiteCloudError, type SQLCloudRowsetMetadata, type SQLiteCloudDataTypes } from './types'
+import { getSafeBuffer } from './safe-imports'
 
 // explicitly importing buffer library to allow cross-platform support by replacing it
-import { Buffer } from 'buffer'
+// In React Native: Metro resolves 'buffer' to '@craftzdog/react-native-buffer' via package.json react-native field
+// In Web/Node: Uses standard buffer package
+const Buffer = getSafeBuffer()
 
 // https://www.npmjs.com/package/lz4js
 const lz4 = require('lz4js')

@@ -17,11 +17,18 @@ import {
 } from './protocol'
 import { type ErrorCallback, type ResultsCallback, SQLiteCloudCommand, type SQLiteCloudConfig, SQLiteCloudError } from './types'
 import { getInitializationCommands } from './utilities'
+import { getSafeBuffer, getSafeTLS } from './safe-imports'
+import type * as TLSTypes from 'tls'
 
 // explicitly importing buffer library to allow cross-platform support by replacing it
-import { Buffer } from 'buffer'
+// In React Native: Metro resolves 'buffer' to '@craftzdog/react-native-buffer' via package.json react-native field
+// In Web/Node: Uses standard buffer package
+const Buffer = getSafeBuffer()
 
-import * as tls from 'tls'
+// In React Native: Metro resolves 'tls' to 'react-native-tcp-socket' via package.json react-native field
+// In Node: Uses native tls module
+// In Browser: Returns null (browser field sets tls to false)
+const tls = getSafeTLS()
 
 /**
  * Implementation of SQLiteCloudConnection that connects to the database using specific tls APIs
@@ -29,7 +36,7 @@ import * as tls from 'tls'
  */
 export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
   /** Currently opened bun socket used to communicated with SQLiteCloud server */
-  private socket?: tls.TLSSocket
+  private socket?: TLSTypes.TLSSocket
 
   /** True if connection is open */
   get connected(): boolean {
@@ -39,6 +46,20 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
   /* Opens a connection with the server and sends the initialization commands. Will throw in case of errors. */
   connectTransport(config: SQLiteCloudConfig, callback?: ErrorCallback): this {
     console.assert(!this.connected, 'SQLiteCloudTlsConnection.connect - connection already established')
+
+    // Check if tls is available (it's null in browser contexts)
+    if (!tls) {
+      const error = new SQLiteCloudError(
+        'TLS connections are not available in this environment. Use WebSocket connections instead by setting usewebsocket: true in your configuration.',
+        { errorCode: 'ERR_TLS_NOT_AVAILABLE' }
+      )
+      if (callback) {
+        callback.call(this, error)
+        return this
+      }
+      throw error
+    }
+
     if (this.config.verbose) {
       console.debug(`-> connecting ${config?.host as string}:${config?.port as number}`)
     }
@@ -84,11 +105,11 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
     // https://brooker.co.za/blog/2024/05/09/nagle.html
     this.socket.setNoDelay(true)
 
-    this.socket.on('data', data => {
+    this.socket.on('data', (data: Buffer) => {
       this.processCommandsData(data)
     })
 
-    this.socket.on('error', error => {
+    this.socket.on('error', (error: Error) => {
       this.close()
       this.processCommandsFinish(new SQLiteCloudError('Connection error', { errorCode: 'ERR_CONNECTION_ERROR', cause: error }))
     })
