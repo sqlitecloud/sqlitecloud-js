@@ -1,6 +1,6 @@
 {
   "name": "@sqlitecloud/drivers",
-  "version": "1.0.715",
+  "version": "1.0.738",
   "description": "SQLiteCloud drivers for Typescript/Javascript in edge, web and node clients",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
@@ -53,6 +53,20 @@
     "react-native-tcp-socket": "*",
     "@craftzdog/react-native-buffer": "*",
     "react-native-url-polyfill": "*"
+  },
+  "peerDependenciesMeta": {
+    "react-native-quick-base64": {
+      "optional": true
+    },
+    "react-native-tcp-socket": {
+      "optional": true
+    },
+    "@craftzdog/react-native-buffer": {
+      "optional": true
+    },
+    "react-native-url-polyfill": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

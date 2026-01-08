@@ -3,9 +3,12 @@
 //
 
 import { DEFAULT_PORT, DEFAULT_TIMEOUT, SQLiteCloudArrayType, SQLiteCloudConfig, SQLiteCloudDataTypes, SQLiteCloudError } from './types'
+import { getSafeURL } from './safe-imports'
 
 // explicitly importing these libraries to allow cross-platform support by replacing them
-import { URL } from 'whatwg-url'
+// In React Native: Metro resolves 'whatwg-url' to 'react-native-url-polyfill' via package.json react-native field
+// In Web/Node: Uses standard whatwg-url package
+const URL = getSafeURL()
 
 //
 // determining running environment, thanks to browser-or-node
