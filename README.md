@@ -21,8 +21,7 @@ No additional dependencies required - the package works out of the box.
 When using this package in React Native or Expo projects, you must install the required peer dependencies. These dependencies are optional and not installed automatically to avoid polluting web and Node.js projects with unnecessary packages.
 
 ```bash
-npm install @sqlitecloud/drivers
-npm install react-native-tcp-socket react-native-quick-base64 @craftzdog/react-native-buffer react-native-url-polyfill
+npm install @sqlitecloud/drivers react-native-tcp-socket react-native-quick-base64 @craftzdog/react-native-buffer react-native-url-polyfill
 ```
 
 If you forget to install these dependencies, the package will throw clear error messages indicating which dependency is missing and how to install it.
