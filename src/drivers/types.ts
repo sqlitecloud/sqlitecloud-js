@@ -85,7 +85,7 @@ export interface SQLiteCloudConfig {
 
   /** True if we should force use of SQLite Cloud Gateway and websocket connections, default: true in browsers, false in node.js */
   usewebsocket?: boolean
-  /** Url where we can connect to a SQLite Cloud Gateway that has a socket.io deamon waiting to connect, eg. wss://host:4000 */
+  /** Url where we can connect to a SQLite Cloud Gateway that has a socket.io deamon waiting to connect, eg. wss://host:443 */
   gatewayurl?: string
 
   /** Optional identifier used for verbose logging */

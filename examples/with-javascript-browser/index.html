@@ -19,8 +19,7 @@
         <div class="text-xs w-12">databaseUrl</div>
         <input type="text" id="connectionStringInput"
             placeholder="Example: sqlitecloud://admin:password@host.sqlite.cloud:8860/chinook.sqlite"
-            value="sqlitecloud://host.sqlite.cloud:8860?apikey=apikey"
-            class="border rounded w-full pl-2 pr-2 mb-2" />
+            value="sqlitecloud://host.sqlite.cloud:8860?apikey=apikey" class="border rounded w-full pl-2 pr-2 mb-2" />
         <div class="text-sm w-12">sql:</div>
         <input type="text" id="messageInput"
             placeholder="Example: USE DATABASE chinook.sqlite; select * from customers limit 3"
@@ -51,7 +50,7 @@
             // connect via websocket to the gateway on the same server
             const connectionConfig = {
                 gatewayUrl: `${window.location.protocol === 'https:' ? 'wss' : 'ws'
-                    }://${window.location.hostname}:4000`,
+                    }://${window.location.hostname}:443`,
                 connectionstring: connectionstring,
             };
             var database = new window.sqlitecloud.Database(
