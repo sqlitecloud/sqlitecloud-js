@@ -19,9 +19,14 @@ export const DEFAULT_PORT = 8860
  *  (inlcuding `lastID` from WRITE statements)
  * mixed - use BigInt and Number types depending on the value size
  */
-export let SAFE_INTEGER_MODE = 'number'
+export type SQLiteCloudSafeIntegerMode = 'number' | 'bigint' | 'mixed'
+
+export let SAFE_INTEGER_MODE: SQLiteCloudSafeIntegerMode = 'number'
 if (typeof process !== 'undefined') {
-   SAFE_INTEGER_MODE = process.env['SAFE_INTEGER_MODE']?.toLowerCase() || 'number'
+  const mode = process.env['SAFE_INTEGER_MODE']?.toLowerCase()
+  if (mode === 'bigint' || mode === 'mixed' || mode === 'number') {
+    SAFE_INTEGER_MODE = mode
+  }
 }
 if (SAFE_INTEGER_MODE == 'bigint') {
   console.debug('BigInt mode: Using Number for all INTEGER values from SQLite, including meta information from WRITE statements.')
@@ -79,6 +84,8 @@ export interface SQLiteCloudConfig {
   maxrows?: number
   /** Server should limit total number of rows in a set to maxRowset */
   maxrowset?: number
+  /** How SQLite 64-bit INTEGER values are returned: number, bigint or mixed. Defaults to SAFE_INTEGER_MODE env var, then number */
+  safe_integer_mode?: SQLiteCloudSafeIntegerMode
 
   /** Custom options and configurations for tls socket, eg: additional certificates */
   tlsoptions?: tls.ConnectionOptions

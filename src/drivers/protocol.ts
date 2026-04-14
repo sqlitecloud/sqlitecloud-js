@@ -3,7 +3,14 @@
 //
 
 import { SQLiteCloudRowset } from './rowset'
-import { SAFE_INTEGER_MODE, SQLiteCloudCommand, SQLiteCloudError, type SQLCloudRowsetMetadata, type SQLiteCloudDataTypes } from './types'
+import {
+  SAFE_INTEGER_MODE,
+  SQLiteCloudCommand,
+  SQLiteCloudError,
+  type SQLCloudRowsetMetadata,
+  type SQLiteCloudDataTypes,
+  type SQLiteCloudSafeIntegerMode
+} from './types'
 import { getSafeBuffer } from './safe-imports'
 
 // explicitly importing buffer library to allow cross-platform support by replacing it
@@ -125,7 +132,7 @@ export function parseError(buffer: Buffer, spaceIndex: number): never {
 }
 
 /** Parse an array of items (each of which will be parsed by type separately) */
-export function parseArray(buffer: Buffer, spaceIndex: number): SQLiteCloudDataTypes[] {
+export function parseArray(buffer: Buffer, spaceIndex: number, safeIntegerMode: SQLiteCloudSafeIntegerMode = SAFE_INTEGER_MODE): SQLiteCloudDataTypes[] {
   const parsedData = []
 
   const array = buffer.subarray(spaceIndex + 1, buffer.length)
@@ -133,7 +140,7 @@ export function parseArray(buffer: Buffer, spaceIndex: number): SQLiteCloudDataT
   let arrayItems = array.subarray(array.indexOf(' ') + 1, array.length)
 
   for (let i = 0; i < numberOfItems; i++) {
-    const { data, fwdBuffer: buffer } = popData(arrayItems)
+    const { data, fwdBuffer: buffer } = popData(arrayItems, safeIntegerMode)
     parsedData.push(data)
     arrayItems = buffer
   }
@@ -165,9 +172,9 @@ export function parseRowsetHeader(buffer: Buffer): { index: number; metadata: SQ
 }
 
 /** Extract column names and, optionally, more metadata out of a rowset's header */
-function parseRowsetColumnsMetadata(buffer: Buffer, metadata: SQLCloudRowsetMetadata): Buffer {
+function parseRowsetColumnsMetadata(buffer: Buffer, metadata: SQLCloudRowsetMetadata, safeIntegerMode: SQLiteCloudSafeIntegerMode): Buffer {
   function popForward() {
-    const { data, fwdBuffer: fwdBuffer } = popData(buffer) // buffer in parent scope
+    const { data, fwdBuffer: fwdBuffer } = popData(buffer, safeIntegerMode) // buffer in parent scope
     buffer = fwdBuffer
     return data
   }
@@ -192,16 +199,16 @@ function parseRowsetColumnsMetadata(buffer: Buffer, metadata: SQLCloudRowsetMeta
 }
 
 /** Parse a regular rowset (no chunks) */
-function parseRowset(buffer: Buffer, spaceIndex: number): SQLiteCloudRowset {
+function parseRowset(buffer: Buffer, spaceIndex: number, safeIntegerMode: SQLiteCloudSafeIntegerMode): SQLiteCloudRowset {
   buffer = buffer.subarray(spaceIndex + 1, buffer.length)
 
   const { metadata, fwdBuffer } = parseRowsetHeader(buffer)
-  buffer = parseRowsetColumnsMetadata(fwdBuffer, metadata)
+  buffer = parseRowsetColumnsMetadata(fwdBuffer, metadata, safeIntegerMode)
 
   // decode each rowset item
   const data = []
   for (let j = 0; j < metadata.numberOfRows * metadata.numberOfColumns; j++) {
-    const { data: rowData, fwdBuffer } = popData(buffer)
+    const { data: rowData, fwdBuffer } = popData(buffer, safeIntegerMode)
     data.push(rowData)
     buffer = fwdBuffer
   }
@@ -223,7 +230,7 @@ export function bufferEndsWith(buffer: Buffer, suffix: string): boolean {
  * *LEN 0:VERS NROWS NCOLS DATA
  * @see https://github.com/sqlitecloud/sdk/blob/master/PROTOCOL.md#scsp-rowset-chunk
  */
-export function parseRowsetChunks(buffers: Buffer[]): SQLiteCloudRowset {
+export function parseRowsetChunks(buffers: Buffer[], safeIntegerMode: SQLiteCloudSafeIntegerMode = SAFE_INTEGER_MODE): SQLiteCloudRowset {
   let buffer = Buffer.concat(buffers)
   if (!bufferStartsWith(buffer, CMD_ROWSET_CHUNK) || !bufferEndsWith(buffer, ROWSET_CHUNKS_END)) {
     throw new Error('SQLiteCloudConnection.parseRowsetChunks - invalid chunks buffer')
@@ -245,14 +252,14 @@ export function parseRowsetChunks(buffers: Buffer[]): SQLiteCloudRowset {
     // first chunk? extract columns metadata
     if (chunkIndex === 1) {
       metadata = chunkMetadata
-      buffer = parseRowsetColumnsMetadata(buffer, metadata)
+      buffer = parseRowsetColumnsMetadata(buffer, metadata, safeIntegerMode)
     } else {
       metadata.numberOfRows += chunkMetadata.numberOfRows
     }
 
     // extract single rowset row
     for (let k = 0; k < chunkMetadata.numberOfRows * metadata.numberOfColumns; k++) {
-      const { data: itemData, fwdBuffer } = popData(buffer)
+      const { data: itemData, fwdBuffer } = popData(buffer, safeIntegerMode)
       data.push(itemData)
       buffer = fwdBuffer
     }
@@ -276,7 +283,10 @@ function popIntegers(buffer: Buffer, numberOfIntegers = 1): { data: number[]; fw
 }
 
 /** Parse command, extract its data, return the data and the buffer moved to the first byte after the command */
-export function popData(buffer: Buffer): { data: SQLiteCloudDataTypes | SQLiteCloudRowset; fwdBuffer: Buffer } {
+export function popData(
+  buffer: Buffer,
+  safeIntegerMode: SQLiteCloudSafeIntegerMode = SAFE_INTEGER_MODE
+): { data: SQLiteCloudDataTypes | SQLiteCloudRowset; fwdBuffer: Buffer } {
   function popResults(data: any) {
     const fwdBuffer = buffer.subarray(commandEnd)
     return { data, fwdBuffer }
@@ -307,10 +317,10 @@ export function popData(buffer: Buffer): { data: SQLiteCloudDataTypes | SQLiteCl
     case CMD_INT:
       // SQLite uses 64-bit INTEGER, but JS uses 53-bit Number
       const value = BigInt(buffer.subarray(1, spaceIndex).toString())
-      if (SAFE_INTEGER_MODE === 'bigint') {
+      if (safeIntegerMode === 'bigint') {
         return popResults(value)
       }
-      if (SAFE_INTEGER_MODE === 'mixed') {
+      if (safeIntegerMode === 'mixed') {
         if (value <= BigInt(Number.MIN_SAFE_INTEGER) || BigInt(Number.MAX_SAFE_INTEGER) <= value) {
           return popResults(value)
         }
@@ -333,9 +343,9 @@ export function popData(buffer: Buffer): { data: SQLiteCloudDataTypes | SQLiteCl
     case CMD_BLOB:
       return popResults(buffer.subarray(spaceIndex + 1, commandEnd))
     case CMD_ARRAY:
-      return popResults(parseArray(buffer, spaceIndex))
+      return popResults(parseArray(buffer, spaceIndex, safeIntegerMode))
     case CMD_ROWSET:
-      return popResults(parseRowset(buffer, spaceIndex))
+      return popResults(parseRowset(buffer, spaceIndex, safeIntegerMode))
     case CMD_ERROR:
       parseError(buffer, spaceIndex) // throws custom error
       break

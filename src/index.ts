@@ -11,6 +11,7 @@ export { Database } from './drivers/database'
 export { SQLiteCloudConnection } from './drivers/connection'
 export {
   type SQLiteCloudConfig,
+  type SQLiteCloudSafeIntegerMode,
   type SQLCloudRowsetMetadata,
   SQLiteCloudError,
   type ResultsCallback,

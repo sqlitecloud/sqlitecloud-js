@@ -341,6 +341,33 @@ describe('send test commands', () => {
     })
   })
 
+  it('should use safe integer mode from connection string params', done => {
+    const config = getChinookConfig()
+    const connectionUrl = getChinookApiKeyUrl()
+    const separator = connectionUrl.includes('?') ? '&' : '?'
+    config.connectionstring = `${connectionUrl}${separator}safe_integer_mode=bigint`
+
+    const chinook = new SQLiteCloudTlsConnection(config, error => {
+      if (error) {
+        done(error)
+        return
+      }
+
+      chinook.sendCommands('TEST INTEGER', (error, results) => {
+        let err = null
+        try {
+          expect(error).toBeNull()
+          expect(results).toBe(BigInt(123456))
+        } catch (error) {
+          err = error
+        } finally {
+          chinook.close()
+          err ? done(err) : done()
+        }
+      })
+    })
+  })
+
   it('should test null', done => {
     const connection = getConnection()
     connection.sendCommands('TEST NULL', (error, results) => {
