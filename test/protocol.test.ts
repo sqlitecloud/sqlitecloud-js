@@ -2,7 +2,7 @@
 // protocol.test.ts
 //
 
-import { formatCommand, parseRowsetChunks } from '../src/drivers/protocol'
+import { formatCommand, parseRowsetChunks, popData } from '../src/drivers/protocol'
 import { SQLiteCloudCommand } from '../src/drivers/types'
 
 // response sent by the server when we TEST ROWSET_CHUNK
@@ -28,6 +28,30 @@ describe('parseRowsetChunks', () => {
     expect(rowset.length).toBe(147)
     expect(rowset[0]['key']).toBe('REINDEX')
     expect(rowset[146]['key']).toBe('PRIMARY')
+  })
+})
+
+describe('Safe integer mode', () => {
+  it('should return numbers by default', () => {
+    const { data } = popData(Buffer.from(':9007199254740992 '))
+    expect(data).toBe(9007199254740992)
+    expect(typeof data).toBe('number')
+  })
+
+  it('should return bigint when mode is bigint', () => {
+    const { data } = popData(Buffer.from(':42 '), 'bigint')
+    expect(data).toBe(BigInt(42))
+    expect(typeof data).toBe('bigint')
+  })
+
+  it('should return bigint only for unsafe integers when mode is mixed', () => {
+    const small = popData(Buffer.from(':42 '), 'mixed')
+    const large = popData(Buffer.from(':9007199254740992 '), 'mixed')
+
+    expect(small.data).toBe(42)
+    expect(typeof small.data).toBe('number')
+    expect(large.data).toBe(BigInt('9007199254740992'))
+    expect(typeof large.data).toBe('bigint')
   })
 })
 

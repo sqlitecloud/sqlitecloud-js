@@ -2,7 +2,16 @@
 // utilities.ts - utility methods to manipulate SQL statements
 //
 
-import { DEFAULT_PORT, DEFAULT_TIMEOUT, SQLiteCloudArrayType, SQLiteCloudConfig, SQLiteCloudDataTypes, SQLiteCloudError } from './types'
+import {
+  DEFAULT_PORT,
+  DEFAULT_TIMEOUT,
+  SAFE_INTEGER_MODE,
+  SQLiteCloudArrayType,
+  SQLiteCloudConfig,
+  SQLiteCloudDataTypes,
+  SQLiteCloudError,
+  SQLiteCloudSafeIntegerMode
+} from './types'
 import { getSafeURL } from './safe-imports'
 
 // explicitly importing these libraries to allow cross-platform support by replacing them
@@ -174,6 +183,7 @@ export function validateConfiguration(config: SQLiteCloudConfig): SQLiteCloudCon
   config.verbose = parseBoolean(config.verbose)
   config.noblob = parseBoolean(config.noblob)
   config.compression = config.compression != undefined && config.compression != null ? parseBoolean(config.compression) : true // default: true
+  config.safe_integer_mode = parseSafeIntegerMode(config.safe_integer_mode || SAFE_INTEGER_MODE)
 
   config.create = parseBoolean(config.create)
   config.non_linearizable = parseBoolean(config.non_linearizable)
@@ -242,6 +252,7 @@ export function parseconnectionstring(connectionstring: string): SQLiteCloudConf
       maxdata: options.maxdata ? parseInt(options.maxdata) : undefined,
       maxrows: options.maxrows ? parseInt(options.maxrows) : undefined,
       maxrowset: options.maxrowset ? parseInt(options.maxrowset) : undefined,
+      safe_integer_mode: options.safe_integer_mode ? parseSafeIntegerMode(options.safe_integer_mode) : undefined,
       usewebsocket: options.usewebsocket ? parseBoolean(options.usewebsocket) : undefined,
       verbose: options.verbose ? parseBoolean(options.verbose) : undefined
     }
@@ -277,4 +288,13 @@ export function parseBooleanToZeroOne(value: string | boolean | null | undefined
     return value.toLowerCase() === 'true' || value === '1' ? 1 : 0
   }
   return value ? 1 : 0
+}
+
+/** Parse 64-bit integer handling mode */
+export function parseSafeIntegerMode(value: string | SQLiteCloudSafeIntegerMode | null | undefined): SQLiteCloudSafeIntegerMode {
+  const mode = value?.toLowerCase()
+  if (mode === 'number' || mode === 'bigint' || mode === 'mixed') {
+    return mode
+  }
+  return 'number'
 }

@@ -3,7 +3,7 @@
 //
 
 import { SQLiteCloudError } from '../src/index'
-import { getInitializationCommands, parseconnectionstring, sanitizeSQLiteIdentifier } from '../src/drivers/utilities'
+import { getInitializationCommands, parseconnectionstring, sanitizeSQLiteIdentifier, validateConfiguration } from '../src/drivers/utilities'
 import { getTestingDatabaseName } from './shared'
 
 import { expect, describe, it } from '@jest/globals'
@@ -163,6 +163,13 @@ describe('parseconnectionstring', () => {
     expect(config.timeout).toBe(123)
   })
 
+  it('should parse connection with safe integer mode', () => {
+    const connectionstring = `sqlitecloud://host:1234/database?apikey=xxx&safe_integer_mode=bigint`
+    const config = parseconnectionstring(connectionstring)
+
+    expect(config.safe_integer_mode).toBe('bigint')
+  })
+
   it('expect error when both user/pass and api key are set', () => {
     const connectionstring = 'sqlitecloud://user:password@host:1234/database?apikey=yyy'
     expect(() => parseconnectionstring(connectionstring)).toThrowError('Choose between apikey, token or username/password')
@@ -176,6 +183,19 @@ describe('parseconnectionstring', () => {
   it('expect error when both apikey and token are set', () => {
     const connectionstring = 'sqlitecloud://host:1234/database?apikey=xxx&token=yyy'
     expect(() => parseconnectionstring(connectionstring)).toThrowError('Choose between apikey, token or username/password')
+  })
+})
+
+describe('validateConfiguration()', () => {
+  it('should use safe integer mode from config', () => {
+    const config = validateConfiguration({
+      username: 'user',
+      password: 'password',
+      host: 'host',
+      safe_integer_mode: 'mixed'
+    })
+
+    expect(config.safe_integer_mode).toBe('mixed')
   })
 })
 

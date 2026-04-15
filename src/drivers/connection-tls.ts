@@ -221,17 +221,17 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
               this.processCommandsData(Buffer.alloc(0))
               return
             } else {
-              const { data } = popData(decompressResults.buffer)
+              const { data } = popData(decompressResults.buffer, this.config.safe_integer_mode)
               this.processCommandsFinish?.call(this, null, data)
             }
           } else {
             if (dataType !== CMD_ROWSET_CHUNK) {
-              const { data } = popData(this.buffer)
+              const { data } = popData(this.buffer, this.config.safe_integer_mode)
               this.processCommandsFinish?.call(this, null, data)
             } else {
               const completeChunk = bufferEndsWith(this.buffer, ROWSET_CHUNKS_END)
               if (completeChunk) {
-                const parsedData = parseRowsetChunks([...this.pendingChunks, this.buffer])
+                const parsedData = parseRowsetChunks([...this.pendingChunks, this.buffer], this.config.safe_integer_mode)
                 this.processCommandsFinish?.call(this, null, parsedData)
               }
             }
@@ -241,7 +241,7 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
         // command with no explicit len so make sure that the final character is a space
         const lastChar = this.buffer.subarray(this.buffer.length - 1, this.buffer.length).toString('utf8')
         if (lastChar == ' ') {
-          const { data } = popData(this.buffer)
+          const { data } = popData(this.buffer, this.config.safe_integer_mode)
           this.processCommandsFinish?.call(this, null, data)
         }
       }
