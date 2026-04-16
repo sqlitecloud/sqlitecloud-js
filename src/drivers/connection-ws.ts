@@ -6,6 +6,7 @@ import { io, Socket } from 'socket.io-client'
 import { SQLiteCloudConnection } from './connection'
 import { SQLiteCloudRowset } from './rowset'
 import { ErrorCallback, ResultsCallback, SQLiteCloudCommand, SQLiteCloudConfig, SQLiteCloudError } from './types'
+import { decodeBigIntMarkers, encodeBigIntMarkers } from './utilities'
 
 /**
  * Implementation of TransportConnection that connects to the database indirectly
@@ -80,24 +81,34 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
       commands = { query: commands }
     }
 
-    this.socket.emit('GET /v2/weblite/sql', { sql: commands.query, bind: commands.parameters, row: 'array' }, (response: any) => {
-      if (response?.error) {
-        const error = new SQLiteCloudError(response.error.detail, { ...response.error })
-        callback?.call(this, error)
-      } else {
-        const { data, metadata } = response
-        if (data && metadata) {
-          if (metadata.numberOfRows !== undefined && metadata.numberOfColumns !== undefined && metadata.columns !== undefined) {
-            console.assert(Array.isArray(data), 'SQLiteCloudWebsocketConnection.transportCommands - data is not an array')
-            // we can recreate a SQLiteCloudRowset from the response which we know to be an array of arrays
-            const rowset = new SQLiteCloudRowset(metadata, data.flat())
-            callback?.call(this, null, rowset)
-            return
+    this.socket.emit(
+      'GET /v2/weblite/sql',
+      {
+        sql: commands.query,
+        bind: encodeBigIntMarkers(commands.parameters),
+        row: 'array',
+        safe_integer_mode: this.config.safe_integer_mode
+      },
+      (response: any) => {
+        if (response?.error) {
+          const error = new SQLiteCloudError(response.error.detail, { ...response.error })
+          callback?.call(this, error)
+        } else {
+          const { metadata } = response
+          const data = decodeBigIntMarkers(response?.data, this.config.safe_integer_mode)
+          if (data && metadata) {
+            if (metadata.numberOfRows !== undefined && metadata.numberOfColumns !== undefined && metadata.columns !== undefined) {
+              console.assert(Array.isArray(data), 'SQLiteCloudWebsocketConnection.transportCommands - data is not an array')
+              // we can recreate a SQLiteCloudRowset from the response which we know to be an array of arrays
+              const rowset = new SQLiteCloudRowset(metadata, data.flat())
+              callback?.call(this, null, rowset)
+              return
+            }
           }
+          callback?.call(this, null, data)
         }
-        callback?.call(this, null, response?.data)
       }
-    })
+    )
 
     return this
   }
