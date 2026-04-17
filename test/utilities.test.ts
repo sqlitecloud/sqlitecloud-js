@@ -3,7 +3,15 @@
 //
 
 import { SQLiteCloudError } from '../src/index'
-import { getInitializationCommands, parseconnectionstring, sanitizeSQLiteIdentifier, validateConfiguration } from '../src/drivers/utilities'
+import {
+  decodeBigIntMarkers,
+  encodeBigIntMarkers,
+  getInitializationCommands,
+  parseconnectionstring,
+  parseSafeIntegerMode,
+  sanitizeSQLiteIdentifier,
+  validateConfiguration
+} from '../src/drivers/utilities'
 import { getTestingDatabaseName } from './shared'
 
 import { expect, describe, it } from '@jest/globals'
@@ -197,6 +205,69 @@ describe('validateConfiguration()', () => {
 
     expect(config.safe_integer_mode).toBe('mixed')
   })
+
+  it('should use safe integer mode from config when connection string is provided', () => {
+    const connectionstring = 'sqlitecloud://host:1234/database?apikey=xxx'
+    const config = validateConfiguration({
+      connectionstring,
+      safe_integer_mode: 'mixed'
+    })
+
+    expect(config.safe_integer_mode).toBe('mixed')
+    expect(config.connectionstring).toBe(connectionstring)
+  })
+
+  it('should use safe integer mode from connection string params', () => {
+    const config = validateConfiguration({
+      connectionstring: 'sqlitecloud://host:1234/database?apikey=xxx&safe_integer_mode=bigint'
+    })
+
+    expect(config.safe_integer_mode).toBe('bigint')
+  })
+
+  it('should prefer config safe integer mode over connection string params', () => {
+    const config = validateConfiguration({
+      connectionstring: 'sqlitecloud://host:1234/database?apikey=xxx&safe_integer_mode=bigint',
+      safe_integer_mode: 'mixed'
+    })
+
+    expect(config.safe_integer_mode).toBe('mixed')
+  })
+
+  it('should prefer all explicit config values over connection string params', () => {
+    const config = validateConfiguration({
+      connectionstring: 'sqlitecloud://host:1234/database?apikey=xxx&timeout=123&insecure=1&maxrows=42',
+      timeout: 456,
+      insecure: false,
+      maxrows: 84
+    })
+
+    expect(config.timeout).toBe(456)
+    expect(config.insecure).toBe(false)
+    expect(config.maxrows).toBe(84)
+  })
+})
+
+describe('safe integer marker utilities', () => {
+  it('should parse safe integer mode', () => {
+    expect(parseSafeIntegerMode('bigint')).toBe('bigint')
+    expect(parseSafeIntegerMode('mixed')).toBe('mixed')
+    expect(parseSafeIntegerMode('number')).toBe('number')
+    expect(parseSafeIntegerMode('invalid')).toBe('number')
+  })
+
+  it('should encode bigint values as marker strings', () => {
+    expect(encodeBigIntMarkers({ id: BigInt('9223372036854775807'), values: [1, BigInt(2)] })).toEqual({
+      id: '9223372036854775807n',
+      values: [1, '2n']
+    })
+  })
+
+  it('should decode bigint markers only in lossless modes', () => {
+    expect(decodeBigIntMarkers('9223372036854775807n', 'bigint')).toBe(BigInt('9223372036854775807'))
+    expect(decodeBigIntMarkers({ id: '9223372036854775807n' }, 'mixed')).toEqual({ id: BigInt('9223372036854775807') })
+    expect(decodeBigIntMarkers('9223372036854775807n', 'number')).toBe('9223372036854775807n')
+  })
 })
 
 describe('getTestingDatabaseName', () => {
@@ -214,7 +285,7 @@ describe('sanitizeSQLiteIdentifier()', () => {
   })
 
   it('valid indentifier', () => {
-    const identifier = "a_colName1"
+    const identifier = 'a_colName1'
     const sanitized = sanitizeSQLiteIdentifier(identifier)
     expect(sanitized).toBe('"a_colName1"')
   })
@@ -230,7 +301,7 @@ describe('getInitializationCommands()', () => {
   it('should return commands with auth token command', () => {
     const config = {
       token: 'mytoken',
-      database: 'mydb',
+      database: 'mydb'
     }
 
     const result = getInitializationCommands(config)

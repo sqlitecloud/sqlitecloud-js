@@ -13,6 +13,7 @@ import {
   SQLiteCloudSafeIntegerMode
 } from './types'
 import { getSafeURL } from './safe-imports'
+import { Buffer } from 'buffer'
 
 // explicitly importing these libraries to allow cross-platform support by replacing them
 // In React Native: Metro resolves 'whatwg-url' to 'react-native-url-polyfill' via package.json react-native field
@@ -168,9 +169,11 @@ export function popCallback<T extends ErrorCallback = ErrorCallback>(
 export function validateConfiguration(config: SQLiteCloudConfig): SQLiteCloudConfig {
   console.assert(config, 'SQLiteCloudConnection.validateConfiguration - missing config')
   if (config.connectionstring) {
+    const configOverrides = Object.fromEntries(Object.entries(config).filter(([, value]) => value !== undefined))
+    const connectionStringConfig = parseconnectionstring(config.connectionstring)
     config = {
-      ...config,
-      ...parseconnectionstring(config.connectionstring),
+      ...connectionStringConfig,
+      ...configOverrides,
       connectionstring: config.connectionstring // keep original connection string
     }
   }
@@ -297,4 +300,52 @@ export function parseSafeIntegerMode(value: string | SQLiteCloudSafeIntegerMode 
     return mode
   }
   return 'number'
+}
+
+const BIGINT_MARKER_RE = /^-?\d+n$/
+
+/** Convert values that JSON cannot represent losslessly into sqlitecloud-js bigint markers. */
+export function encodeBigIntMarkers(value: any): any {
+  if (typeof value === 'bigint') {
+    return `${value.toString()}n`
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(item => encodeBigIntMarkers(item))
+  }
+
+  if (value && typeof value === 'object' && !Buffer.isBuffer(value)) {
+    const result: Record<string, any> = {}
+    Object.entries(value).forEach(([key, item]) => {
+      result[key] = encodeBigIntMarkers(item)
+    })
+    return result
+  }
+
+  return value
+}
+
+/** Convert sqlitecloud-js bigint markers back into BigInt values for lossless integer modes. */
+export function decodeBigIntMarkers(value: any, safeIntegerMode?: SQLiteCloudSafeIntegerMode): any {
+  if (safeIntegerMode !== 'bigint' && safeIntegerMode !== 'mixed') {
+    return value
+  }
+
+  if (typeof value === 'string' && BIGINT_MARKER_RE.test(value)) {
+    return BigInt(value.slice(0, -1))
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(item => decodeBigIntMarkers(item, safeIntegerMode))
+  }
+
+  if (value && typeof value === 'object' && !Buffer.isBuffer(value)) {
+    const result: Record<string, any> = {}
+    Object.entries(value).forEach(([key, item]) => {
+      result[key] = decodeBigIntMarkers(item, safeIntegerMode)
+    })
+    return result
+  }
+
+  return value
 }
