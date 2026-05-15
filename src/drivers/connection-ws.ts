@@ -30,9 +30,24 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
       console.assert(!this.connected, 'Connection already established')
       if (!this.socket) {
         this.config = config
-        const connectionstring = this.config.connectionstring as string
-        const gatewayUrl = this.config?.gatewayurl || `${this.config.host === 'localhost' ? 'ws' : 'wss'}://${this.config.host as string}:443`
-        this.socket = io(gatewayUrl, { auth: { token: connectionstring } })
+        // Gateway tenant routing is derived from the Host header. In production, `gatewayurl` is
+        // a domain suffix (eg `gateway.sqlite.cloud`) appended to the tenant prefix from the core
+        // hostname (eg crvheg7dhk.g4 from crvheg7dhk.g4.sqlite.cloud) to form the gateway host
+        // (→ crvheg7dhk.g4.gateway.sqlite.cloud). For local development, pass a `gatewayurl`
+        // containing `localhost` — the driver routes TCP to it and injects the tenant Host header
+        // separately so the gateway still tenant-routes correctly.
+        const authToken = this.config.apikey || this.config.token
+        const ioOpts: Record<string, unknown> = { auth: { token: authToken } }
+        let gatewayUrl: string
+        if (this.config.gatewayurl?.includes('localhost')) {
+          const raw = this.config.gatewayurl
+          gatewayUrl = raw.startsWith('ws://') || raw.startsWith('wss://') ? raw : `ws://${raw}`
+          ioOpts.extraHeaders = { Host: this.config.host }
+        } else {
+          const gatewayHost = buildGatewayHost(this.config.host as string, this.config.gatewayurl)
+          gatewayUrl = `wss://${gatewayHost}:443`
+        }
+        this.socket = io(gatewayUrl, ioOpts)
 
         this.socket.on('connect', () => {
           callback?.call(this, null)
@@ -86,6 +101,7 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
       {
         sql: commands.query,
         bind: encodeBigIntMarkers(commands.parameters),
+        database: this.config.database,
         row: 'array',
         safe_integer_mode: this.config.safe_integer_mode
       },
@@ -125,6 +141,18 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
     this.operations.clear()
     return this
   }
+}
+
+/** Builds the gateway hostname from a core hostname by replacing the last two labels with
+ *  the given `gatewayurl` suffix (default `gateway.sqlite.cloud`). Returns host unchanged
+ *  when it already ends with the suffix (idempotent) or is too short to have a tenant prefix. */
+function buildGatewayHost(host: string, gatewayurl?: string): string {
+  if (!host) return host
+  const suffix = gatewayurl || 'gateway.sqlite.cloud'
+  if (host === suffix || host.endsWith('.' + suffix)) return host
+  const labels = host.split('.')
+  if (labels.length < 3) return host
+  return labels.slice(0, -2).join('.') + '.' + suffix
 }
 
 export default SQLiteCloudWebsocketConnection
