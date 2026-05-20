@@ -1,15 +1,48 @@
 {
   "name": "@sqlitecloud/drivers",
-  "version": "1.0.837",
+  "version": "1.0.870",
   "description": "SQLiteCloud drivers for Typescript/Javascript in edge, web and node clients",
   "main": "./lib/index.js",
+  "module": "./lib/esm/index.js",
   "types": "./lib/index.d.ts",
+  "unpkg": "./lib/sqlitecloud.drivers.js",
+  "jsdelivr": "./lib/sqlitecloud.drivers.js",
+  "exports": {
+    ".": {
+      "types": "./lib/esm/index.d.ts",
+      "import": "./lib/esm/index.js",
+      "require": "./lib/index.js",
+      "default": "./lib/index.js"
+    },
+    "./browser": {
+      "types": "./lib/esm/index.d.ts",
+      "import": "./lib/esm/index.js",
+      "require": "./lib/index.js",
+      "default": "./lib/esm/index.js"
+    },
+    "./umd": {
+      "types": "./lib/esm/index.d.ts",
+      "default": "./lib/sqlitecloud.drivers.js"
+    },
+    "./umd-dev": {
+      "types": "./lib/esm/index.d.ts",
+      "default": "./lib/sqlitecloud.drivers.dev.js"
+    },
+    "./lib/*.js": "./lib/*.js",
+    "./lib/*.d.ts": "./lib/*.d.ts",
+    "./lib/*": {
+      "types": "./lib/*.d.ts",
+      "require": "./lib/*.js",
+      "default": "./lib/*.js"
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "lib/**/*"
   ],
   "scripts": {
     "test": "jest --silent --coverage",
-    "build": "rm -rf ./lib/ && tsc --project tsconfig.build.json && npx webpack",
+    "build": "rm -rf ./lib/ && tsc --project tsconfig.build.json && node scripts/write-esm-wrapper.cjs && npx webpack",
     "publish": "npm run build && npm publish --access public",
     "prettier": "prettier --write 'src/**/*'",
     "typedoc": "rm -rf ./docs/ && typedoc --out docs && typedoc --plugin typedoc-plugin-markdown --out docs/markdown",
@@ -107,6 +140,7 @@
     "buffer": "@craftzdog/react-native-buffer"
   },
   "browser": {
+    "./lib/drivers/connection-tls.js": false,
     "tls": false
   }
 }
