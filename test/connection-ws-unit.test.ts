@@ -3,10 +3,33 @@
  */
 
 import { describe, expect, it, jest } from '@jest/globals'
+import { io } from 'socket.io-client'
 import { SQLiteCloudWebsocketConnection } from '../src/drivers/connection-ws'
 import { decodeBigIntMarkers, encodeBigIntMarkers } from '../src/drivers/utilities'
 
+jest.mock('socket.io-client', () => ({
+  io: jest.fn()
+}))
+
 describe('websocket bigint markers', () => {
+  it('should connect with a parser that allows large binary rowsets', () => {
+    const socket = { connected: false, on: jest.fn() }
+    const mockedIo = io as jest.MockedFunction<typeof io>
+    mockedIo.mockReturnValue(socket as any)
+
+    const connection = Object.create(SQLiteCloudWebsocketConnection.prototype) as any
+    const connectionstring = 'sqlitecloud://host.sqlite.cloud/database?apikey=secret'
+    connection.connectTransport({ connectionstring, host: 'host.sqlite.cloud' }, jest.fn())
+
+    expect(mockedIo).toHaveBeenCalledWith('wss://host.sqlite.cloud:443', {
+      auth: { token: connectionstring },
+      parser: expect.objectContaining({
+        Encoder: expect.any(Function),
+        Decoder: expect.any(Function)
+      })
+    })
+  })
+
   it('should encode bigint values before sending JSON payloads', () => {
     expect(
       encodeBigIntMarkers({

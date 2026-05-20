@@ -3,10 +3,29 @@
  */
 
 import { io, Socket } from 'socket.io-client'
+import { Decoder as SocketIODecoder, Encoder as SocketIOEncoder } from 'socket.io-parser'
 import { SQLiteCloudConnection } from './connection'
 import { SQLiteCloudRowset } from './rowset'
 import { ErrorCallback, ResultsCallback, SQLiteCloudCommand, SQLiteCloudConfig, SQLiteCloudError } from './types'
 import { decodeBigIntMarkers, encodeBigIntMarkers } from './utilities'
+
+const MAX_SOCKET_IO_ATTACHMENTS = 100000
+const SocketIODecoderBase = SocketIODecoder as unknown as new (...args: any[]) => { opts?: { maxAttachments?: number } }
+
+class SQLiteCloudSocketIODecoder extends SocketIODecoderBase {
+  constructor(opts?: any) {
+    super(typeof opts === 'function' ? opts : opts?.reviver)
+
+    if (this.opts) {
+      this.opts.maxAttachments = Math.max(this.opts.maxAttachments ?? 0, MAX_SOCKET_IO_ATTACHMENTS)
+    }
+  }
+}
+
+const sqliteCloudSocketIOParser = {
+  Encoder: SocketIOEncoder,
+  Decoder: SQLiteCloudSocketIODecoder
+}
 
 /**
  * Implementation of TransportConnection that connects to the database indirectly
@@ -30,6 +49,7 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
       console.assert(!this.connected, 'Connection already established')
       if (!this.socket) {
         this.config = config
+
         // Gateway tenant routing is derived from the Host header. In production, `gatewayurl` is
         // a domain suffix (eg `gateway.sqlite.cloud`) appended to the tenant prefix from the core
         // hostname (eg crvheg7dhk.g4 from crvheg7dhk.g4.sqlite.cloud) to form the gateway host
@@ -37,7 +57,7 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
         // containing `localhost` — the driver routes TCP to it and injects the tenant Host header
         // separately so the gateway still tenant-routes correctly.
         const authToken = this.config.apikey || this.config.token
-        const ioOpts: Record<string, unknown> = { auth: { token: authToken } }
+        const ioOpts: Record<string, unknown> = { auth: { token: authToken }, parser: sqliteCloudSocketIOParser }
         let gatewayUrl: string
         if (this.config.gatewayurl?.includes('localhost')) {
           const raw = this.config.gatewayurl
