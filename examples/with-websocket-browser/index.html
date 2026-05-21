@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SQLite Cloud — WebSocket browser example</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 720px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+      label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin: 0.75rem 0 0.25rem;
+      }
+      input[type='text'],
+      textarea {
+        width: 100%;
+        padding: 0.5rem;
+        font: inherit;
+        box-sizing: border-box;
+      }
+      textarea {
+        min-height: 5rem;
+        font-family: ui-monospace, monospace;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+      }
+      button {
+        margin-top: 1rem;
+        padding: 0.5rem 1rem;
+        font: inherit;
+        cursor: pointer;
+      }
+      pre {
+        background: #f4f4f5;
+        padding: 1rem;
+        border-radius: 6px;
+        overflow: auto;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>SQLite Cloud — WebSocket browser example</h1>
+    <p>
+      Installs <code>@sqlitecloud/drivers</code> from npm and queries SQLite Cloud over WebSocket (through the SQLite Cloud Gateway) using a
+      <code>runQuery</code> helper.
+    </p>
+
+    <label for="connectionString">Connection string</label>
+    <input id="connectionString" type="text" placeholder="sqlitecloud://host.sqlite.cloud:8860/chinook.sqlite?apikey=YOUR_KEY" />
+
+    <label for="sql">SQL</label>
+    <textarea id="sql">USE DATABASE chinook.sqlite; SELECT * FROM albums LIMIT 5;</textarea>
+
+    <div class="row">
+      <input id="arrayMode" type="checkbox" />
+      <label for="arrayMode" style="margin: 0">array mode (rows as arrays via row.getData())</label>
+    </div>
+
+    <button id="run">Run query</button>
+
+    <h2>Result</h2>
+    <pre id="output">—</pre>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
