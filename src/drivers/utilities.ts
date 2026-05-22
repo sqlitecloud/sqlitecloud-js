@@ -3,14 +3,19 @@
 //
 
 import {
+  DEFAULT_WEBSOCKET_BLOB_TRANSFER_FORMAT,
+  DEFAULT_WEBSOCKET_MAX_ATTACHMENTS,
   DEFAULT_PORT,
   DEFAULT_TIMEOUT,
+  ErrorCallback,
   SAFE_INTEGER_MODE,
+  SQLCloudRowsetMetadata,
   SQLiteCloudArrayType,
   SQLiteCloudConfig,
   SQLiteCloudDataTypes,
   SQLiteCloudError,
-  SQLiteCloudSafeIntegerMode
+  SQLiteCloudSafeIntegerMode,
+  SQLiteCloudWebsocketBlobTransferFormat
 } from './types'
 import { getSafeURL } from './safe-imports'
 import { Buffer } from 'buffer'
@@ -187,6 +192,8 @@ export function validateConfiguration(config: SQLiteCloudConfig): SQLiteCloudCon
   config.noblob = parseBoolean(config.noblob)
   config.compression = config.compression != undefined && config.compression != null ? parseBoolean(config.compression) : true // default: true
   config.safe_integer_mode = parseSafeIntegerMode(config.safe_integer_mode || SAFE_INTEGER_MODE)
+  config.websocketBlobFormat = parseWebsocketBlobTransferFormat(config.websocketBlobFormat)
+  config.websocketMaxAttachments = parseWebsocketMaxAttachments(config.websocketMaxAttachments)
 
   config.create = parseBoolean(config.create)
   config.non_linearizable = parseBoolean(config.non_linearizable)
@@ -257,6 +264,8 @@ export function parseconnectionstring(connectionstring: string): SQLiteCloudConf
       maxrowset: options.maxrowset ? parseInt(options.maxrowset) : undefined,
       safe_integer_mode: options.safe_integer_mode ? parseSafeIntegerMode(options.safe_integer_mode) : undefined,
       usewebsocket: options.usewebsocket ? parseBoolean(options.usewebsocket) : undefined,
+      websocketBlobFormat: options.websocket_blob_format ? parseWebsocketBlobTransferFormat(options.websocket_blob_format, undefined) : undefined,
+      websocketMaxAttachments: options.websocket_max_attachments ? parseWebsocketMaxAttachments(options.websocket_max_attachments) : undefined,
       verbose: options.verbose ? parseBoolean(options.verbose) : undefined
     }
 
@@ -302,7 +311,29 @@ export function parseSafeIntegerMode(value: string | SQLiteCloudSafeIntegerMode 
   return 'number'
 }
 
+/** Parse websocket BLOB transport format, falling back to the driver default for new websocket clients. */
+export function parseWebsocketBlobTransferFormat(
+  value: string | SQLiteCloudWebsocketBlobTransferFormat | null | undefined,
+  fallback: SQLiteCloudWebsocketBlobTransferFormat | undefined = DEFAULT_WEBSOCKET_BLOB_TRANSFER_FORMAT
+): SQLiteCloudWebsocketBlobTransferFormat | undefined {
+  const format = value?.toLowerCase()
+  if (format === 'base64-blobs-v1' || format === 'socketio-blobs-v1') {
+    return format
+  }
+  return fallback
+}
+
+/** Parse the maximum number of socket.io binary attachments allowed for a websocket response. */
+export function parseWebsocketMaxAttachments(value: string | number | null | undefined): number {
+  const parsed = typeof value === 'string' ? Number.parseInt(value, 10) : value
+  if (Number.isSafeInteger(parsed) && (parsed as number) > 0) {
+    return parsed as number
+  }
+  return DEFAULT_WEBSOCKET_MAX_ATTACHMENTS
+}
+
 const BIGINT_MARKER_RE = /^-?\d+n$/
+const BLOB_COLUMN_TYPE_RE = /\bblob\b/i
 
 /** Convert values that JSON cannot represent losslessly into sqlitecloud-js bigint markers. */
 export function encodeBigIntMarkers(value: any): any {
@@ -348,4 +379,32 @@ export function decodeBigIntMarkers(value: any, safeIntegerMode?: SQLiteCloudSaf
   }
 
   return value
+}
+
+/** Decode websocket rowset cells using metadata-aware rules for bigint markers and negotiated BLOB transport. */
+export function decodeWebsocketRowsetData(
+  data: any,
+  metadata: SQLCloudRowsetMetadata,
+  safeIntegerMode?: SQLiteCloudSafeIntegerMode,
+  blobTransferFormat?: SQLiteCloudWebsocketBlobTransferFormat
+): any {
+  if (!Array.isArray(data)) {
+    return decodeBigIntMarkers(data, safeIntegerMode)
+  }
+
+  const blobColumnIndexes = new Set(
+    metadata.columns.flatMap((column, index) => (column.type && BLOB_COLUMN_TYPE_RE.test(column.type) ? [index] : []))
+  )
+  const decodeCell = (value: any, columnIndex: number) => {
+    if (blobTransferFormat === 'base64-blobs-v1' && blobColumnIndexes.has(columnIndex) && typeof value === 'string') {
+      return Buffer.from(value, 'base64')
+    }
+    return decodeBigIntMarkers(value, safeIntegerMode)
+  }
+
+  if (data.every(row => !Array.isArray(row))) {
+    return data.map((value, index) => decodeCell(value, index % metadata.numberOfColumns))
+  }
+
+  return data.map(row => (Array.isArray(row) ? row.map((value, columnIndex) => decodeCell(value, columnIndex)) : decodeBigIntMarkers(row, safeIntegerMode)))
 }
