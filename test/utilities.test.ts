@@ -178,6 +178,14 @@ describe('parseconnectionstring', () => {
     expect(config.safe_integer_mode).toBe('bigint')
   })
 
+  it('should parse websocket blob transport options', () => {
+    const connectionstring = `sqlitecloud://host:1234/database?apikey=xxx&websocket_blob_format=socketio-blobs-v1&websocket_max_attachments=123`
+    const config = parseconnectionstring(connectionstring)
+
+    expect(config.websocketBlobFormat).toBe('socketio-blobs-v1')
+    expect(config.websocketMaxAttachments).toBe(123)
+  })
+
   it('expect error when both user/pass and api key are set', () => {
     const connectionstring = 'sqlitecloud://user:password@host:1234/database?apikey=yyy'
     expect(() => parseconnectionstring(connectionstring)).toThrowError('Choose between apikey, token or username/password')
@@ -245,6 +253,15 @@ describe('validateConfiguration()', () => {
     expect(config.timeout).toBe(456)
     expect(config.insecure).toBe(false)
     expect(config.maxrows).toBe(84)
+  })
+
+  it('should default websocket blob transport config for new clients', () => {
+    const config = validateConfiguration({
+      connectionstring: 'sqlitecloud://host:1234/database?apikey=xxx'
+    })
+
+    expect(config.websocketBlobFormat).toBe('base64-blobs-v1')
+    expect(config.websocketMaxAttachments).toBe(100000)
   })
 })
 
