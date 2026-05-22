@@ -52,6 +52,16 @@ function getAttachmentLimitError(description: unknown, limit: number): SQLiteClo
   }
 }
 
+function getGatewayResponseError(response: any): Record<string, any> | undefined {
+  if (response?.error && typeof response.error === 'object') {
+    return response.error
+  }
+
+  if (Array.isArray(response?.errors) && response.errors[0] && typeof response.errors[0] === 'object') {
+    return response.errors[0]
+  }
+}
+
 /**
  * Implementation of TransportConnection that connects to the database indirectly
  * via SQLite Cloud Gateway, a socket.io based deamon that responds to sql query
@@ -90,6 +100,7 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
           const raw = this.config.gatewayurl
           gatewayUrl = raw.startsWith('ws://') || raw.startsWith('wss://') ? raw : `ws://${raw}`
           ioOpts.extraHeaders = { Host: this.config.host }
+          ioOpts.transports = ['websocket']
         } else {
           const gatewayHost = buildGatewayHost(this.config.host as string, this.config.gatewayurl)
           gatewayUrl = `wss://${gatewayHost}:443`
@@ -168,8 +179,9 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
         }
       },
       (response: any) => {
-        if (response?.error) {
-          const error = new SQLiteCloudError(response.error.detail, { ...response.error })
+        const gatewayError = getGatewayResponseError(response)
+        if (gatewayError) {
+          const error = new SQLiteCloudError(gatewayError.detail || gatewayError.message || 'Gateway error', { ...gatewayError })
           callback?.call(this, error)
         } else {
           const { metadata } = response
