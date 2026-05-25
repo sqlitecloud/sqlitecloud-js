@@ -1,6 +1,6 @@
 {
   "name": "@sqlitecloud/drivers",
-  "version": "1.0.872",
+  "version": "1.0.890",
   "description": "SQLiteCloud drivers for Typescript/Javascript in edge, web and node clients",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
@@ -12,7 +12,7 @@
     "build": "rm -rf ./lib/ && tsc --project tsconfig.build.json && npx webpack",
     "publish": "npm run build && npm publish --access public",
     "prettier": "prettier --write 'src/**/*'",
-    "typedoc": "rm -rf ./docs/ && typedoc --out docs && typedoc --plugin typedoc-plugin-markdown --out docs/markdown",
+    "typedoc": "rm -rf ./docs/ && typedoc --tsconfig tsconfig.build.json --out docs && typedoc --tsconfig tsconfig.build.json --plugin typedoc-plugin-markdown --out docs/markdown",
     "npmgui": "npx npm-gui@latest",
     "prepare": "husky"
   },
