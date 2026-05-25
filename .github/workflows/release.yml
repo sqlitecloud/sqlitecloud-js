@@ -1,37 +1,57 @@
 name: 'Release'
+
 on:
-  push:
-    branches: [main]
+  release:
+    types: [created]
+  workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
   id-token: write
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
-  build_and_docs:
-    name: 'Build and Docs'
-    timeout-minutes: 5
+  publish:
+    name: 'Publish to npm'
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && !github.event.release.draft)
+    timeout-minutes: 10
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: latest
+          node-version: 22.13.1
+          registry-url: 'https://registry.npmjs.org'
+
       - name: Setup Dependencies
         run: |
           corepack enable
           npm install
-      - name: Build App and Typedoc
+
+      - name: Read package version
+        id: package
         run: |
-          npm run build
-          npm run typedoc
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./docs
-      - name: Deploy Typedoc to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          echo "version=$(node -p 'require(\"./package.json\").version')" >> "$GITHUB_OUTPUT"
+
+      - name: Validate release tag
+        if: github.event_name == 'release'
+        run: |
+          expected_tag="v${{ steps.package.outputs.version }}"
+          actual_tag="${{ github.event.release.tag_name }}"
+          if [ "$actual_tag" != "$expected_tag" ]; then
+            echo "Release tag $actual_tag does not match package version $expected_tag"
+            exit 1
+          fi
+
+      - name: Build package
+        run: npm run build
+
+      - name: Publish package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --provenance
