@@ -33,15 +33,11 @@ jobs:
           corepack enable
           npm install
 
-      - name: Read package version
-        id: package
-        run: |
-          echo "version=$(node -p 'require(\"./package.json\").version')" >> "$GITHUB_OUTPUT"
-
       - name: Validate release tag
         if: github.event_name == 'release'
         run: |
-          expected_tag="v${{ steps.package.outputs.version }}"
+          package_version=$(node -p "require('./package.json').version")
+          expected_tag="v${package_version}"
           actual_tag="${{ github.event.release.tag_name }}"
           if [ "$actual_tag" != "$expected_tag" ]; then
             echo "Release tag $actual_tag does not match package version $expected_tag"
