@@ -1,0 +1,19 @@
+{
+  "name": "with-websocket-browser",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "sync-driver": "(cd ../.. && npm run build && rm -f sqlitecloud-drivers.tgz && mv \"$(npm pack | tail -1)\" sqlitecloud-drivers.tgz) && rm -rf node_modules/@sqlitecloud node_modules/.vite package-lock.json && npm install"
+  },
+  "dependencies": {
+    "@sqlitecloud/drivers": "file:../../sqlitecloud-drivers.tgz"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "vite": "^5.4.11"
+  }
+}
