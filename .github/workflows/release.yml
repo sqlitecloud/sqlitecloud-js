@@ -25,7 +25,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.13.1
+          node-version: 22.14.0
           registry-url: 'https://registry.npmjs.org'
 
       - name: Setup Dependencies
@@ -48,6 +48,4 @@ jobs:
         run: npm run build
 
       - name: Publish package
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --access public --provenance
+        run: npm publish --access public
