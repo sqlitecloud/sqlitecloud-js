@@ -143,16 +143,24 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
   }
 }
 
-/** Builds the gateway hostname from a core hostname by replacing the last two labels with
- *  the given `gatewayurl` suffix (default `gateway.sqlite.cloud`). Returns host unchanged
- *  when it already ends with the suffix (idempotent) or is too short to have a tenant prefix. */
+/** Default gateway domain suffix used when `gatewayurl` is not provided. */
+const DEFAULT_GATEWAY_DOMAIN = 'gateway.sqlite.cloud'
+
+/** Builds the gateway hostname from a core hostname, swapping its last two labels (the
+ *  TLD) with the given `gatewayurl` suffix.
+ *
+ *  Example: buildGatewayHost('crvheg7dhk.g4.sqlite.cloud')
+ *    → 'crvheg7dhk.g4.gateway.sqlite.cloud'
+ *
+ *  Returns `host` unchanged when it already ends with the suffix (idempotent) or when
+ *  it's too short to extract a tenant prefix (eg 'localhost'). */
 function buildGatewayHost(host: string, gatewayurl?: string): string {
   if (!host) return host
-  const suffix = gatewayurl || 'gateway.sqlite.cloud'
+  const suffix = gatewayurl || DEFAULT_GATEWAY_DOMAIN
   if (host === suffix || host.endsWith('.' + suffix)) return host
-  const labels = host.split('.')
-  if (labels.length < 3) return host
-  return labels.slice(0, -2).join('.') + '.' + suffix
+  const parts = host.split('.')
+  if (parts.length < 3) return host
+  return parts.slice(0, -2).join('.') + '.' + suffix
 }
 
 export default SQLiteCloudWebsocketConnection

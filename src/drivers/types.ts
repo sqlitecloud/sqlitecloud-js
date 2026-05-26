@@ -92,9 +92,14 @@ export interface SQLiteCloudConfig {
 
   /** True if we should force use of SQLite Cloud Gateway and websocket connections, default: true in browsers, false in node.js */
   usewebsocket?: boolean
-  /** Domain suffix that identifies the gateway environment. Appended to the tenant prefix
-   *  (eg `crvheg7dhk.g4`) to form the gateway hostname the driver connects to. Default:
-   *  `gateway.sqlite.cloud`. */
+  /** Domain suffix used to build the gateway hostname the driver connects to.
+   *  Default: `gateway.sqlite.cloud`.
+   *
+   *  Example: with `host: 'crvheg7dhk.g4.sqlite.cloud'` and the default `gatewayurl`,
+   *  the driver opens `wss://crvheg7dhk.g4.gateway.sqlite.cloud:443`. For local
+   *  development, pass a value containing `localhost` (eg `'ws://localhost:4000'`)
+   *  and the driver will route TCP to that target while forwarding `host` as the
+   *  gateway Host header. */
   gatewayurl?: string
 
   /** Optional identifier used for verbose logging */
