@@ -20,8 +20,11 @@ export const DEFAULT_PORT = 8860
  * mixed - use BigInt and Number types depending on the value size
  */
 export type SQLiteCloudSafeIntegerMode = 'number' | 'bigint' | 'mixed'
+export type SQLiteCloudWebsocketBlobTransferFormat = 'base64-blobs-v1' | 'socketio-blobs-v1'
 
 export let SAFE_INTEGER_MODE: SQLiteCloudSafeIntegerMode = 'number'
+export const DEFAULT_WEBSOCKET_BLOB_TRANSFER_FORMAT: SQLiteCloudWebsocketBlobTransferFormat = 'base64-blobs-v1'
+export const DEFAULT_WEBSOCKET_MAX_ATTACHMENTS = 100000
 if (typeof process !== 'undefined') {
   const mode = process.env['SAFE_INTEGER_MODE']?.toLowerCase()
   if (mode === 'bigint' || mode === 'mixed' || mode === 'number') {
@@ -101,6 +104,10 @@ export interface SQLiteCloudConfig {
    *  and the driver will route TCP to that target while forwarding `host` as the
    *  gateway Host header. */
   gatewayurl?: string
+  /** Preferred blob transfer format when using websocket transport. Defaults to base64-blobs-v1 for new clients. */
+  websocketBlobFormat?: SQLiteCloudWebsocketBlobTransferFormat
+  /** Maximum number of socket.io binary attachments accepted by the websocket parser. */
+  websocketMaxAttachments?: number
 
   /** Optional identifier used for verbose logging */
   clientid?: string
