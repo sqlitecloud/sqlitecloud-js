@@ -9,7 +9,6 @@
 
 import EventEmitter from 'eventemitter3'
 import { SQLiteCloudConnection } from './connection'
-import { PubSub } from './pubsub'
 import { OperationsQueue } from './queue'
 import { SQLiteCloudRowset } from './rowset'
 import { Statement } from './statement'
@@ -386,7 +385,7 @@ export class Database extends EventEmitter {
   public close(callback?: ConnectionCallback): void {
     this.operations.enqueue(done => {
       this.connection?.close()
-  
+
       callback?.call(this, null)
       this.emitEvent('close')
 
@@ -476,31 +475,5 @@ export class Database extends EventEmitter {
    */
   public isConnected(): boolean {
     return this.connection != null && this.connection.connected
-  }
-
-  /**
-   * PubSub class provides a Pub/Sub real-time updates and notifications system to
-   * allow multiple applications to communicate with each other asynchronously.
-   * It allows applications to subscribe to tables and receive notifications whenever
-   * data changes in the database table. It also enables sending messages to anyone
-   * subscribed to a specific channel.
-   * @returns {PubSub} A PubSub object
-   */
-  public async getPubSub(): Promise<PubSub> {
-    return new Promise((resolve, reject) => {
-      this.operations.enqueue(done => {
-        let error = null
-        try {
-          if (!this.connection) {
-            error = new SQLiteCloudError('Connection not established', { errorCode: 'ERR_CONNECTION_NOT_ESTABLISHED' })
-            reject(error)
-          } else {
-            resolve(new PubSub(this.connection))
-          }
-        } finally {
-          done(error)
-        }
-      })
-    })
   }
 }

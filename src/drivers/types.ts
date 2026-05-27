@@ -35,7 +35,9 @@ if (SAFE_INTEGER_MODE == 'bigint') {
   console.debug('BigInt mode: Using Number for all INTEGER values from SQLite, including meta information from WRITE statements.')
 }
 if (SAFE_INTEGER_MODE == 'mixed') {
-  console.debug('Mixed mode: Using BigInt for INTEGER values from SQLite (including meta information from WRITE statements) bigger then 2^53, Number otherwise.')
+  console.debug(
+    'Mixed mode: Using BigInt for INTEGER values from SQLite (including meta information from WRITE statements) bigger then 2^53, Number otherwise.'
+  )
 }
 
 /**
@@ -178,7 +180,6 @@ export type ResultsCallback<T = any> = (error: Error | null, results?: T) => voi
 export type RowsCallback<T = Record<string, any>> = (error: Error | null, rows?: T[]) => void
 export type RowCallback<T = Record<string, any>> = (error: Error | null, row?: T) => void
 export type RowCountCallback = (error: Error | null, rowCount?: number) => void
-export type PubSubCallback<T = any> = (error: Error | null, results?: T, extraData?: T) => void
 
 /**
  * Certain responses include arrays with various types of metadata.
