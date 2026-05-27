@@ -15,7 +15,13 @@ import {
   SQLiteCloudError,
   SQLiteCloudWebsocketBlobTransferFormat
 } from './types'
-import { decodeBigIntMarkers, decodeWebsocketRowsetData, encodeBigIntMarkers, parseWebsocketBlobTransferFormat, parseWebsocketMaxAttachments } from './utilities'
+import {
+  decodeBigIntMarkers,
+  decodeWebsocketRowsetData,
+  encodeBigIntMarkers,
+  parseWebsocketBlobTransferFormat,
+  parseWebsocketMaxAttachments
+} from './utilities'
 
 const SocketIODecoderBase = SocketIODecoder as unknown as new (...args: any[]) => { opts?: { maxAttachments?: number } }
 
