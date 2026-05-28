@@ -187,7 +187,10 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
       (response: any) => {
         const gatewayError = getGatewayResponseError(response)
         if (gatewayError) {
-          const error = new SQLiteCloudError(gatewayError.detail || gatewayError.message || 'Gateway error', { ...gatewayError })
+          // Gateway error fields (errorCode, externalErrorCode, offsetCode) live under `meta`
+          // for the `errors[]` shape; fall back to top-level for the legacy `error` shape.
+          const errorFields = (gatewayError.meta && typeof gatewayError.meta === 'object') ? gatewayError.meta : gatewayError
+          const error = new SQLiteCloudError(gatewayError.detail || gatewayError.message || 'Gateway error', { ...errorFields })
           callback?.call(this, error)
         } else {
           const { metadata } = response
