@@ -16,6 +16,9 @@ const { chromium, firefox, webkit } = require('playwright');
         if (messageInput != 'USE DATABASE chinook.sqlite; select * from customers limit 3') throw Error('Invalid message input');
 
         await page.fill('#connectionStringInput', process.env.DATABASE_URL);
+        if (process.env.GATEWAY_URL) {
+            await page.fill('#gatewayUrlInput', process.env.GATEWAY_URL);
+        }
         await page.click('button#sendButton');
 
         //sleep 3s

@@ -293,11 +293,17 @@ jobs:
         if: matrix.os != 'LinuxARM64'
         working-directory: examples/with-javascript-browser
         run: npm i && node test.cjs
+        env:
+          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}?apikey=${{ secrets.CHINOOK_API_KEY }}
+          GATEWAY_URL: ${{ vars.GATEWAY_URL }}
 
       - name: bun with-javascript-browser
         if: matrix.os != 'windows-latest' && matrix.os != 'LinuxARM64' #cannot launch browsers on windows with bash in commonjs?
         working-directory: examples/with-javascript-browser
         run: bun i && bun test.cjs
+        env:
+          DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}?apikey=${{ secrets.CHINOOK_API_KEY }}
+          GATEWAY_URL: ${{ vars.GATEWAY_URL }}
 
       # See issue https://github.com/sqlitecloud/sqlitecloud-js/issues/265
       # - name: deno with-javascript-browser
