@@ -83,7 +83,10 @@ describe('connection-ws', () => {
         connection = new SQLiteCloudWebsocketConnection(configObj, error => {
           try {
             expect(error).toBeDefined()
-            expect(error?.message).toContain('Error: getaddrinfo ENOTFOUND non.existing.host.name')
+            // The driver rewrites the last two labels of `host` to the configured gateway suffix
+            // (see buildGatewayHost in connection-ws.ts), so the rejected DNS name carries the
+            // surviving `non.existing.` prefix but a tenant-routed suffix.
+            expect(error?.message).toContain('Error: getaddrinfo ENOTFOUND non.existing.')
             connection?.close()
           } finally {
             done()

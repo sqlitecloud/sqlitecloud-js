@@ -15,7 +15,13 @@ import {
   SQLiteCloudError,
   SQLiteCloudWebsocketBlobTransferFormat
 } from './types'
-import { decodeBigIntMarkers, decodeWebsocketRowsetData, encodeBigIntMarkers, parseWebsocketBlobTransferFormat, parseWebsocketMaxAttachments } from './utilities'
+import {
+  decodeBigIntMarkers,
+  decodeWebsocketRowsetData,
+  encodeBigIntMarkers,
+  parseWebsocketBlobTransferFormat,
+  parseWebsocketMaxAttachments
+} from './utilities'
 
 const SocketIODecoderBase = SocketIODecoder as unknown as new (...args: any[]) => { opts?: { maxAttachments?: number } }
 
@@ -52,6 +58,16 @@ function getAttachmentLimitError(description: unknown, limit: number): SQLiteClo
   }
 }
 
+function getGatewayResponseError(response: any): Record<string, any> | undefined {
+  if (response?.error && typeof response.error === 'object') {
+    return response.error
+  }
+
+  if (Array.isArray(response?.errors) && response.errors[0] && typeof response.errors[0] === 'object') {
+    return response.errors[0]
+  }
+}
+
 /**
  * Implementation of TransportConnection that connects to the database indirectly
  * via SQLite Cloud Gateway, a socket.io based deamon that responds to sql query
@@ -74,10 +90,28 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
       console.assert(!this.connected, 'Connection already established')
       if (!this.socket) {
         this.config = config
-        const connectionstring = this.config.connectionstring as string
+
         const websocketMaxAttachments = parseWebsocketMaxAttachments(this.config.websocketMaxAttachments)
-        const gatewayUrl = this.config?.gatewayurl || `${this.config.host === 'localhost' ? 'ws' : 'wss'}://${this.config.host as string}:443`
-        this.socket = io(gatewayUrl, { auth: { token: connectionstring }, parser: createSocketIOParser(websocketMaxAttachments) })
+
+        // Gateway tenant routing is derived from the Host header. In production, `gatewayurl` is
+        // a domain suffix (eg `gateway.sqlite.cloud`) appended to the tenant prefix from the core
+        // hostname (eg crvheg7dhk.g4 from crvheg7dhk.g4.sqlite.cloud) to form the gateway host
+        // (→ crvheg7dhk.g4.gateway.sqlite.cloud). For local development, pass a `gatewayurl`
+        // containing `localhost` — the driver routes TCP to it and injects the tenant Host header
+        // separately so the gateway still tenant-routes correctly.
+        const authToken = this.config.apikey || this.config.token
+        const ioOpts: Record<string, unknown> = { auth: { token: authToken }, parser: createSocketIOParser(websocketMaxAttachments) }
+        let gatewayUrl: string
+        if (this.config.gatewayurl?.includes('localhost')) {
+          const raw = this.config.gatewayurl
+          gatewayUrl = raw.startsWith('ws://') || raw.startsWith('wss://') ? raw : `ws://${raw}`
+          ioOpts.extraHeaders = { Host: this.config.host }
+          ioOpts.transports = ['websocket']
+        } else {
+          const gatewayHost = buildGatewayHost(this.config.host as string, this.config.gatewayurl)
+          gatewayUrl = `wss://${gatewayHost}:443`
+        }
+        this.socket = io(gatewayUrl, ioOpts)
 
         this.socket.on('connect', () => {
           callback?.call(this, null)
@@ -143,6 +177,7 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
       {
         sql: commands.query,
         bind: encodeBigIntMarkers(commands.parameters),
+        database: this.config.database,
         row: 'array',
         safe_integer_mode: this.config.safe_integer_mode,
         capabilities: {
@@ -150,8 +185,12 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
         }
       },
       (response: any) => {
-        if (response?.error) {
-          const error = new SQLiteCloudError(response.error.detail, { ...response.error })
+        const gatewayError = getGatewayResponseError(response)
+        if (gatewayError) {
+          // Gateway error fields (errorCode, externalErrorCode, offsetCode) live under `meta`
+          // for the `errors[]` shape; fall back to top-level for the legacy `error` shape.
+          const errorFields = (gatewayError.meta && typeof gatewayError.meta === 'object') ? gatewayError.meta : gatewayError
+          const error = new SQLiteCloudError(gatewayError.detail || gatewayError.message || 'Gateway error', { ...errorFields })
           callback?.call(this, error)
         } else {
           const { metadata } = response
@@ -190,6 +229,26 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
     this.operations.clear()
     return this
   }
+}
+
+/** Default gateway domain suffix used when `gatewayurl` is not provided. */
+const DEFAULT_GATEWAY_DOMAIN = 'gateway.sqlite.cloud'
+
+/** Builds the gateway hostname from a core hostname, swapping its last two labels (the
+ *  TLD) with the given `gatewayurl` suffix.
+ *
+ *  Example: buildGatewayHost('crvheg7dhk.g4.sqlite.cloud')
+ *    → 'crvheg7dhk.g4.gateway.sqlite.cloud'
+ *
+ *  Returns `host` unchanged when it already ends with the suffix (idempotent) or when
+ *  it's too short to extract a tenant prefix (eg 'localhost'). */
+function buildGatewayHost(host: string, gatewayurl?: string): string {
+  if (!host) return host
+  const suffix = gatewayurl || DEFAULT_GATEWAY_DOMAIN
+  if (host === suffix || host.endsWith('.' + suffix)) return host
+  const parts = host.split('.')
+  if (parts.length < 3) return host
+  return parts.slice(0, -2).join('.') + '.' + suffix
 }
 
 export default SQLiteCloudWebsocketConnection

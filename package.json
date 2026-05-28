@@ -1,6 +1,6 @@
 {
   "name": "@sqlitecloud/drivers",
-  "version": "1.0.876",
+  "version": "1.0.878",
   "description": "SQLiteCloud drivers for Typescript/Javascript in edge, web and node clients",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
@@ -12,7 +12,7 @@
     "build": "rm -rf ./lib/ && tsc --project tsconfig.build.json && npx webpack",
     "publish": "npm run build && npm publish --access public",
     "prettier": "prettier --write 'src/**/*'",
-    "typedoc": "rm -rf ./docs/ && typedoc --tsconfig tsconfig.build.json --out docs && typedoc --tsconfig tsconfig.build.json --plugin typedoc-plugin-markdown --out docs/markdown",
+    "typedoc": "rm -rf ./docs/ && typedoc --tsconfig tsconfig.build.json --plugin typedoc-plugin-markdown --out docs/markdown",
     "npmgui": "npx npm-gui@latest",
     "prepare": "husky"
   },
@@ -45,14 +45,14 @@
     "buffer": "^6.0.3",
     "eventemitter3": "^5.0.1",
     "lz4js": "^0.2.0",
-    "socket.io-client": "^4.8.1",
+    "socket.io-client": "^4.8.3",
     "socket.io-parser": "~4.2.4",
     "whatwg-url": "^14.2.0"
   },
   "peerDependencies": {
+    "@craftzdog/react-native-buffer": "*",
     "react-native-quick-base64": "*",
     "react-native-tcp-socket": "*",
-    "@craftzdog/react-native-buffer": "*",
     "react-native-url-polyfill": "*"
   },
   "peerDependenciesMeta": {

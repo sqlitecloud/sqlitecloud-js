@@ -392,9 +392,7 @@ export function decodeWebsocketRowsetData(
     return decodeBigIntMarkers(data, safeIntegerMode)
   }
 
-  const blobColumnIndexes = new Set(
-    metadata.columns.flatMap((column, index) => (column.type && BLOB_COLUMN_TYPE_RE.test(column.type) ? [index] : []))
-  )
+  const blobColumnIndexes = new Set(metadata.columns.flatMap((column, index) => (column.type && BLOB_COLUMN_TYPE_RE.test(column.type) ? [index] : [])))
   const decodeCell = (value: any, columnIndex: number) => {
     if (blobTransferFormat === 'base64-blobs-v1' && blobColumnIndexes.has(columnIndex) && typeof value === 'string') {
       return Buffer.from(value, 'base64')

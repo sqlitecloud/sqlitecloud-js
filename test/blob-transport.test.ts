@@ -75,8 +75,7 @@ describe('blob rowsets across transports', () => {
 
       try {
         database = getChinookDatabase(undefined, {
-          usewebsocket: true,
-          gatewayurl: GATEWAY_URL
+          usewebsocket: true
         })
         await assertBlobRowsRoundTrip(database)
       } finally {

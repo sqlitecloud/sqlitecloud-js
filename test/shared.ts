@@ -94,6 +94,10 @@ export function getChinookConfig(url = CHINOOK_DATABASE_URL, extraConfig?: Parti
       ca: SELF_SIGNED_CERTIFICATE
     }
   }
+  if (!chinookConfig.apikey && !chinookConfig.token && CHINOOK_API_KEY) {
+    chinookConfig.apikey = CHINOOK_API_KEY
+  }
+  chinookConfig.gatewayurl = GATEWAY_URL
   chinookConfig.timeout = 10 * 1000 // 10 seconds
   if (extraConfig) {
     chinookConfig = { ...chinookConfig, ...extraConfig }

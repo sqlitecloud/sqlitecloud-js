@@ -29,10 +29,10 @@ describe('websocket transport helpers', () => {
 
     const connection = Object.create(SQLiteCloudWebsocketConnection.prototype) as any
     const connectionstring = 'sqlitecloud://host.sqlite.cloud/database?apikey=secret'
-    connection.connectTransport({ connectionstring, host: 'host.sqlite.cloud', websocketMaxAttachments: 321 }, jest.fn())
+    connection.connectTransport({ connectionstring, host: 'host.sqlite.cloud', apikey: 'secret', websocketMaxAttachments: 321 }, jest.fn())
 
-    expect(mockedIo).toHaveBeenCalledWith('wss://host.sqlite.cloud:443', {
-      auth: { token: connectionstring },
+    expect(mockedIo).toHaveBeenCalledWith('wss://host.gateway.sqlite.cloud:443', {
+      auth: { token: 'secret' },
       parser: expect.objectContaining({
         Encoder: expect.any(Function),
         Decoder: expect.any(Function)
@@ -84,6 +84,7 @@ describe('websocket transport helpers', () => {
           {
             sql: 'SELECT ?',
             bind: ['123n'],
+            database: undefined,
             row: 'array',
             safe_integer_mode: 'bigint',
             capabilities: {
@@ -155,6 +156,38 @@ describe('websocket transport helpers', () => {
         expect(results?.[0]?.payload).toBeInstanceOf(Buffer)
         expect((results?.[0]?.payload as Buffer).equals(Buffer.from([1, 2, 3]))).toBe(true)
         expect(results?.[0]?.note).toBe('AQID')
+        done()
+      } catch (error) {
+        done(error as Error)
+      }
+    })
+  })
+
+  it('should read gateway errors from the errors array response field', done => {
+    const connection = Object.create(SQLiteCloudWebsocketConnection.prototype) as any
+    const emit = jest.fn((_event: string, _payload: any, callback: (response: any) => void) => {
+      callback({
+        errors: [
+          {
+            detail: 'Gateway validation failed.',
+            errorCode: '40001',
+            externalErrorCode: '0',
+            offsetCode: -1
+          }
+        ]
+      })
+    })
+    connection.socket = { connected: true, emit }
+    connection.config = {}
+
+    connection.transportCommands('SELECT 1', (error: any, results?: SQLiteCloudRowset) => {
+      try {
+        expect(results).toBeUndefined()
+        expect(error).toBeDefined()
+        expect(error.message).toBe('Gateway validation failed.')
+        expect(error.errorCode).toBe('40001')
+        expect(error.externalErrorCode).toBe('0')
+        expect(error.offsetCode).toBe(-1)
         done()
       } catch (error) {
         done(error as Error)

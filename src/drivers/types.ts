@@ -35,7 +35,9 @@ if (SAFE_INTEGER_MODE == 'bigint') {
   console.debug('BigInt mode: Using Number for all INTEGER values from SQLite, including meta information from WRITE statements.')
 }
 if (SAFE_INTEGER_MODE == 'mixed') {
-  console.debug('Mixed mode: Using BigInt for INTEGER values from SQLite (including meta information from WRITE statements) bigger then 2^53, Number otherwise.')
+  console.debug(
+    'Mixed mode: Using BigInt for INTEGER values from SQLite (including meta information from WRITE statements) bigger then 2^53, Number otherwise.'
+  )
 }
 
 /**
@@ -95,7 +97,14 @@ export interface SQLiteCloudConfig {
 
   /** True if we should force use of SQLite Cloud Gateway and websocket connections, default: true in browsers, false in node.js */
   usewebsocket?: boolean
-  /** Url where we can connect to a SQLite Cloud Gateway that has a socket.io deamon waiting to connect, eg. wss://host:443 */
+  /** Domain suffix used to build the gateway hostname the driver connects to.
+   *  Default: `gateway.sqlite.cloud`.
+   *
+   *  Example: with `host: 'crvheg7dhk.g4.sqlite.cloud'` and the default `gatewayurl`,
+   *  the driver opens `wss://crvheg7dhk.g4.gateway.sqlite.cloud:443`. For local
+   *  development, pass a value containing `localhost` (eg `'ws://localhost:4000'`)
+   *  and the driver will route TCP to that target while forwarding `host` as the
+   *  gateway Host header. */
   gatewayurl?: string
   /** Preferred blob transfer format when using websocket transport. Defaults to base64-blobs-v1 for new clients. */
   websocketBlobFormat?: SQLiteCloudWebsocketBlobTransferFormat
@@ -171,7 +180,6 @@ export type ResultsCallback<T = any> = (error: Error | null, results?: T) => voi
 export type RowsCallback<T = Record<string, any>> = (error: Error | null, rows?: T[]) => void
 export type RowCallback<T = Record<string, any>> = (error: Error | null, row?: T) => void
 export type RowCountCallback = (error: Error | null, rowCount?: number) => void
-export type PubSubCallback<T = any> = (error: Error | null, results?: T, extraData?: T) => void
 
 /**
  * Certain responses include arrays with various types of metadata.
