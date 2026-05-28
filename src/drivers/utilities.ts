@@ -269,10 +269,10 @@ export function parseconnectionstring(connectionstring: string): SQLiteCloudConf
       verbose: options.verbose ? parseBoolean(options.verbose) : undefined
     }
 
-    // either you use an apikey, token or username and password
-    if (Number(!!config.apikey) + Number(!!config.token) + Number(!!(config.username || config.password)) > 1) {
-      console.error('SQLiteCloudConnection.parseconnectionstring - choose between apikey, token or username/password')
-      throw new SQLiteCloudError('Choose between apikey, token or username/password')
+    // either you use an apikey or a token
+    if (Number(!!config.apikey) + Number(!!config.token) > 1) {
+      console.error('SQLiteCloudConnection.parseconnectionstring - choose between apikey or token')
+      throw new SQLiteCloudError('Choose between apikey or token')
     }
 
     const database = url.pathname.replace('/', '') // pathname is database name, remove the leading slash
@@ -392,9 +392,7 @@ export function decodeWebsocketRowsetData(
     return decodeBigIntMarkers(data, safeIntegerMode)
   }
 
-  const blobColumnIndexes = new Set(
-    metadata.columns.flatMap((column, index) => (column.type && BLOB_COLUMN_TYPE_RE.test(column.type) ? [index] : []))
-  )
+  const blobColumnIndexes = new Set(metadata.columns.flatMap((column, index) => (column.type && BLOB_COLUMN_TYPE_RE.test(column.type) ? [index] : [])))
   const decodeCell = (value: any, columnIndex: number) => {
     if (blobTransferFormat === 'base64-blobs-v1' && blobColumnIndexes.has(columnIndex) && typeof value === 'string') {
       return Buffer.from(value, 'base64')
