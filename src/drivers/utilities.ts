@@ -269,10 +269,10 @@ export function parseconnectionstring(connectionstring: string): SQLiteCloudConf
       verbose: options.verbose ? parseBoolean(options.verbose) : undefined
     }
 
-    // either you use an apikey or a token
-    if (Number(!!config.apikey) + Number(!!config.token) > 1) {
-      console.error('SQLiteCloudConnection.parseconnectionstring - choose between apikey or token')
-      throw new SQLiteCloudError('Choose between apikey or token')
+    // either you use an apikey, token or username and password
+    if (Number(!!config.apikey) + Number(!!config.token) + Number(!!(config.username || config.password)) > 1) {
+      console.error('SQLiteCloudConnection.parseconnectionstring - choose between apikey, token or username/password')
+      throw new SQLiteCloudError('Choose between apikey, token or username/password')
     }
 
     const database = url.pathname.replace('/', '') // pathname is database name, remove the leading slash
