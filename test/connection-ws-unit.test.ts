@@ -44,6 +44,36 @@ describe('websocket transport helpers', () => {
     expect(decoder.opts?.maxAttachments).toBe(321)
   })
 
+  it('should connect to localhost gateway with the marker-augmented Host header', () => {
+    const socket = {
+      connected: false,
+      on: jest.fn(),
+      removeAllListeners: jest.fn(),
+      close: jest.fn()
+    }
+    const mockedIo = io as jest.MockedFunction<typeof io>
+    mockedIo.mockReturnValue(socket as any)
+
+    const connection = Object.create(SQLiteCloudWebsocketConnection.prototype) as any
+    connection.connectTransport(
+      {
+        connectionstring: 'sqlitecloud://host.sqlite.cloud/database?apikey=secret',
+        host: 'host.sqlite.cloud',
+        apikey: 'secret',
+        gatewayurl: 'ws://localhost:8090'
+      },
+      jest.fn()
+    )
+
+    expect(mockedIo).toHaveBeenCalledWith(
+      'ws://localhost:8090',
+      expect.objectContaining({
+        extraHeaders: { Host: 'host.gateway.sqlite.cloud' },
+        transports: ['websocket']
+      })
+    )
+  })
+
   it('should encode bigint values before sending JSON payloads', () => {
     expect(
       encodeBigIntMarkers({
