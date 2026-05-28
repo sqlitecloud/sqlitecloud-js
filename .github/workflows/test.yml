@@ -260,6 +260,8 @@ jobs:
         run: npm i && npx playwright test
         env:
           VITE_DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
+          VITE_DATABASE_API_KEY: ${{ secrets.CHINOOK_API_KEY }}
+          VITE_GATEWAY_URL: ${{ vars.GATEWAY_URL }}
 
       - name: bun with-javascript-vite
         if: matrix.os != 'LinuxARM64'
@@ -271,6 +273,8 @@ jobs:
           bun playwright test
         env:
           VITE_DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
+          VITE_DATABASE_API_KEY: ${{ secrets.CHINOOK_API_KEY }}
+          VITE_GATEWAY_URL: ${{ vars.GATEWAY_URL }}
 
       - name: deno with-javascript-vite
         if: false #matrix.os != 'windows-latest' windows: https://github.com/denoland/deno/issues/23524#issuecomment-2292075726 linux-ubuntu: https://github.com/sqlitecloud/sqlitecloud-js/issues/197
@@ -278,6 +282,8 @@ jobs:
         run: deno add npm:@playwright/test && deno run --allow-all npm:playwright test
         env:
           VITE_DATABASE_URL: ${{ secrets.CHINOOK_DATABASE_URL }}
+          VITE_DATABASE_API_KEY: ${{ secrets.CHINOOK_API_KEY }}
+          VITE_GATEWAY_URL: ${{ vars.GATEWAY_URL }}
           PW_DISABLE_TS_ESM: true
 
       - name: remove with-javascript-vite

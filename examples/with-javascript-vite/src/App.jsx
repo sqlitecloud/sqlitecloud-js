@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Database } from "@sqlitecloud/drivers";
+import { Database, parseconnectionstring } from "@sqlitecloud/drivers";
 
 
 function App() {
@@ -8,7 +8,12 @@ function App() {
   const getAlbums = async () => {
     let database = null;
     try {
-      database = new Database(import.meta.env.VITE_DATABASE_URL)
+      let config = parseconnectionstring(import.meta.env.VITE_DATABASE_URL)
+      delete config.username
+      delete config.password
+      config.apikey = import.meta.env.VITE_DATABASE_API_KEY
+      if(import.meta.env.VITE_GATEWAY_URL) config.gatewayurl = import.meta.env.VITE_GATEWAY_URL
+      database = new Database(config)
       const result = await database.sql(`
         USE DATABASE chinook.sqlite; 
         SELECT albums.AlbumId as id, albums.Title as title, artists.name as artist
