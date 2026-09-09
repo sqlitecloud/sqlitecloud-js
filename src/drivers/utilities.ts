@@ -61,12 +61,14 @@ export function getInitializationCommands(config: SQLiteCloudConfig): string {
   let commands = 'SET CLIENT KEY NONLINEARIZABLE TO 1;'
 
   // first user authentication, then all other commands
-  if (config.apikey) {
-    commands += `AUTH APIKEY ${config.apikey};`
-  } else if (config.token) {
-    commands += `AUTH TOKEN ${config.token};`
-  } else {
-    commands += `AUTH USER ${config.username || ''} ${config.password_hashed ? 'HASH' : 'PASSWORD'} ${config.password || ''};`
+  if (!config.unauthenticated) {
+    if (config.apikey) {
+      commands += `AUTH APIKEY ${config.apikey};`
+    } else if (config.token) {
+      commands += `AUTH TOKEN ${config.token};`
+    } else {
+      commands += `AUTH USER ${config.username || ''} ${config.password_hashed ? 'HASH' : 'PASSWORD'} ${config.password || ''};`
+    }
   }
 
   if (config.compression) {
@@ -94,7 +96,7 @@ export function getInitializationCommands(config: SQLiteCloudConfig): string {
     commands += 'SET CLIENT KEY NONLINEARIZABLE TO 0;'
   }
 
-  if (config.database) {
+  if (!config.unauthenticated && config.database) {
     if (config.create && !config.memory) {
       commands += `CREATE DATABASE ${config.database} IF NOT EXISTS;`
     }
@@ -198,14 +200,15 @@ export function validateConfiguration(config: SQLiteCloudConfig): SQLiteCloudCon
   config.create = parseBoolean(config.create)
   config.non_linearizable = parseBoolean(config.non_linearizable)
   config.insecure = parseBoolean(config.insecure)
+  config.unauthenticated = parseBoolean(config.unauthenticated)
 
   const hasCredentials = (config.username && config.password) || config.apikey || config.token
-  if (!config.host || !hasCredentials) {
+  if (!config.host || (!config.unauthenticated && !hasCredentials)) {
     console.error('SQLiteCloudConnection.validateConfiguration - missing arguments', config)
     throw new SQLiteCloudError('The user, password and host arguments, the ?apikey= or the ?token= must be specified.', { errorCode: 'ERR_MISSING_ARGS' })
   }
 
-  if (!config.connectionstring) {
+  if (!config.connectionstring && !config.unauthenticated) {
     // build connection string from configuration, values are already validated
     config.connectionstring = `sqlitecloud://${config.host}:${config.port}/${config.database || ''}`
     if (config.apikey) {
@@ -258,6 +261,7 @@ export function parseconnectionstring(connectionstring: string): SQLiteCloudConf
       memory: options.memory ? parseBoolean(options.memory) : undefined,
       compression: options.compression ? parseBoolean(options.compression) : undefined,
       non_linearizable: options.non_linearizable ? parseBoolean(options.non_linearizable) : undefined,
+      unauthenticated: options.unauthenticated ? parseBoolean(options.unauthenticated) : undefined,
       noblob: options.noblob ? parseBoolean(options.noblob) : undefined,
       maxdata: options.maxdata ? parseInt(options.maxdata) : undefined,
       maxrows: options.maxrows ? parseInt(options.maxrows) : undefined,

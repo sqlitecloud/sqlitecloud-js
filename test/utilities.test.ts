@@ -263,6 +263,26 @@ describe('validateConfiguration()', () => {
     expect(config.websocketBlobFormat).toBe('base64-blobs-v1')
     expect(config.websocketMaxAttachments).toBe(100000)
   })
+
+  it('should allow unauthenticated configuration without credentials', () => {
+    const config = validateConfiguration({
+      host: 'host',
+      unauthenticated: true
+    })
+
+    expect(config.host).toBe('host')
+    expect(config.unauthenticated).toBe(true)
+    expect(config.connectionstring).toBeUndefined()
+  })
+
+  it('should parse unauthenticated from connection string params', () => {
+    const config = validateConfiguration({
+      connectionstring: 'sqlitecloud://host:1234?unauthenticated=1'
+    })
+
+    expect(config.host).toBe('host')
+    expect(config.unauthenticated).toBe(true)
+  })
 })
 
 describe('safe integer marker utilities', () => {
@@ -325,5 +345,42 @@ describe('getInitializationCommands()', () => {
 
     expect(result).toContain('AUTH TOKEN mytoken;')
     expect(result).not.toContain('AUTH APIKEY')
+  })
+
+  it('should keep existing authenticated initialization behavior', () => {
+    const config = {
+      username: 'admin',
+      password: 'secret',
+      database: 'mydb',
+      compression: true,
+      non_linearizable: true
+    }
+
+    const result = getInitializationCommands(config)
+
+    expect(result).toBe('SET CLIENT KEY NONLINEARIZABLE TO 1;AUTH USER admin PASSWORD secret;SET CLIENT KEY COMPRESSION TO 1;USE DATABASE mydb;')
+  })
+
+  it('should omit auth and database commands for unauthenticated initialization', () => {
+    const config = {
+      host: 'host',
+      database: 'mydb',
+      unauthenticated: true,
+      compression: true,
+      non_linearizable: true,
+      noblob: true,
+      maxdata: 128,
+      maxrows: 256,
+      maxrowset: 512
+    }
+
+    const result = getInitializationCommands(config)
+
+    expect(result).toBe(
+      'SET CLIENT KEY NONLINEARIZABLE TO 1;SET CLIENT KEY COMPRESSION TO 1;SET CLIENT KEY NOBLOB TO 1;SET CLIENT KEY MAXDATA TO 128;SET CLIENT KEY MAXROWS TO 256;SET CLIENT KEY MAXROWSET TO 512;'
+    )
+    expect(result).not.toContain('AUTH ')
+    expect(result).not.toContain('USE DATABASE')
+    expect(result).not.toContain('CREATE DATABASE')
   })
 })
