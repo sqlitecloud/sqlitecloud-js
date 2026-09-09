@@ -99,8 +99,11 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
         // (→ crvheg7dhk.g4.gateway.sqlite.cloud). For local development, pass a `gatewayurl`
         // containing `localhost` — the driver routes TCP to it and injects the tenant Host header
         // (with the gateway marker label) so the gateway still tenant-routes correctly.
-        const authToken = this.config.apikey || this.config.token
-        const ioOpts: Record<string, unknown> = { auth: { token: authToken }, parser: createSocketIOParser(websocketMaxAttachments) }
+        const authToken = this.config.unauthenticated ? undefined : this.config.apikey || this.config.token
+        const ioOpts: Record<string, unknown> = { parser: createSocketIOParser(websocketMaxAttachments) }
+        if (authToken) {
+          ioOpts.auth = { token: authToken }
+        }
         let gatewayUrl: string
         if (this.config.gatewayurl?.includes('localhost')) {
           const raw = this.config.gatewayurl

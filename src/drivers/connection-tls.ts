@@ -93,6 +93,13 @@ export class SQLiteCloudTlsConnection extends SQLiteCloudConnection {
       if (this.config.verbose) {
         console.debug(`SQLiteCloudTlsConnection - connected to ${this.config.host}, authorized: ${this.socket?.authorized}`)
       }
+      if (!initializationCommands) {
+        if (this.config.verbose) {
+          console.debug(`SQLiteCloudTlsConnection - initialized connection`)
+        }
+        callback?.call(this, null)
+        return
+      }
       this.transportCommands(initializationCommands, error => {
         if (this.config.verbose) {
           console.debug(`SQLiteCloudTlsConnection - initialized connection`)

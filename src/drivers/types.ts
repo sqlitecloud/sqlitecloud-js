@@ -58,6 +58,8 @@ export interface SQLiteCloudConfig {
   apikey?: string
   /** Access Token provided in place of API Key or username/password */
   token?: string
+  /** Connect without sending AUTH. Only commands explicitly allowed pre-auth can run. */
+  unauthenticated?: boolean
 
   /** Host name is required unless connectionstring is provided, eg: xxx.sqlitecloud.io */
   host?: string
