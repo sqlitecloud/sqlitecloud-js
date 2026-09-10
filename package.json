@@ -10,7 +10,7 @@
   "scripts": {
     "test": "jest --silent --coverage",
     "build": "rm -rf ./lib/ && tsc --project tsconfig.build.json && npx webpack",
-    "publish": "npm run build && npm publish --access public",
+    "publish:npm": "npm run build && npm publish --access public",
     "prettier": "prettier --write 'src/**/*'",
     "typedoc": "rm -rf ./docs/ && typedoc --tsconfig tsconfig.build.json --plugin typedoc-plugin-markdown --out docs/markdown",
     "npmgui": "npx npm-gui@latest",
