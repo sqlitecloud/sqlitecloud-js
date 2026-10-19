@@ -259,4 +259,125 @@ describe('websocket transport helpers', () => {
     })
     expect((callback.mock.calls[0]?.[0] as Error).message).toContain('websocketMaxAttachments')
   })
+
+  describe('in-flight commands', () => {
+    function connectMockedSocket(config: Record<string, any> = {}) {
+      const handlers: Record<string, (...args: any[]) => void> = {}
+      const socket = {
+        connected: true,
+        on: jest.fn((event: string, handler: (...args: any[]) => void) => {
+          handlers[event] = handler
+        }),
+        emit: jest.fn(),
+        removeAllListeners: jest.fn(),
+        close: jest.fn()
+      }
+      const mockedIo = io as jest.MockedFunction<typeof io>
+      mockedIo.mockReturnValue(socket as any)
+
+      const connectCallback = jest.fn()
+      const connection = Object.create(SQLiteCloudWebsocketConnection.prototype) as any
+      connection.operations = { clear: jest.fn() }
+      connection.connectTransport(
+        { connectionstring: 'sqlitecloud://host.sqlite.cloud/database?apikey=secret', host: 'host.sqlite.cloud', apikey: 'secret', ...config },
+        connectCallback
+      )
+      handlers.connect?.()
+
+      return { connection, socket, handlers, connectCallback }
+    }
+
+    afterEach(() => {
+      jest.useRealTimers()
+    })
+
+    it('should fail the command in flight when the connection drops', () => {
+      const { connection, socket, handlers, connectCallback } = connectMockedSocket()
+      const commandCallback = jest.fn()
+
+      connection.transportCommands('SELECT 1', commandCallback)
+      expect(socket.emit).toHaveBeenCalledTimes(1)
+      expect(commandCallback).not.toHaveBeenCalled()
+
+      handlers.disconnect?.('transport error')
+
+      expect(commandCallback).toHaveBeenCalledTimes(1)
+      expect(commandCallback.mock.calls[0]?.[0]).toMatchObject({ message: 'Disconnected', errorCode: 'ERR_CONNECTION_ENDED', cause: 'transport error' })
+      expect(socket.close).toHaveBeenCalled()
+      expect(connection.connected).toBe(false)
+
+      // the connect callback already reported a successful connection and must not be called again
+      expect(connectCallback).toHaveBeenCalledTimes(1)
+      expect(connectCallback).toHaveBeenCalledWith(null)
+    })
+
+    it('should report a disconnection before connect to the connect callback', () => {
+      const handlers: Record<string, (...args: any[]) => void> = {}
+      const socket = {
+        connected: false,
+        on: jest.fn((event: string, handler: (...args: any[]) => void) => {
+          handlers[event] = handler
+        }),
+        removeAllListeners: jest.fn(),
+        close: jest.fn()
+      }
+      ;(io as jest.MockedFunction<typeof io>).mockReturnValue(socket as any)
+
+      const connectCallback = jest.fn()
+      const connection = Object.create(SQLiteCloudWebsocketConnection.prototype) as any
+      connection.operations = { clear: jest.fn() }
+      connection.connectTransport({ connectionstring: 'sqlitecloud://host.sqlite.cloud/database', host: 'host.sqlite.cloud' }, connectCallback)
+
+      handlers.disconnect?.('transport close')
+
+      expect(connectCallback).toHaveBeenCalledTimes(1)
+      expect(connectCallback.mock.calls[0]?.[0]).toMatchObject({ errorCode: 'ERR_CONNECTION_ENDED' })
+    })
+
+    it('should fail the command in flight when the connection is closed', () => {
+      const { connection } = connectMockedSocket()
+      const commandCallback = jest.fn()
+
+      connection.transportCommands('SELECT 1', commandCallback)
+      connection.close()
+
+      expect(commandCallback).toHaveBeenCalledTimes(1)
+      expect(commandCallback.mock.calls[0]?.[0]).toMatchObject({ errorCode: 'ERR_CONNECTION_CLOSED' })
+    })
+
+    it('should fail the command in flight after the configured timeout and ignore a late response', () => {
+      jest.useFakeTimers()
+      const { connection, socket } = connectMockedSocket({ timeout: 1000 })
+      const commandCallback = jest.fn()
+
+      connection.transportCommands('SELECT 1', commandCallback)
+
+      jest.advanceTimersByTime(999)
+      expect(commandCallback).not.toHaveBeenCalled()
+
+      jest.advanceTimersByTime(1)
+      expect(commandCallback).toHaveBeenCalledTimes(1)
+      expect(commandCallback.mock.calls[0]?.[0]).toMatchObject({ errorCode: 'ERR_CONNECTION_TIMEOUT' })
+
+      const ack = socket.emit.mock.calls[0]?.[2] as (response: any) => void
+      ack({ data: 1 })
+      expect(commandCallback).toHaveBeenCalledTimes(1)
+    })
+
+    it('should not fail a completed command when the connection drops later', () => {
+      jest.useFakeTimers()
+      const { connection, socket, handlers } = connectMockedSocket({ timeout: 1000 })
+      const commandCallback = jest.fn()
+
+      connection.transportCommands('SELECT 1', commandCallback)
+      const ack = socket.emit.mock.calls[0]?.[2] as (response: any) => void
+      ack({ data: 1 })
+
+      handlers.disconnect?.('transport close')
+      jest.advanceTimersByTime(1000)
+
+      expect(commandCallback).toHaveBeenCalledTimes(1)
+      expect(commandCallback).toHaveBeenCalledWith(null, 1)
+    })
+  })
 })
