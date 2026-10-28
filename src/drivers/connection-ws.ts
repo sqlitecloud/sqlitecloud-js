@@ -17,11 +17,15 @@ import {
 } from './types'
 import {
   decodeBigIntMarkers,
+  getAbortError,
   decodeWebsocketRowsetData,
   encodeBigIntMarkers,
   parseWebsocketBlobTransferFormat,
   parseWebsocketMaxAttachments
 } from './utilities'
+
+/** How long a command waits for the websocket to reconnect before it fails */
+const RECONNECT_WAIT_MS = 20 * 1000
 
 const SocketIODecoderBase = SocketIODecoder as unknown as new (...args: any[]) => { opts?: { maxAttachments?: number } }
 
@@ -86,6 +90,16 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
     return !!(this.socket && this.socket?.connected)
   }
 
+  /** True while socket.io is reconnecting after the connection dropped */
+  get reconnecting(): boolean {
+    return !!(this.socket && !this.socket.connected && this.socket.active)
+  }
+
+  /** True if commands are sent without waiting for the previous one to complete */
+  get concurrent(): boolean {
+    return !!this.config?.websocketConcurrent
+  }
+
   /* Opens a connection with the server and sends the initialization commands. Will throw in case of errors. */
   connectTransport(config: SQLiteCloudConfig, callback?: ErrorCallback): this {
     try {
@@ -106,6 +120,10 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
         const ioOpts: Record<string, unknown> = { parser: createSocketIOParser(websocketMaxAttachments) }
         if (authToken) {
           ioOpts.auth = { token: authToken }
+        }
+        const reconnect = this.config.websocketReconnect !== false
+        if (!reconnect) {
+          ioOpts.reconnection = false
         }
         let gatewayUrl: string
         if (this.config.gatewayurl?.includes('localhost')) {
@@ -138,13 +156,27 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
         })
 
         this.socket.on('disconnect', (reason, description) => {
-          fail(
+          const error =
             (reason === 'parse error' && getAttachmentLimitError(description, websocketMaxAttachments)) ||
-              new SQLiteCloudError('Disconnected', { errorCode: 'ERR_CONNECTION_ENDED', cause: reason })
-          )
+            new SQLiteCloudError('Disconnected', { errorCode: 'ERR_CONNECTION_ENDED', cause: reason })
+          if (!connectReported || !reconnect) {
+            fail(error)
+            return
+          }
+          // the gateway handles every request independently, so a new connection loses nothing:
+          // the commands in flight fail since they may or may not have run, later ones wait for socket.io to reconnect
+          this.failPendingCommands(error)
+          if (reason === 'io server disconnect') {
+            // the only case where socket.io does not reconnect by itself
+            this.socket?.connect()
+          }
         })
 
         this.socket.on('connect_error', (error: any) => {
+          if (connectReported && this.socket?.active) {
+            // a reconnection attempt failed, socket.io keeps trying
+            return
+          }
           if (error?.message === 'parse error' || error?.cause === 'parse error') {
             fail(
               getAttachmentLimitError(error?.description || error?.data || error?.cause, websocketMaxAttachments) ||
@@ -187,17 +219,39 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
       commands = { query: commands }
     }
 
-    // the callback is called exactly once: with the gateway response, on timeout or when the connection drops
+    // the callback is called exactly once: with the gateway response, on timeout, on abort or when the connection drops
+    const signal = commands.signal
     let settled = false
     let timeout: ReturnType<typeof setTimeout> | undefined
+    let reconnectTimeout: ReturnType<typeof setTimeout> | undefined
+    const socket = this.socket
+    const send = () => {
+      if (settled) return
+      clearTimeout(reconnectTimeout)
+      reconnectTimeout = undefined
+      this.emitCommands(socket, commands as SQLiteCloudCommand, finish)
+    }
     const finish = (error: Error | null, results?: any) => {
       if (settled) return
       settled = true
       clearTimeout(timeout)
+      if (reconnectTimeout) {
+        // still waiting for the reconnection
+        clearTimeout(reconnectTimeout)
+        socket.off('connect', send)
+      }
+      signal?.removeEventListener('abort', abort)
       this.pendingCommands?.delete(fail)
       callback?.call(this, error, results)
     }
     const fail = (error: Error) => finish(error)
+    const abort = () => finish(getAbortError(signal as AbortSignal))
+
+    if (signal?.aborted) {
+      abort()
+      return this
+    }
+    signal?.addEventListener('abort', abort)
 
     this.pendingCommands ||= new Set()
     this.pendingCommands.add(fail)
@@ -209,7 +263,23 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
       }, timeoutMs)
     }
 
-    this.socket.emit(
+    if (socket.connected) {
+      send()
+    } else {
+      // reconnecting: send on the new connection, unless it takes too long
+      socket.once('connect', send)
+      const waitMs = timeoutMs > 0 ? Math.min(timeoutMs, RECONNECT_WAIT_MS) : RECONNECT_WAIT_MS
+      reconnectTimeout = setTimeout(() => {
+        finish(new SQLiteCloudError(`Connection not reestablished after ${waitMs} ms`, { errorCode: 'ERR_CONNECTION_NOT_ESTABLISHED' }))
+      }, waitMs)
+    }
+
+    return this
+  }
+
+  /** Sends the command on the socket and calls finish with the gateway response */
+  private emitCommands(socket: Socket, commands: SQLiteCloudCommand, finish: (error: Error | null, results?: any) => void): void {
+    socket.emit(
       'GET /v2/weblite/sql',
       {
         sql: commands.query,
@@ -250,8 +320,6 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
         }
       }
     )
-
-    return this
   }
 
   /** Disconnect socket.io from server */
@@ -269,11 +337,15 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
     }
 
     this.operations.clear()
+    this.failPendingCommands(error)
+    return this
+  }
 
+  /** Fails the commands still waiting for a response with the given error */
+  private failPendingCommands(error: Error): void {
     const pendingCommands = this.pendingCommands
     this.pendingCommands = undefined
     pendingCommands?.forEach(fail => fail(error))
-    return this
   }
 }
 

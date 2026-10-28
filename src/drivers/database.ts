@@ -128,8 +128,15 @@ export class Database extends EventEmitter {
     this.operations.enqueue(done => {
       let error: Error | null = null
 
-      // we don't wont to silently open a new connection after a disconnession
-      if (this.connection && this.connection.connected) {
+      // we don't wont to silently open a new connection after a disconnession,
+      // a websocket connection that is reconnecting by itself is still usable
+      if (this.connection && (this.connection.connected || this.connection.reconnecting)) {
+        if (this.connection.concurrent) {
+          // later commands don't wait for this one to complete
+          this.connection.sendCommands(command, (error, results) => callback?.call(this, error, results))
+          done(null)
+          return
+        }
         this.connection.sendCommands(command, (error, results) => {
           callback?.call(this, error, results)
           done(error)

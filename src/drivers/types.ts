@@ -112,6 +112,10 @@ export interface SQLiteCloudConfig {
   websocketBlobFormat?: SQLiteCloudWebsocketBlobTransferFormat
   /** Maximum number of socket.io binary attachments accepted by the websocket parser. */
   websocketMaxAttachments?: number
+  /** Reconnect the websocket after it drops, default: true. Queries in flight when it drops fail, later queries wait for the new connection */
+  websocketReconnect?: boolean
+  /** Send websocket queries as soon as they are issued instead of one at a time, default: false. The gateway runs them independently, so their order is not guaranteed */
+  websocketConcurrent?: boolean
 
   /** Optional identifier used for verbose logging */
   clientid?: string
@@ -155,6 +159,8 @@ export type SQLiteCloudDataTypes = string | number | bigint | boolean | Record<s
 export interface SQLiteCloudCommand {
   query: string
   parameters?: SQLiteCloudDataTypes[]
+  /** Aborts the query: before it is sent on any transport, and while it runs on websocket, where the query may still complete on the server */
+  signal?: AbortSignal
 }
 
 /** Custom error reported by SQLiteCloud drivers */

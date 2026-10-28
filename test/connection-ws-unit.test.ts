@@ -5,6 +5,7 @@
 import { afterEach, describe, expect, it, jest } from '@jest/globals'
 import { io } from 'socket.io-client'
 import { SQLiteCloudWebsocketConnection } from '../src/drivers/connection-ws'
+import { OperationsQueue } from '../src/drivers/queue'
 import { SQLiteCloudRowset } from '../src/drivers/rowset'
 import { decodeBigIntMarkers, encodeBigIntMarkers } from '../src/drivers/utilities'
 
@@ -263,17 +264,42 @@ describe('websocket transport helpers', () => {
   describe('in-flight commands', () => {
     function connectMockedSocket(config: Record<string, any> = {}) {
       const handlers: Record<string, (...args: any[]) => void> = {}
+      let onceHandlers: { event: string; handler: (...args: any[]) => void }[] = []
       const socket = {
         connected: true,
+        active: true,
         on: jest.fn((event: string, handler: (...args: any[]) => void) => {
           handlers[event] = handler
         }),
+        once: jest.fn((event: string, handler: (...args: any[]) => void) => {
+          onceHandlers.push({ event, handler })
+        }),
+        off: jest.fn((event: string, handler: (...args: any[]) => void) => {
+          onceHandlers = onceHandlers.filter(once => once.event !== event || once.handler !== handler)
+        }),
         emit: jest.fn(),
-        removeAllListeners: jest.fn(),
+        connect: jest.fn(),
+        removeAllListeners: jest.fn(() => {
+          onceHandlers = []
+        }),
         close: jest.fn()
       }
       const mockedIo = io as jest.MockedFunction<typeof io>
       mockedIo.mockReturnValue(socket as any)
+
+      // what socket.io does on a (re)connection
+      const reconnect = () => {
+        socket.connected = true
+        handlers.connect?.()
+        const pending = onceHandlers.filter(once => once.event === 'connect')
+        onceHandlers = onceHandlers.filter(once => once.event !== 'connect')
+        pending.forEach(once => once.handler())
+      }
+      // what socket.io does when the connection drops and it is going to reconnect
+      const drop = (reason = 'transport close') => {
+        socket.connected = false
+        handlers.disconnect?.(reason)
+      }
 
       const connectCallback = jest.fn()
       const connection = Object.create(SQLiteCloudWebsocketConnection.prototype) as any
@@ -282,17 +308,17 @@ describe('websocket transport helpers', () => {
         { connectionstring: 'sqlitecloud://host.sqlite.cloud/database?apikey=secret', host: 'host.sqlite.cloud', apikey: 'secret', ...config },
         connectCallback
       )
-      handlers.connect?.()
+      reconnect()
 
-      return { connection, socket, handlers, connectCallback }
+      return { connection, socket, handlers, connectCallback, reconnect, drop }
     }
 
     afterEach(() => {
       jest.useRealTimers()
     })
 
-    it('should fail the command in flight when the connection drops', () => {
-      const { connection, socket, handlers, connectCallback } = connectMockedSocket()
+    it('should fail the command in flight and close when the connection drops without websocketReconnect', () => {
+      const { connection, socket, handlers, connectCallback } = connectMockedSocket({ websocketReconnect: false })
       const commandCallback = jest.fn()
 
       connection.transportCommands('SELECT 1', commandCallback)
@@ -378,6 +404,133 @@ describe('websocket transport helpers', () => {
 
       expect(commandCallback).toHaveBeenCalledTimes(1)
       expect(commandCallback).toHaveBeenCalledWith(null, 1)
+    })
+    it('should reconnect after the connection drops and send later commands on the new connection', () => {
+      const { connection, socket, connectCallback, reconnect, drop } = connectMockedSocket()
+      const inFlight = jest.fn()
+      connection.transportCommands('INSERT INTO t VALUES (1)', inFlight)
+
+      drop()
+
+      // the command in flight may or may not have run, so it fails and is not sent again
+      expect(inFlight).toHaveBeenCalledTimes(1)
+      expect(inFlight.mock.calls[0]?.[0]).toMatchObject({ errorCode: 'ERR_CONNECTION_ENDED', cause: 'transport close' })
+      expect(socket.close).not.toHaveBeenCalled()
+      expect(connection.connected).toBe(false)
+      expect(connection.reconnecting).toBe(true)
+
+      const later = jest.fn()
+      connection.transportCommands('SELECT 1', later)
+      expect(socket.emit).toHaveBeenCalledTimes(1)
+
+      reconnect()
+      expect(socket.emit).toHaveBeenCalledTimes(2)
+      const ack = socket.emit.mock.calls[1]?.[2] as (response: any) => void
+      ack({ data: 1 })
+
+      expect(later).toHaveBeenCalledWith(null, 1)
+      expect(connectCallback).toHaveBeenCalledTimes(1)
+    })
+
+    it('should fail a command that waits too long for the reconnection', () => {
+      jest.useFakeTimers()
+      const { connection, socket, reconnect, drop } = connectMockedSocket({ timeout: 60_000 })
+      drop()
+
+      const command = jest.fn()
+      connection.transportCommands('SELECT 1', command)
+      jest.advanceTimersByTime(20_000)
+
+      expect(command).toHaveBeenCalledTimes(1)
+      expect(command.mock.calls[0]?.[0]).toMatchObject({ errorCode: 'ERR_CONNECTION_NOT_ESTABLISHED' })
+
+      reconnect()
+      expect(socket.emit).not.toHaveBeenCalled()
+    })
+
+    it('should reconnect when the server disconnects the socket', () => {
+      const { socket, drop } = connectMockedSocket()
+      drop('io server disconnect')
+      expect(socket.connect).toHaveBeenCalledTimes(1)
+      expect(socket.close).not.toHaveBeenCalled()
+    })
+
+    it('should ignore failed reconnection attempts while socket.io keeps trying', () => {
+      const { connection, socket, handlers, drop } = connectMockedSocket()
+      drop()
+      handlers.connect_error?.(new Error('xhr poll error'))
+      expect(socket.close).not.toHaveBeenCalled()
+      expect(connection.reconnecting).toBe(true)
+    })
+
+    it('should fail commands waiting for the reconnection when the connection is closed', () => {
+      const { connection, drop } = connectMockedSocket()
+      drop()
+      const command = jest.fn()
+      connection.transportCommands('SELECT 1', command)
+      connection.close()
+      expect(command).toHaveBeenCalledTimes(1)
+      expect(command.mock.calls[0]?.[0]).toMatchObject({ errorCode: 'ERR_CONNECTION_CLOSED' })
+    })
+
+    it('should not send a command whose signal is already aborted', () => {
+      const { connection, socket } = connectMockedSocket()
+      const controller = new AbortController()
+      controller.abort()
+      const command = jest.fn()
+
+      connection.transportCommands({ query: 'SELECT 1', signal: controller.signal }, command)
+
+      expect(socket.emit).not.toHaveBeenCalled()
+      expect(command.mock.calls[0]?.[0]).toMatchObject({ name: 'AbortError' })
+    })
+
+    it('should fail a running command when its signal aborts and ignore the late response', () => {
+      const { connection, socket } = connectMockedSocket()
+      const controller = new AbortController()
+      const command = jest.fn()
+
+      connection.transportCommands({ query: 'SELECT 1', signal: controller.signal }, command)
+      const reason = new Error('stop')
+      controller.abort(reason)
+
+      expect(command).toHaveBeenCalledTimes(1)
+      expect(command).toHaveBeenCalledWith(reason, undefined)
+
+      const ack = socket.emit.mock.calls[0]?.[2] as (response: any) => void
+      ack({ data: 1 })
+      expect(command).toHaveBeenCalledTimes(1)
+    })
+
+    it('should send commands one at a time by default', () => {
+      const { connection, socket } = connectMockedSocket()
+      connection.operations = new OperationsQueue()
+
+      connection.sendCommands('SELECT 1')
+      connection.sendCommands('SELECT 2')
+      expect(socket.emit).toHaveBeenCalledTimes(1)
+
+      const ack = socket.emit.mock.calls[0]?.[2] as (response: any) => void
+      ack({ data: 1 })
+      expect(socket.emit).toHaveBeenCalledTimes(2)
+    })
+
+    it('should send commands without waiting for the previous ones with websocketConcurrent', () => {
+      const { connection, socket } = connectMockedSocket({ websocketConcurrent: true })
+      connection.operations = new OperationsQueue()
+      const first = jest.fn()
+      const second = jest.fn()
+
+      connection.sendCommands('SELECT 1', first)
+      connection.sendCommands('SELECT 2', second)
+      expect(socket.emit).toHaveBeenCalledTimes(2)
+      expect(socket.emit.mock.calls.map(call => (call[1] as any).sql)).toEqual(['SELECT 1', 'SELECT 2'])
+
+      // responses can arrive in any order
+      ;(socket.emit.mock.calls[1]?.[2] as (response: any) => void)({ data: 2 })
+      ;(socket.emit.mock.calls[0]?.[2] as (response: any) => void)({ data: 1 })
+      expect(second).toHaveBeenCalledWith(null, 2)
+      expect(first).toHaveBeenCalledWith(null, 1)
     })
   })
 })
