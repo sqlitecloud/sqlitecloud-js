@@ -5,7 +5,7 @@
 import { SQLiteCloudConfig, SQLiteCloudError, ErrorCallback, ResultsCallback, SQLiteCloudCommand, SQLiteCloudDataTypes } from './types'
 import { validateConfiguration } from './utilities'
 import { OperationsQueue } from './queue'
-import { anonimizeCommand, getUpdateResults } from './utilities'
+import { anonimizeCommand, getAbortError, getUpdateResults } from './utilities'
 
 /**
  * Base class for SQLiteCloudConnection handles basics and defines methods.
@@ -84,15 +84,25 @@ export abstract class SQLiteCloudConnection {
     this.config.verbose = true
   }
 
+  /** True while the transport is reconnecting after a drop, commands sent meanwhile wait for the new connection */
+  public get reconnecting(): boolean {
+    return false
+  }
+
+  /** True if commands are sent as soon as they are issued instead of waiting for the previous one to complete */
+  public get concurrent(): boolean {
+    return false
+  }
+
   /** Will enquee a command to be executed and callback with the resulting rowset/result/error */
   public sendCommands(commands: string | SQLiteCloudCommand, callback?: ResultsCallback): this {
     this.operations.enqueue(done => {
-      if (!this.connected) {
-        const error = new SQLiteCloudError('Connection not established', { errorCode: 'ERR_CONNECTION_NOT_ESTABLISHED' })
-        callback?.call(this, error)
-        done(error)
+      if (this.concurrent) {
+        // still queued behind the connection attempt, but later commands don't wait for this one
+        this.dispatchCommands(commands, callback)
+        done(null)
       } else {
-        this.transportCommands(commands, (error, result) => {
+        this.dispatchCommands(commands, (error, result) => {
           callback?.call(this, error, result)
           done(error)
         })
@@ -100,6 +110,18 @@ export abstract class SQLiteCloudConnection {
     })
 
     return this
+  }
+
+  /** Sends the command if the connection can take it, fails it otherwise */
+  private dispatchCommands(commands: string | SQLiteCloudCommand, callback?: ResultsCallback): void {
+    const signal = typeof commands === 'object' ? commands.signal : undefined
+    if (signal?.aborted) {
+      callback?.call(this, getAbortError(signal))
+    } else if (!this.connected && !this.reconnecting) {
+      callback?.call(this, new SQLiteCloudError('Connection not established', { errorCode: 'ERR_CONNECTION_NOT_ESTABLISHED' }))
+    } else {
+      this.transportCommands(commands, callback)
+    }
   }
 
   /**

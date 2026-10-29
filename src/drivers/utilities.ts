@@ -270,6 +270,9 @@ export function parseconnectionstring(connectionstring: string): SQLiteCloudConf
       usewebsocket: options.usewebsocket ? parseBoolean(options.usewebsocket) : undefined,
       websocketBlobFormat: options.websocket_blob_format ? parseWebsocketBlobTransferFormat(options.websocket_blob_format, undefined) : undefined,
       websocketMaxAttachments: options.websocket_max_attachments ? parseWebsocketMaxAttachments(options.websocket_max_attachments) : undefined,
+      websocketReconnect: options.websocket_reconnect ? parseBoolean(options.websocket_reconnect) : undefined,
+      websocketConcurrent: options.websocket_concurrent ? parseBoolean(options.websocket_concurrent) : undefined,
+      websocketStateless: options.websocket_stateless ? parseBoolean(options.websocket_stateless) : undefined,
       verbose: options.verbose ? parseBoolean(options.verbose) : undefined
     }
 
@@ -288,6 +291,14 @@ export function parseconnectionstring(connectionstring: string): SQLiteCloudConf
   } catch (error) {
     throw new SQLiteCloudError(`Invalid connection string: ${connectionstring} - error: ${error}`)
   }
+}
+
+/** The error a query aborted with `signal` fails with: the signal's reason when it is an error, like fetch */
+export function getAbortError(signal: AbortSignal): Error {
+  if (signal.reason instanceof Error) return signal.reason
+  const error = new Error('The query was aborted')
+  error.name = 'AbortError'
+  return error
 }
 
 /** Returns true if value is 1 or true */
