@@ -515,10 +515,11 @@ describe('websocket transport helpers', () => {
       expect(socket.emit).toHaveBeenCalledTimes(2)
     })
 
-    it('should tell the gateway the connection is concurrent', () => {
+    it('should ask the gateway for a stateless connection only with websocketStateless', () => {
       connectMockedSocket({ websocketConcurrent: true })
-      const options = (io as jest.MockedFunction<typeof io>).mock.calls[0]?.[1] as any
-      expect(options.auth).toEqual({ token: 'secret', concurrent: true })
+      expect(((io as jest.MockedFunction<typeof io>).mock.calls[0]?.[1] as any).auth).toEqual({ token: 'secret' })
+      connectMockedSocket({ websocketStateless: true })
+      expect(((io as jest.MockedFunction<typeof io>).mock.calls[1]?.[1] as any).auth).toEqual({ token: 'secret', stateless: true })
     })
 
     it('should send commands without waiting for the previous ones with websocketConcurrent', () => {

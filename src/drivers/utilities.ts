@@ -272,6 +272,7 @@ export function parseconnectionstring(connectionstring: string): SQLiteCloudConf
       websocketMaxAttachments: options.websocket_max_attachments ? parseWebsocketMaxAttachments(options.websocket_max_attachments) : undefined,
       websocketReconnect: options.websocket_reconnect ? parseBoolean(options.websocket_reconnect) : undefined,
       websocketConcurrent: options.websocket_concurrent ? parseBoolean(options.websocket_concurrent) : undefined,
+      websocketStateless: options.websocket_stateless ? parseBoolean(options.websocket_stateless) : undefined,
       verbose: options.verbose ? parseBoolean(options.verbose) : undefined
     }
 

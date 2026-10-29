@@ -114,8 +114,10 @@ export interface SQLiteCloudConfig {
   websocketMaxAttachments?: number
   /** Reconnect the websocket after it drops, default: true. Queries in flight when it drops fail, later queries wait for the new connection */
   websocketReconnect?: boolean
-  /** Send websocket queries as soon as they are issued instead of one at a time, default: false. The gateway then runs each query on its own connection: they may complete in any order, and no state (transactions, temp tables, pragmas) is kept between them */
+  /** Send websocket queries as soon as they are issued instead of one at a time, default: false. Their order is not guaranteed */
   websocketConcurrent?: boolean
+  /** Ask the gateway to run each websocket query on its own server connection, in parallel, default: false. No state (transactions, temp tables, pragmas) is kept between queries; without it the gateway keeps one server connection for the socket and runs its queries in order */
+  websocketStateless?: boolean
 
   /** Optional identifier used for verbose logging */
   clientid?: string
