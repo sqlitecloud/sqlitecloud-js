@@ -515,6 +515,12 @@ describe('websocket transport helpers', () => {
       expect(socket.emit).toHaveBeenCalledTimes(2)
     })
 
+    it('should tell the gateway the connection is concurrent', () => {
+      connectMockedSocket({ websocketConcurrent: true })
+      const options = (io as jest.MockedFunction<typeof io>).mock.calls[0]?.[1] as any
+      expect(options.auth).toEqual({ token: 'secret', concurrent: true })
+    })
+
     it('should send commands without waiting for the previous ones with websocketConcurrent', () => {
       const { connection, socket } = connectMockedSocket({ websocketConcurrent: true })
       connection.operations = new OperationsQueue()

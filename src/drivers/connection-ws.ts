@@ -121,6 +121,10 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
         if (authToken) {
           ioOpts.auth = { token: authToken }
         }
+        if (this.config.websocketConcurrent) {
+          // tells the gateway to run each request on its own, instead of in order on one connection kept for the socket
+          ioOpts.auth = { ...(ioOpts.auth as object), concurrent: true }
+        }
         const reconnect = this.config.websocketReconnect !== false
         if (!reconnect) {
           ioOpts.reconnection = false
