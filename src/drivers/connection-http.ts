@@ -73,7 +73,7 @@ export class SQLiteCloudHttpConnection extends SQLiteCloudConnection {
         if (error instanceof SQLiteCloudError) {
           finish(error)
         } else {
-          finish(new SQLiteCloudError(error instanceof Error ? error.message : String(error), { errorCode: 'ERR_HTTP_FETCH_FAILED', cause: error instanceof Error ? error : undefined }))
+          finish(new SQLiteCloudError(error instanceof Error ? error.message : String(error), { errorCode: 'ERR_CONNECTION_ERROR', cause: error instanceof Error ? error : undefined }))
         }
       })
 

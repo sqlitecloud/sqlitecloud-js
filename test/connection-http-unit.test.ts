@@ -143,7 +143,7 @@ describe('HTTP gateway transport', () => {
 
     await expect(commandResult(connection(), 'SELECT 1')).rejects.toMatchObject({ errorCode: 'ERR_GATEWAY_UNAUTHORIZED' })
     await expect(commandResult(connection(), 'SELECT 1')).rejects.toMatchObject({ errorCode: 'ERR_GATEWAY_UNAVAILABLE' })
-    await expect(commandResult(connection(), 'SELECT 1')).rejects.toMatchObject({ errorCode: 'ERR_HTTP_FETCH_FAILED', message: 'fetch failed' })
+    await expect(commandResult(connection(), 'SELECT 1')).rejects.toMatchObject({ errorCode: 'ERR_CONNECTION_ERROR', message: 'fetch failed' })
   })
 
   it('decodes legacy bigint markers during transition but preserves strings in tagged responses', async () => {
