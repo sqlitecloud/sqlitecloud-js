@@ -152,7 +152,7 @@ export interface SQLCloudRowsetMetadata {
 }
 
 /** Basic types that can be returned by SQLiteCloud APIs */
-export type SQLiteCloudDataTypes = string | number | bigint | boolean | Record<string | number, unknown> | Buffer | Uint8Array | ArrayBuffer | null | undefined
+export type SQLiteCloudDataTypes = string | number | bigint | boolean | Record<string | number, unknown> | Buffer | ArrayBuffer | ArrayBufferView | null | undefined
 
 export interface SQLiteCloudCommand {
   query: string

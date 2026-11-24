@@ -340,6 +340,7 @@ export function parseWebsocketMaxAttachments(value: string | number | null | und
 
 const BLOB_COLUMN_TYPE_RE = /\bblob\b/i
 const BIGINT_MARKER_KEY = '__sqlitecloud_bigint'
+const BIGINT_MARKER_RE = /^-?\d+n$/
 
 function isBinaryValue(value: unknown): value is Buffer | Uint8Array | ArrayBuffer {
   return (
@@ -372,7 +373,7 @@ export function encodeBigIntMarkers(value: any): any {
 }
 
 /** Convert sqlitecloud-js bigint markers back into BigInt values for lossless integer modes. */
-export function decodeBigIntMarkers(value: any, safeIntegerMode?: SQLiteCloudSafeIntegerMode): any {
+export function decodeBigIntMarkers(value: any, safeIntegerMode?: SQLiteCloudSafeIntegerMode, allowLegacyMarkers = true): any {
   if (safeIntegerMode !== 'bigint' && safeIntegerMode !== 'mixed') {
     return value
   }
@@ -388,14 +389,18 @@ export function decodeBigIntMarkers(value: any, safeIntegerMode?: SQLiteCloudSaf
     return BigInt(value[BIGINT_MARKER_KEY])
   }
 
+  if (allowLegacyMarkers && typeof value === 'string' && BIGINT_MARKER_RE.test(value)) {
+    return BigInt(value.slice(0, -1))
+  }
+
   if (Array.isArray(value)) {
-    return value.map(item => decodeBigIntMarkers(item, safeIntegerMode))
+    return value.map(item => decodeBigIntMarkers(item, safeIntegerMode, allowLegacyMarkers))
   }
 
   if (value && typeof value === 'object' && !isBinaryValue(value)) {
     const result: Record<string, any> = {}
     Object.entries(value).forEach(([key, item]) => {
-      result[key] = decodeBigIntMarkers(item, safeIntegerMode)
+      result[key] = decodeBigIntMarkers(item, safeIntegerMode, allowLegacyMarkers)
     })
     return result
   }
@@ -434,31 +439,29 @@ export function decodeGatewayRowsetData(
   data: any,
   metadata: SQLCloudRowsetMetadata,
   safeIntegerMode?: SQLiteCloudSafeIntegerMode,
-  blobTransferFormat?: SQLiteCloudWebsocketBlobTransferFormat
+  blobTransferFormat?: SQLiteCloudWebsocketBlobTransferFormat,
+  allowLegacyBigIntMarkers = true
 ): any {
   if (!Array.isArray(data)) {
-    return decodeBigIntMarkers(reviveJsonBuffers(data), safeIntegerMode)
+    return decodeBigIntMarkers(reviveJsonBuffers(data), safeIntegerMode, allowLegacyBigIntMarkers)
   }
 
   const blobColumnIndexes = new Set(metadata.columns.flatMap((column, index) => (column.type && BLOB_COLUMN_TYPE_RE.test(column.type) ? [index] : [])))
   const decodeCell = (value: any, columnIndex: number) => {
-    if (blobTransferFormat === 'base64-blobs-v1' && blobColumnIndexes.has(columnIndex) && isCanonicalBase64(value)) {
+    if (blobTransferFormat === 'base64-blobs-v1' && blobColumnIndexes.has(columnIndex) && typeof value === 'string') {
       return Buffer.from(value, 'base64')
     }
-    return decodeBigIntMarkers(reviveJsonBuffers(value), safeIntegerMode)
+    return decodeBigIntMarkers(reviveJsonBuffers(value), safeIntegerMode, allowLegacyBigIntMarkers)
   }
 
   if (data.every(row => !Array.isArray(row))) {
     return data.map((value, index) => decodeCell(value, index % metadata.numberOfColumns))
   }
 
-  return data.map(row => (Array.isArray(row) ? row.map((value, columnIndex) => decodeCell(value, columnIndex)) : decodeBigIntMarkers(reviveJsonBuffers(row), safeIntegerMode)))
+  return data.map(row =>
+    Array.isArray(row) ? row.map((value, columnIndex) => decodeCell(value, columnIndex)) : decodeBigIntMarkers(reviveJsonBuffers(row), safeIntegerMode, allowLegacyBigIntMarkers)
+  )
 }
 
 /** Backwards-compatible name for callers that still refer to the socket.io transport. */
 export const decodeWebsocketRowsetData = decodeGatewayRowsetData
-
-function isCanonicalBase64(value: unknown): value is string {
-  if (typeof value !== 'string' || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) return false
-  return Buffer.from(value, 'base64').toString('base64') === value
-}

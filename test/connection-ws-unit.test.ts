@@ -118,7 +118,8 @@ describe('websocket transport helpers', () => {
             row: 'array',
             safe_integer_mode: 'bigint',
             capabilities: {
-              blobTransferFormat: 'base64-blobs-v1'
+              blobTransferFormat: 'base64-blobs-v1',
+              bigIntMarkerFormat: 'tagged-v1'
             }
           },
           expect.any(Function)
@@ -145,7 +146,8 @@ describe('websocket transport helpers', () => {
           'GET /v2/weblite/sql',
           expect.objectContaining({
             capabilities: {
-              blobTransferFormat: 'socketio-blobs-v1'
+              blobTransferFormat: 'socketio-blobs-v1',
+              bigIntMarkerFormat: 'tagged-v1'
             }
           }),
           expect.any(Function)

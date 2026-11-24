@@ -13,6 +13,10 @@ function blobTransferFormat(response: any): SQLiteCloudWebsocketBlobTransferForm
   return parseWebsocketBlobTransferFormat(response?.capabilities?.blobTransferFormat || response?.blobTransferFormat, undefined)
 }
 
+function allowLegacyBigIntMarkers(response: any): boolean {
+  return response?.bigIntMarkerFormat !== 'tagged-v1'
+}
+
 function isRowsetMetadata(metadata: any): boolean {
   return metadata && metadata.numberOfRows !== undefined && metadata.numberOfColumns !== undefined && Array.isArray(metadata.columns)
 }
@@ -29,12 +33,12 @@ export function decodeGatewayResponse(response: any, safeIntegerMode?: SQLiteClo
 
   const metadata = response?.metadata
   if (isRowsetMetadata(metadata)) {
-    const data = decodeGatewayRowsetData(response?.data, metadata, safeIntegerMode, blobTransferFormat(response))
+    const data = decodeGatewayRowsetData(response?.data, metadata, safeIntegerMode, blobTransferFormat(response), allowLegacyBigIntMarkers(response))
     if (!Array.isArray(data)) {
       return { error: new SQLiteCloudError('Gateway returned an invalid rowset.', { errorCode: 'ERR_GATEWAY_INVALID_RESPONSE' }) }
     }
     return { result: new SQLiteCloudRowset(metadata, data.flat()) }
   }
 
-  return { result: decodeBigIntMarkers(reviveJsonBuffers(response?.data), safeIntegerMode) }
+  return { result: decodeBigIntMarkers(reviveJsonBuffers(response?.data), safeIntegerMode, allowLegacyBigIntMarkers(response)) }
 }

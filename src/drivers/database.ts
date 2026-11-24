@@ -155,7 +155,9 @@ export class Database extends EventEmitter {
       // we don't wont to silently open a new connection after a disconnession
       if (this.connection && this.connection.connected) {
         if (this.connection.concurrent) {
-          this.connection.sendCommands(command, callback)
+          this.connection.sendCommands(command, (error, results) => {
+            callback?.call(this, error, results)
+          })
           done(null)
         } else {
           this.connection.sendCommands(command, (error, results) => {

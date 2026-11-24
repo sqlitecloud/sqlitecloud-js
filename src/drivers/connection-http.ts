@@ -2,6 +2,7 @@
 
 import { SQLiteCloudConnection } from './connection'
 import { decodeGatewayResponse } from './gateway-response'
+import { buildGatewaySqlUrl } from './gateway-url'
 import { ErrorCallback, ResultsCallback, SQLiteCloudCommand, SQLiteCloudConfig, SQLiteCloudError } from './types'
 import { encodeBigIntMarkers, getAbortError, isBrowser } from './utilities'
 import { Buffer } from 'buffer'
@@ -69,7 +70,11 @@ export class SQLiteCloudHttpConnection extends SQLiteCloudConnection {
           finish(reason instanceof Error ? reason : signal ? getAbortError(signal) : new SQLiteCloudError('Request aborted', { errorCode: 'ERR_ABORTED' }))
           return
         }
-        finish(error instanceof Error ? error : new SQLiteCloudError(String(error), { errorCode: 'ERR_CONNECTION_ERROR' }))
+        if (error instanceof SQLiteCloudError) {
+          finish(error)
+        } else {
+          finish(new SQLiteCloudError(error instanceof Error ? error.message : String(error), { errorCode: 'ERR_HTTP_FETCH_FAILED', cause: error instanceof Error ? error : undefined }))
+        }
       })
 
     return this
@@ -89,7 +94,8 @@ export class SQLiteCloudHttpConnection extends SQLiteCloudConnection {
         safe_integer_mode: this.config.safe_integer_mode,
         capabilities: {
           blobTransferFormat: BASE64_BLOB_TRANSFER_FORMAT,
-          blobBindIndexes
+          blobBindIndexes,
+          bigIntMarkerFormat: 'tagged-v1'
         }
       })
     })
@@ -102,24 +108,15 @@ export class SQLiteCloudHttpConnection extends SQLiteCloudConnection {
       throw httpError(response.status, response.statusText, body)
     }
 
+    if (!response.ok) throw httpError(response.status, response.statusText, body)
+
     const decoded = decodeGatewayResponse(payload, this.config.safe_integer_mode)
     if (decoded.error) throw decoded.error
-    if (!response.ok) throw httpError(response.status, response.statusText, body)
     return decoded.result
   }
 
   private gatewayUrl(): string {
-    const configured = this.config.gatewayurl
-    if (configured?.includes('localhost')) {
-      const url = new URL(configured.includes('://') ? configured : `http://${configured}`)
-      if (url.protocol === 'ws:') url.protocol = 'http:'
-      if (url.protocol === 'wss:') url.protocol = 'https:'
-      url.pathname = '/v2/weblite/sql'
-      url.search = ''
-      return url.toString()
-    }
-
-    return `https://${buildGatewayHost(this.config.host || '', configured)}:443/v2/weblite/sql`
+    return buildGatewaySqlUrl(this.config.host || '', this.config.gatewayurl)
   }
 
   private headers(): Record<string, string> {
@@ -156,15 +153,11 @@ function encodeHttpBindings(parameters?: SQLiteCloudCommand['parameters']): { bi
 
 function binaryBuffer(value: unknown): Buffer | undefined {
   if (Buffer.isBuffer(value)) return value
-  if (value instanceof Uint8Array) return Buffer.from(value.buffer, value.byteOffset, value.byteLength)
   if (value instanceof ArrayBuffer) return Buffer.from(value)
-}
-
-function buildGatewayHost(host: string, gatewayurl?: string): string {
-  const suffix = gatewayurl || 'gateway.sqlite.cloud'
-  if (host === suffix || host.endsWith('.' + suffix)) return host
-  const parts = host.split('.')
-  return parts.length < 3 ? host : `${parts.slice(0, -2).join('.')}.${suffix}`
+  if (typeof ArrayBuffer !== 'undefined' && ArrayBuffer.isView(value as ArrayBufferView)) {
+    const view = value as ArrayBufferView
+    return Buffer.from(view.buffer, view.byteOffset, view.byteLength)
+  }
 }
 
 function httpError(status: number, statusText: string, body: string): SQLiteCloudError {

@@ -9,11 +9,12 @@ describe('safe integer markers', () => {
     expect(parseSafeIntegerMode('invalid')).toBe('number')
   })
 
-  test('decodeBigIntMarkers decodes tagged markers only for lossless modes', () => {
+  test('decodeBigIntMarkers decodes tagged and legacy markers during transition', () => {
     expect(decodeBigIntMarkers({ __sqlitecloud_bigint: '9223372036854775807' }, 'bigint')).toBe(BigInt('9223372036854775807'))
     expect(decodeBigIntMarkers({ id: { __sqlitecloud_bigint: '9223372036854775807' } }, 'mixed')).toEqual({ id: BigInt('9223372036854775807') })
     expect(decodeBigIntMarkers('9223372036854775807n', 'number')).toBe('9223372036854775807n')
-    expect(decodeBigIntMarkers('9223372036854775807n', 'mixed')).toBe('9223372036854775807n')
+    expect(decodeBigIntMarkers('9223372036854775807n', 'mixed')).toBe(BigInt('9223372036854775807'))
+    expect(decodeBigIntMarkers('9223372036854775807n', 'mixed', false)).toBe('9223372036854775807n')
   })
 
   test('encodeBigIntMarkers encodes bigint values and bigint-mode integer numbers', () => {
