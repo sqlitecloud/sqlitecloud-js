@@ -4,7 +4,7 @@ import { SQLiteCloudConnection } from './connection'
 import { decodeGatewayResponse } from './gateway-response'
 import { buildGatewaySqlUrl } from './gateway-url'
 import { ErrorCallback, ResultsCallback, SQLiteCloudCommand, SQLiteCloudConfig, SQLiteCloudError } from './types'
-import { encodeBigIntMarkers, getAbortError, isBrowser } from './utilities'
+import { encodeBigIntMarkers, getAbortError } from './utilities'
 import { Buffer } from 'buffer'
 
 const BASE64_BLOB_TRANSFER_FORMAT = 'base64-blobs-v1'
@@ -123,8 +123,6 @@ export class SQLiteCloudHttpConnection extends SQLiteCloudConnection {
     const token = this.config.apikey || this.config.token
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (token) headers.Authorization = `Bearer ${token}`
-    // Browsers intentionally cannot override Host. Local browser development needs a tenant-aware proxy.
-    if (!isBrowser && this.config.gatewayurl?.includes('localhost') && this.config.host) headers.Host = this.config.host
     return headers
   }
 

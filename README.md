@@ -86,6 +86,8 @@ const rows = await database.sql({ query: 'SELECT * FROM tracks LIMIT ?', paramet
 
 HTTP has no session. A transaction must be contained in one request; do not split `BEGIN`, writes, and `COMMIT` across `database.sql()` calls. The same applies to temporary tables, `ATTACH`, connection-scoped `PRAGMA` settings, and a later `last_insert_rowid()` call. HTTP construction does not make a network request, so invalid credentials or an unavailable gateway are reported by the first query rather than the constructor callback.
 
+When using a localhost gateway with HTTP, configure a tenant-aware local reverse proxy. Browser and Node Fetch implementations do not reliably allow the driver to set the tenant `Host` header; the WebSocket transport remains the direct localhost option.
+
 ## Examples
 
 Check out all the supported platforms with related examples [here](https://github.com/sqlitecloud/sqlitecloud-js/tree/main/examples)!

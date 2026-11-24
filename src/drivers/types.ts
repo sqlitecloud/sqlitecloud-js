@@ -106,9 +106,9 @@ export interface SQLiteCloudConfig {
    *
    *  Example: with `host: 'crvheg7dhk.g4.sqlite.cloud'` and the default `gatewayurl`,
    *  the driver opens `wss://crvheg7dhk.g4.gateway.sqlite.cloud:443`. For local
-   *  development, pass a value containing `localhost` (eg `'ws://localhost:4000'`)
-   *  and the driver will route TCP to that target while forwarding `host` as the
-   *  gateway Host header. */
+   *  development, pass a value containing `localhost` (eg `'ws://localhost:4000'`).
+   *  The WebSocket transport forwards `host` as the gateway Host header. Fetch
+   *  forbids that header, so HTTP transport needs a tenant-aware local proxy. */
   gatewayurl?: string
   /** Preferred blob transfer format when using websocket transport. Defaults to base64-blobs-v1 for new clients. */
   websocketBlobFormat?: SQLiteCloudWebsocketBlobTransferFormat

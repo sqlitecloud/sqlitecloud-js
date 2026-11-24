@@ -56,7 +56,7 @@ describe('HTTP gateway transport', () => {
       'http://localhost:8090/v2/weblite/sql',
       expect.objectContaining({
         method: 'POST',
-        headers: expect.objectContaining({ Authorization: 'Bearer secret', 'Content-Type': 'application/json', Host: 'tenant.g4.sqlite.cloud' })
+        headers: { Authorization: 'Bearer secret', 'Content-Type': 'application/json' }
       })
     )
     expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body)).toEqual({
