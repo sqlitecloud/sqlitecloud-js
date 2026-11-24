@@ -198,6 +198,7 @@ export function validateConfiguration(config: SQLiteCloudConfig): SQLiteCloudCon
   config.create = parseBoolean(config.create)
   config.non_linearizable = parseBoolean(config.non_linearizable)
   config.insecure = parseBoolean(config.insecure)
+  config.usehttp = parseBoolean(config.usehttp)
 
   const hasCredentials = (config.username && config.password) || config.apikey || config.token
   if (!config.host || !hasCredentials) {
@@ -264,6 +265,7 @@ export function parseconnectionstring(connectionstring: string): SQLiteCloudConf
       maxrowset: options.maxrowset ? parseInt(options.maxrowset) : undefined,
       safe_integer_mode: options.safe_integer_mode ? parseSafeIntegerMode(options.safe_integer_mode) : undefined,
       usewebsocket: options.usewebsocket ? parseBoolean(options.usewebsocket) : undefined,
+      usehttp: options.usehttp ? parseBoolean(options.usehttp) : undefined,
       websocketBlobFormat: options.websocket_blob_format ? parseWebsocketBlobTransferFormat(options.websocket_blob_format, undefined) : undefined,
       websocketMaxAttachments: options.websocket_max_attachments ? parseWebsocketMaxAttachments(options.websocket_max_attachments) : undefined,
       verbose: options.verbose ? parseBoolean(options.verbose) : undefined
@@ -332,20 +334,29 @@ export function parseWebsocketMaxAttachments(value: string | number | null | und
   return DEFAULT_WEBSOCKET_MAX_ATTACHMENTS
 }
 
-const BIGINT_MARKER_RE = /^-?\d+n$/
 const BLOB_COLUMN_TYPE_RE = /\bblob\b/i
+const BIGINT_MARKER_KEY = '__sqlitecloud_bigint'
+
+function isBinaryValue(value: unknown): value is Buffer | Uint8Array | ArrayBuffer {
+  return (
+    Buffer.isBuffer(value) ||
+    value instanceof Uint8Array ||
+    value instanceof ArrayBuffer ||
+    (typeof ArrayBuffer !== 'undefined' && ArrayBuffer.isView(value as ArrayBufferView))
+  )
+}
 
 /** Convert values that JSON cannot represent losslessly into sqlitecloud-js bigint markers. */
 export function encodeBigIntMarkers(value: any): any {
   if (typeof value === 'bigint') {
-    return `${value.toString()}n`
+    return { [BIGINT_MARKER_KEY]: value.toString() }
   }
 
   if (Array.isArray(value)) {
     return value.map(item => encodeBigIntMarkers(item))
   }
 
-  if (value && typeof value === 'object' && !Buffer.isBuffer(value)) {
+  if (value && typeof value === 'object' && !isBinaryValue(value)) {
     const result: Record<string, any> = {}
     Object.entries(value).forEach(([key, item]) => {
       result[key] = encodeBigIntMarkers(item)
@@ -362,15 +373,22 @@ export function decodeBigIntMarkers(value: any, safeIntegerMode?: SQLiteCloudSaf
     return value
   }
 
-  if (typeof value === 'string' && BIGINT_MARKER_RE.test(value)) {
-    return BigInt(value.slice(0, -1))
+  if (
+    value &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    Object.keys(value).length === 1 &&
+    typeof value[BIGINT_MARKER_KEY] === 'string' &&
+    /^-?\d+$/.test(value[BIGINT_MARKER_KEY])
+  ) {
+    return BigInt(value[BIGINT_MARKER_KEY])
   }
 
   if (Array.isArray(value)) {
     return value.map(item => decodeBigIntMarkers(item, safeIntegerMode))
   }
 
-  if (value && typeof value === 'object' && !Buffer.isBuffer(value)) {
+  if (value && typeof value === 'object' && !isBinaryValue(value)) {
     const result: Record<string, any> = {}
     Object.entries(value).forEach(([key, item]) => {
       result[key] = decodeBigIntMarkers(item, safeIntegerMode)
@@ -381,30 +399,64 @@ export function decodeBigIntMarkers(value: any, safeIntegerMode?: SQLiteCloudSaf
   return value
 }
 
-/** Decode websocket rowset cells using metadata-aware rules for bigint markers and negotiated BLOB transport. */
-export function decodeWebsocketRowsetData(
+/** Returns an Error suitable for completing a command that its caller cancelled. */
+export function getAbortError(signal: AbortSignal): Error {
+  const reason = (signal as AbortSignal & { reason?: unknown }).reason
+  if (reason instanceof Error) return reason
+  return new SQLiteCloudError(typeof reason === 'string' ? reason : 'Request aborted', { errorCode: 'ERR_ABORTED' })
+}
+
+/** Revive Node's JSON representation of a Buffer, including BLOB values without declared metadata. */
+export function reviveJsonBuffers(value: any): any {
+  if (Array.isArray(value)) return value.map(reviveJsonBuffers)
+  if (!value || typeof value !== 'object' || isBinaryValue(value)) return value
+  if (
+    value.type === 'Buffer' &&
+    Array.isArray(value.data) &&
+    value.data.every((byte: unknown) => Number.isInteger(byte) && (byte as number) >= 0 && (byte as number) <= 255)
+  ) {
+    return Buffer.from(value.data)
+  }
+
+  const result: Record<string, any> = {}
+  Object.entries(value).forEach(([key, item]) => {
+    result[key] = reviveJsonBuffers(item)
+  })
+  return result
+}
+
+/** Decode gateway rowset cells using metadata-aware rules for bigint markers and negotiated BLOB transport. */
+export function decodeGatewayRowsetData(
   data: any,
   metadata: SQLCloudRowsetMetadata,
   safeIntegerMode?: SQLiteCloudSafeIntegerMode,
   blobTransferFormat?: SQLiteCloudWebsocketBlobTransferFormat
 ): any {
   if (!Array.isArray(data)) {
-    return decodeBigIntMarkers(data, safeIntegerMode)
+    return decodeBigIntMarkers(reviveJsonBuffers(data), safeIntegerMode)
   }
 
   const blobColumnIndexes = new Set(
     metadata.columns.flatMap((column, index) => (column.type && BLOB_COLUMN_TYPE_RE.test(column.type) ? [index] : []))
   )
   const decodeCell = (value: any, columnIndex: number) => {
-    if (blobTransferFormat === 'base64-blobs-v1' && blobColumnIndexes.has(columnIndex) && typeof value === 'string') {
+    if (blobTransferFormat === 'base64-blobs-v1' && blobColumnIndexes.has(columnIndex) && isCanonicalBase64(value)) {
       return Buffer.from(value, 'base64')
     }
-    return decodeBigIntMarkers(value, safeIntegerMode)
+    return decodeBigIntMarkers(reviveJsonBuffers(value), safeIntegerMode)
   }
 
   if (data.every(row => !Array.isArray(row))) {
     return data.map((value, index) => decodeCell(value, index % metadata.numberOfColumns))
   }
 
-  return data.map(row => (Array.isArray(row) ? row.map((value, columnIndex) => decodeCell(value, columnIndex)) : decodeBigIntMarkers(row, safeIntegerMode)))
+  return data.map(row => (Array.isArray(row) ? row.map((value, columnIndex) => decodeCell(value, columnIndex)) : decodeBigIntMarkers(reviveJsonBuffers(row), safeIntegerMode)))
+}
+
+/** Backwards-compatible name for callers that still refer to the socket.io transport. */
+export const decodeWebsocketRowsetData = decodeGatewayRowsetData
+
+function isCanonicalBase64(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) return false
+  return Buffer.from(value, 'base64').toString('base64') === value
 }

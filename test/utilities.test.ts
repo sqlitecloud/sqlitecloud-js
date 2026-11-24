@@ -69,6 +69,11 @@ describe('parseconnectionstring', () => {
     })
   })
 
+  it('should parse usehttp as a boolean connection-string option', () => {
+    const config = parseconnectionstring('sqlitecloud://host?apikey=secret&usehttp=true')
+    expect(config.usehttp).toBe(true)
+  })
+
   it('should parse connection string without port', () => {
     const connectionstring = 'sqlitecloud://user:password@host'
     const config = parseconnectionstring(connectionstring)
@@ -275,14 +280,14 @@ describe('safe integer marker utilities', () => {
 
   it('should encode bigint values as marker strings', () => {
     expect(encodeBigIntMarkers({ id: BigInt('9223372036854775807'), values: [1, BigInt(2)] })).toEqual({
-      id: '9223372036854775807n',
-      values: [1, '2n']
+      id: { __sqlitecloud_bigint: '9223372036854775807' },
+      values: [1, { __sqlitecloud_bigint: '2' }]
     })
   })
 
   it('should decode bigint markers only in lossless modes', () => {
-    expect(decodeBigIntMarkers('9223372036854775807n', 'bigint')).toBe(BigInt('9223372036854775807'))
-    expect(decodeBigIntMarkers({ id: '9223372036854775807n' }, 'mixed')).toEqual({ id: BigInt('9223372036854775807') })
+    expect(decodeBigIntMarkers({ __sqlitecloud_bigint: '9223372036854775807' }, 'bigint')).toBe(BigInt('9223372036854775807'))
+    expect(decodeBigIntMarkers({ id: { __sqlitecloud_bigint: '9223372036854775807' } }, 'mixed')).toEqual({ id: BigInt('9223372036854775807') })
     expect(decodeBigIntMarkers('9223372036854775807n', 'number')).toBe('9223372036854775807n')
   })
 })

@@ -5,23 +5,16 @@
 import { io, Socket } from 'socket.io-client'
 import { Decoder as SocketIODecoder, Encoder as SocketIOEncoder } from 'socket.io-parser'
 import { SQLiteCloudConnection } from './connection'
-import { SQLiteCloudRowset } from './rowset'
+import { decodeGatewayResponse } from './gateway-response'
 import {
   DEFAULT_WEBSOCKET_BLOB_TRANSFER_FORMAT,
   ErrorCallback,
   ResultsCallback,
   SQLiteCloudCommand,
   SQLiteCloudConfig,
-  SQLiteCloudError,
-  SQLiteCloudWebsocketBlobTransferFormat
+  SQLiteCloudError
 } from './types'
-import {
-  decodeBigIntMarkers,
-  decodeWebsocketRowsetData,
-  encodeBigIntMarkers,
-  parseWebsocketBlobTransferFormat,
-  parseWebsocketMaxAttachments
-} from './utilities'
+import { encodeBigIntMarkers, parseWebsocketMaxAttachments } from './utilities'
 
 const SocketIODecoderBase = SocketIODecoder as unknown as new (...args: any[]) => { opts?: { maxAttachments?: number } }
 
@@ -41,10 +34,6 @@ function createSocketIOParser(maxAttachments: number) {
   }
 }
 
-function getResponseBlobTransferFormat(response: any): SQLiteCloudWebsocketBlobTransferFormat | undefined {
-  return parseWebsocketBlobTransferFormat(response?.capabilities?.blobTransferFormat || response?.blobTransferFormat, undefined)
-}
-
 function getAttachmentLimitError(description: unknown, limit: number): SQLiteCloudError | undefined {
   const descriptionMessage = description instanceof Error ? description.message : typeof description === 'string' ? description : ''
   if (/illegal attachments/i.test(descriptionMessage)) {
@@ -55,16 +44,6 @@ function getAttachmentLimitError(description: unknown, limit: number): SQLiteClo
         cause: description as Error | string
       }
     )
-  }
-}
-
-function getGatewayResponseError(response: any): Record<string, any> | undefined {
-  if (response?.error && typeof response.error === 'object') {
-    return response.error
-  }
-
-  if (Array.isArray(response?.errors) && response.errors[0] && typeof response.errors[0] === 'object') {
-    return response.errors[0]
   }
 }
 
@@ -185,29 +164,8 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
         }
       },
       (response: any) => {
-        const gatewayError = getGatewayResponseError(response)
-        if (gatewayError) {
-          const error = new SQLiteCloudError(gatewayError.detail || gatewayError.message || 'Gateway error', { ...gatewayError })
-          callback?.call(this, error)
-        } else {
-          const { metadata } = response
-          const blobTransferFormat = getResponseBlobTransferFormat(response)
-          const data =
-            metadata && metadata.numberOfRows !== undefined && metadata.numberOfColumns !== undefined && metadata.columns !== undefined
-              ? decodeWebsocketRowsetData(response?.data, metadata, this.config.safe_integer_mode, blobTransferFormat)
-              : decodeBigIntMarkers(response?.data, this.config.safe_integer_mode)
-
-          if (data !== undefined && metadata) {
-            if (metadata.numberOfRows !== undefined && metadata.numberOfColumns !== undefined && metadata.columns !== undefined) {
-              console.assert(Array.isArray(data), 'SQLiteCloudWebsocketConnection.transportCommands - data is not an array')
-              // we can recreate a SQLiteCloudRowset from the response which we know to be an array of arrays
-              const rowset = new SQLiteCloudRowset(metadata, data.flat())
-              callback?.call(this, null, rowset)
-              return
-            }
-          }
-          callback?.call(this, null, data)
-        }
+        const decoded = decodeGatewayResponse(response, this.config.safe_integer_mode)
+        callback?.call(this, decoded.error || null, decoded.result)
       }
     )
 
