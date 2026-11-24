@@ -97,6 +97,8 @@ export interface SQLiteCloudConfig {
 
   /** True if we should force use of SQLite Cloud Gateway and websocket connections, default: true in browsers, false in node.js */
   usewebsocket?: boolean
+  /** True to use the stateless HTTP gateway transport. Each query is an independent request. */
+  usehttp?: boolean
   /** Domain suffix used to build the gateway hostname the driver connects to.
    *  Default: `gateway.sqlite.cloud`.
    *
@@ -148,11 +150,13 @@ export interface SQLCloudRowsetMetadata {
 }
 
 /** Basic types that can be returned by SQLiteCloud APIs */
-export type SQLiteCloudDataTypes = string | number | bigint | boolean | Record<string | number, unknown> | Buffer | null | undefined
+export type SQLiteCloudDataTypes = string | number | bigint | boolean | Record<string | number, unknown> | Buffer | Uint8Array | ArrayBuffer | null | undefined
 
 export interface SQLiteCloudCommand {
   query: string
   parameters?: SQLiteCloudDataTypes[]
+  /** Cancels this command before or while its transport request is running. */
+  signal?: AbortSignal
 }
 
 /** Custom error reported by SQLiteCloud drivers */

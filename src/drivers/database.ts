@@ -76,6 +76,30 @@ export class Database extends EventEmitter {
 
   /** Returns first available connection from connection pool */
   private createConnection(callback: ConnectionCallback) {
+    if (this.config?.usehttp) {
+      this.operations.enqueue(done => {
+        import('./connection-http')
+          .then(module => {
+            this.connection = new module.default(this.config, (error: Error | null) => {
+              if (error) {
+                this.handleError(error, callback)
+              } else {
+                callback?.call(this, null)
+                this.emitEvent('open')
+              }
+
+              done(error)
+            })
+          })
+          .catch(error => {
+            this.handleError(error, callback)
+            this.close()
+            done(error)
+          })
+      })
+      return
+    }
+
     // connect using websocket if tls is not supported or if explicitly requested
     const useWebsocket = isBrowser || this.config?.usewebsocket || this.config?.gatewayurl
     if (useWebsocket) {
@@ -130,10 +154,15 @@ export class Database extends EventEmitter {
 
       // we don't wont to silently open a new connection after a disconnession
       if (this.connection && this.connection.connected) {
-        this.connection.sendCommands(command, (error, results) => {
-          callback?.call(this, error, results)
-          done(error)
-        })
+        if (this.connection.concurrent) {
+          this.connection.sendCommands(command, callback)
+          done(null)
+        } else {
+          this.connection.sendCommands(command, (error, results) => {
+            callback?.call(this, error, results)
+            done(error)
+          })
+        }
       } else {
         error = new SQLiteCloudError('Connection unavailable. Maybe it got disconnected?', { errorCode: 'ERR_CONNECTION_NOT_ESTABLISHED' })
         callback?.call(this, error, null)
