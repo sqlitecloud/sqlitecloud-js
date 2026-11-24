@@ -118,7 +118,7 @@ describe('websocket transport helpers', () => {
             row: 'array',
             safe_integer_mode: 'bigint',
             capabilities: {
-              blobTransferFormat: 'base64-blobs-v1',
+              blobTransferFormat: 'base64-blobs-v2',
               bigIntMarkerFormat: 'tagged-v1'
             }
           },

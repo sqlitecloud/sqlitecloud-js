@@ -20,10 +20,11 @@ export const DEFAULT_PORT = 8860
  * mixed - use BigInt and Number types depending on the value size
  */
 export type SQLiteCloudSafeIntegerMode = 'number' | 'bigint' | 'mixed'
-export type SQLiteCloudWebsocketBlobTransferFormat = 'base64-blobs-v1' | 'socketio-blobs-v1'
+/** base64-blobs-v2 also tags TEXT stored in a BLOB column, so only real BLOBs are base64-decoded. */
+export type SQLiteCloudWebsocketBlobTransferFormat = 'base64-blobs-v1' | 'base64-blobs-v2' | 'socketio-blobs-v1'
 
 export let SAFE_INTEGER_MODE: SQLiteCloudSafeIntegerMode = 'number'
-export const DEFAULT_WEBSOCKET_BLOB_TRANSFER_FORMAT: SQLiteCloudWebsocketBlobTransferFormat = 'base64-blobs-v1'
+export const DEFAULT_WEBSOCKET_BLOB_TRANSFER_FORMAT: SQLiteCloudWebsocketBlobTransferFormat = 'base64-blobs-v2'
 export const DEFAULT_WEBSOCKET_MAX_ATTACHMENTS = 100000
 if (typeof process !== 'undefined') {
   const mode = process.env['SAFE_INTEGER_MODE']?.toLowerCase()
@@ -110,7 +111,7 @@ export interface SQLiteCloudConfig {
    *  The WebSocket transport forwards `host` as the gateway Host header. Fetch
    *  forbids that header, so HTTP transport needs a tenant-aware local proxy. */
   gatewayurl?: string
-  /** Preferred blob transfer format when using websocket transport. Defaults to base64-blobs-v1 for new clients. */
+  /** Preferred blob transfer format when using the gateway transports. Defaults to base64-blobs-v2 for new clients. */
   websocketBlobFormat?: SQLiteCloudWebsocketBlobTransferFormat
   /** Maximum number of socket.io binary attachments accepted by the websocket parser. */
   websocketMaxAttachments?: number

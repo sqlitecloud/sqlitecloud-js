@@ -66,14 +66,14 @@ describe('HTTP gateway transport', () => {
       row: 'array',
       safe_integer_mode: 'number',
       capabilities: {
-        blobTransferFormat: 'base64-blobs-v1',
+        blobTransferFormat: 'base64-blobs-v2',
         blobBindIndexes: [1, 2, 3, 4],
         bigIntMarkerFormat: 'tagged-v1'
       }
     })
   })
 
-  it('revives JSON Buffer cells without BLOB metadata and decodes every negotiated BLOB cell', async () => {
+  it('revives JSON Buffer cells without BLOB metadata and decodes negotiated BLOB columns, keeping tagged TEXT as text', async () => {
     fetchMock
       .mockResolvedValueOnce(
         jsonResponse({
@@ -83,19 +83,37 @@ describe('HTTP gateway transport', () => {
       )
       .mockResolvedValueOnce(
         jsonResponse({
-          blobTransferFormat: 'base64-blobs-v1',
-          metadata: { version: 2, numberOfRows: 1, numberOfColumns: 1, columns: [{ name: 'payload', type: 'BLOB' }] },
-          data: [['SGVsbG8=']]
+          blobTransferFormat: 'base64-blobs-v2',
+          metadata: { version: 2, numberOfRows: 3, numberOfColumns: 1, columns: [{ name: 'payload', type: 'BLOB' }] },
+          data: [['SGVsbG8='], [{ __sqlitecloud_text: 'Hello' }], [null]]
         })
       )
     const db = connection()
 
     const expression = await commandResult(db, 'SELECT x\'00ff10\'')
-    const text = await commandResult(db, 'SELECT b')
+    const blobs = await commandResult(db, 'SELECT payload FROM t')
 
     expect(expression).toBeInstanceOf(SQLiteCloudRowset)
     expect(expression[0].expression).toEqual(Buffer.from([0, 255, 16]))
-    expect(text[0].payload).toEqual(Buffer.from('Hello'))
+    expect(blobs[0].payload).toEqual(Buffer.from('Hello'))
+    expect(blobs[1].payload).toBe('Hello')
+    expect(blobs[2].payload).toBeNull()
+  })
+
+  it('throws the gateway sql error with its codes instead of a generic HTTP error', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(
+        { errors: [{ status: '400', code: 'sqlite_error', detail: 'no such table: no_such_table', meta: { errorCode: '1', offsetCode: -1, externalErrorCode: '1' } }] },
+        400
+      )
+    )
+
+    await expect(commandResult(connection(), 'SELECT * FROM no_such_table')).rejects.toMatchObject({
+      message: 'no such table: no_such_table',
+      errorCode: '1',
+      offsetCode: -1,
+      externalErrorCode: '1'
+    })
   })
 
   it('runs commands in parallel and rejects a command that was already aborted', async () => {

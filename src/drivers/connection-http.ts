@@ -3,11 +3,9 @@
 import { SQLiteCloudConnection } from './connection'
 import { decodeGatewayResponse } from './gateway-response'
 import { buildGatewaySqlUrl } from './gateway-url'
-import { ErrorCallback, ResultsCallback, SQLiteCloudCommand, SQLiteCloudConfig, SQLiteCloudError } from './types'
+import { DEFAULT_WEBSOCKET_BLOB_TRANSFER_FORMAT, ErrorCallback, ResultsCallback, SQLiteCloudCommand, SQLiteCloudConfig, SQLiteCloudError } from './types'
 import { encodeBigIntMarkers, getAbortError } from './utilities'
 import { Buffer } from 'buffer'
-
-const BASE64_BLOB_TRANSFER_FORMAT = 'base64-blobs-v1'
 
 /** Runs each command as an independent POST to /v2/weblite/sql. */
 export class SQLiteCloudHttpConnection extends SQLiteCloudConnection {
@@ -93,7 +91,7 @@ export class SQLiteCloudHttpConnection extends SQLiteCloudConnection {
         row: 'array',
         safe_integer_mode: this.config.safe_integer_mode,
         capabilities: {
-          blobTransferFormat: BASE64_BLOB_TRANSFER_FORMAT,
+          blobTransferFormat: DEFAULT_WEBSOCKET_BLOB_TRANSFER_FORMAT,
           blobBindIndexes,
           bigIntMarkerFormat: 'tagged-v1'
         }
@@ -108,10 +106,14 @@ export class SQLiteCloudHttpConnection extends SQLiteCloudConnection {
       throw httpError(response.status, response.statusText, body)
     }
 
-    if (!response.ok) throw httpError(response.status, response.statusText, body)
-
+    // gateway errors, sql errors included, come as a JSON `errors[]` body with a non-2xx status:
+    // keep their own codes and fill in a transport code only when they carry none
     const decoded = decodeGatewayResponse(payload, this.config.safe_integer_mode)
-    if (decoded.error) throw decoded.error
+    if (decoded.error) {
+      decoded.error.errorCode ??= httpErrorCode(response.status)
+      throw decoded.error
+    }
+    if (!response.ok) throw httpError(response.status, response.statusText, body)
     return decoded.result
   }
 
@@ -158,10 +160,16 @@ function binaryBuffer(value: unknown): Buffer | undefined {
   }
 }
 
+function httpErrorCode(status: number): string {
+  if (status === 401) return 'ERR_GATEWAY_UNAUTHORIZED'
+  if (status === 413) return 'ERR_GATEWAY_PAYLOAD_TOO_LARGE'
+  if ([502, 503, 504].includes(status)) return 'ERR_GATEWAY_UNAVAILABLE'
+  return 'ERR_GATEWAY_HTTP_ERROR'
+}
+
 function httpError(status: number, statusText: string, body: string): SQLiteCloudError {
   const message = `${status} ${statusText}${body ? `: ${body.slice(0, 512)}` : ''}`
-  const errorCode = status === 401 ? 'ERR_GATEWAY_UNAUTHORIZED' : status === 413 ? 'ERR_GATEWAY_PAYLOAD_TOO_LARGE' : [502, 503, 504].includes(status) ? 'ERR_GATEWAY_UNAVAILABLE' : 'ERR_GATEWAY_HTTP_ERROR'
-  return new SQLiteCloudError(message, { errorCode })
+  return new SQLiteCloudError(message, { errorCode: httpErrorCode(status) })
 }
 
 export default SQLiteCloudHttpConnection
