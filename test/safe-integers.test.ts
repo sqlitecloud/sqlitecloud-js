@@ -9,14 +9,20 @@ describe('safe integer markers', () => {
     expect(parseSafeIntegerMode('invalid')).toBe('number')
   })
 
-  test('decodeBigIntMarkers decodes marker strings only for lossless modes', () => {
-    expect(decodeBigIntMarkers('9223372036854775807n', 'bigint')).toBe(BigInt('9223372036854775807'))
-    expect(decodeBigIntMarkers({ id: '9223372036854775807n' }, 'mixed')).toEqual({ id: BigInt('9223372036854775807') })
+  test('decodeBigIntMarkers decodes tagged markers only for lossless modes', () => {
+    expect(decodeBigIntMarkers({ __sqlitecloud_bigint: '9223372036854775807' }, 'bigint')).toBe(BigInt('9223372036854775807'))
+    expect(decodeBigIntMarkers({ id: { __sqlitecloud_bigint: '9223372036854775807' } }, 'mixed')).toEqual({ id: BigInt('9223372036854775807') })
     expect(decodeBigIntMarkers('9223372036854775807n', 'number')).toBe('9223372036854775807n')
+    expect(decodeBigIntMarkers('9223372036854775807n', 'mixed')).toBe('9223372036854775807n')
   })
 
   test('encodeBigIntMarkers encodes bigint values and bigint-mode integer numbers', () => {
-    expect(encodeBigIntMarkers({ id: BigInt('9223372036854775807'), count: 42 })).toEqual({ id: '9223372036854775807n', count: 42 })
+    expect(encodeBigIntMarkers({ id: BigInt('9223372036854775807'), count: 42 })).toEqual({ id: { __sqlitecloud_bigint: '9223372036854775807' }, count: 42 })
     expect(encodeBigIntMarkers(9223372036854776000)).toBe(9223372036854776000)
+  })
+
+  test('encodeBigIntMarkers preserves binary values for the transport to encode', () => {
+    const bytes = new Uint8Array([0, 255, 16])
+    expect(encodeBigIntMarkers(bytes)).toBe(bytes)
   })
 })

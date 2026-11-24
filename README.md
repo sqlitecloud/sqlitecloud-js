@@ -70,6 +70,22 @@ We aim for full compatibility with the established [sqlite3 API](https://www.npm
 
 The package is developed entirely in TypeScript and is fully compatible with JavaScript. It doesn't require any native libraries. This makes it a straightforward and effective tool for managing cloud-based databases in a familiar SQLite environment.
 
+### Stateless HTTP gateway transport
+
+Use `usehttp: true` to send each query as an independent HTTPS request through the gateway. It is a good fit for browser and edge workloads that issue parallel, cancellable reads:
+
+```ts
+const database = new Database({
+  connectionstring: 'sqlitecloud://xxx.sqlite.cloud:8860/chinook.sqlite?apikey=xxxxxxx',
+  usehttp: true
+})
+
+const controller = new AbortController()
+const rows = await database.sql({ query: 'SELECT * FROM tracks LIMIT ?', parameters: [100], signal: controller.signal })
+```
+
+HTTP has no session. A transaction must be contained in one request; do not split `BEGIN`, writes, and `COMMIT` across `database.sql()` calls. The same applies to temporary tables, `ATTACH`, connection-scoped `PRAGMA` settings, and a later `last_insert_rowid()` call. HTTP construction does not make a network request, so invalid credentials or an unavailable gateway are reported by the first query rather than the constructor callback.
+
 ## Examples
 
 Check out all the supported platforms with related examples [here](https://github.com/sqlitecloud/sqlitecloud-js/tree/main/examples)!

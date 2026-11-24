@@ -81,14 +81,14 @@ describe('websocket transport helpers', () => {
         values: [1, BigInt(2)]
       })
     ).toEqual({
-      id: '9223372036854775807n',
-      values: [1, '2n']
+      id: { __sqlitecloud_bigint: '9223372036854775807' },
+      values: [1, { __sqlitecloud_bigint: '2' }]
     })
   })
 
   it('should decode bigint markers when safe integer mode is bigint or mixed', () => {
-    expect(decodeBigIntMarkers('9223372036854775807n', 'bigint')).toBe(BigInt('9223372036854775807'))
-    expect(decodeBigIntMarkers({ id: '9223372036854775807n' }, 'mixed')).toEqual({
+    expect(decodeBigIntMarkers({ __sqlitecloud_bigint: '9223372036854775807' }, 'bigint')).toBe(BigInt('9223372036854775807'))
+    expect(decodeBigIntMarkers({ id: { __sqlitecloud_bigint: '9223372036854775807' } }, 'mixed')).toEqual({
       id: BigInt('9223372036854775807')
     })
   })
@@ -100,7 +100,7 @@ describe('websocket transport helpers', () => {
   it('should send the default blob capability and encoded bind parameters to the gateway', done => {
     const connection = Object.create(SQLiteCloudWebsocketConnection.prototype) as any
     const emit = jest.fn((_event: string, _payload: any, callback: (response: any) => void) => {
-      callback({ data: '123n' })
+      callback({ data: { __sqlitecloud_bigint: '123' } })
     })
     connection.socket = { connected: true, emit }
     connection.config = { safe_integer_mode: 'bigint' }
@@ -113,7 +113,7 @@ describe('websocket transport helpers', () => {
           'GET /v2/weblite/sql',
           {
             sql: 'SELECT ?',
-            bind: ['123n'],
+            bind: [{ __sqlitecloud_bigint: '123' }],
             database: undefined,
             row: 'array',
             safe_integer_mode: 'bigint',
@@ -138,7 +138,7 @@ describe('websocket transport helpers', () => {
     connection.socket = { connected: true, emit }
     connection.config = { websocketBlobFormat: 'socketio-blobs-v1' }
 
-    connection.transportCommands('SELECT 1', error => {
+    connection.transportCommands('SELECT 1', (error: Error | null) => {
       try {
         expect(error).toBeNull()
         expect(emit).toHaveBeenCalledWith(
