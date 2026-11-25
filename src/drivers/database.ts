@@ -79,7 +79,8 @@ export class Database extends EventEmitter {
     const { connectionstring, ...overrides } = this.config
     if (!connectionstring) return this.config
     try {
-      return { ...parseconnectionstring(connectionstring), ...overrides }
+      // undefined overrides do not hide connection string options, as in validateConfiguration
+      return { ...parseconnectionstring(connectionstring), ...Object.fromEntries(Object.entries(overrides).filter(([, value]) => value !== undefined)) }
     } catch {
       return this.config // the connection reports the invalid string through the callback
     }

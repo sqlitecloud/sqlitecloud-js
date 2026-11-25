@@ -67,6 +67,17 @@ describe('Database with usehttp', () => {
     db.close()
   })
 
+  it('ignores undefined config overrides when selecting the transport', async () => {
+    fetchMock.mockResolvedValue(jsonResponse(oneRow))
+    const db = new Database({ connectionstring, usehttp: undefined, gatewayurl: undefined })
+
+    const rows = await db.sql`SELECT 1 AS one`
+
+    expect(rows[0].one).toBe(1)
+    expect(fetchMock).toHaveBeenCalledWith('http://localhost:8090/v2/weblite/sql', expect.objectContaining({ method: 'POST' }))
+    db.close()
+  })
+
   it('runs a query issued from the open callback', async () => {
     fetchMock.mockResolvedValue(jsonResponse(oneRow))
 
