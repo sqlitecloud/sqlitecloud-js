@@ -129,7 +129,7 @@ describe('HTTP gateway transport', () => {
       )
     const db = connection()
 
-    const expression = await commandResult(db, 'SELECT x\'00ff10\'')
+    const expression = await commandResult(db, "SELECT x'00ff10'")
     const blobs = await commandResult(db, 'SELECT payload FROM t')
 
     expect(expression).toBeInstanceOf(SQLiteCloudRowset)
@@ -142,7 +142,11 @@ describe('HTTP gateway transport', () => {
   it('throws the gateway sql error with its codes instead of a generic HTTP error', async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse(
-        { errors: [{ status: '400', code: 'sqlite_error', detail: 'no such table: no_such_table', meta: { errorCode: '1', offsetCode: -1, externalErrorCode: '1' } }] },
+        {
+          errors: [
+            { status: '400', code: 'sqlite_error', detail: 'no such table: no_such_table', meta: { errorCode: '1', offsetCode: -1, externalErrorCode: '1' } }
+          ]
+        },
         400
       )
     )
@@ -204,10 +208,13 @@ describe('HTTP gateway transport', () => {
   })
 
   it('decodes legacy bigint markers during transition but preserves strings in tagged responses', async () => {
-    fetchMock
-      .mockResolvedValueOnce(jsonResponse({ data: '42n' }))
-      .mockResolvedValueOnce(jsonResponse({ bigIntMarkerFormat: 'tagged-v1', data: '42n' }))
-    const db = new SQLiteCloudHttpConnection({ host: 'tenant.g4.sqlite.cloud', apikey: 'secret', gatewayurl: 'http://localhost:8090', safe_integer_mode: 'mixed' })
+    fetchMock.mockResolvedValueOnce(jsonResponse({ data: '42n' })).mockResolvedValueOnce(jsonResponse({ bigIntMarkerFormat: 'tagged-v1', data: '42n' }))
+    const db = new SQLiteCloudHttpConnection({
+      host: 'tenant.g4.sqlite.cloud',
+      apikey: 'secret',
+      gatewayurl: 'http://localhost:8090',
+      safe_integer_mode: 'mixed'
+    })
 
     await expect(commandResult(db, 'SELECT 1')).resolves.toBe(BigInt(42))
     await expect(commandResult(db, 'SELECT 1')).resolves.toBe('42n')

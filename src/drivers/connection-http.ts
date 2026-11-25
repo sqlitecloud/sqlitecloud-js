@@ -58,7 +58,10 @@ export class SQLiteCloudHttpConnection extends SQLiteCloudConnection {
     signal?.addEventListener('abort', abort, { once: true })
     const timeoutMs = this.config.timeout ?? 0
     if (timeoutMs > 0) {
-      timeout = setTimeout(() => controller.abort(new SQLiteCloudError(`Request timed out after ${timeoutMs} ms`, { errorCode: 'ERR_CONNECTION_TIMEOUT' })), timeoutMs)
+      timeout = setTimeout(
+        () => controller.abort(new SQLiteCloudError(`Request timed out after ${timeoutMs} ms`, { errorCode: 'ERR_CONNECTION_TIMEOUT' })),
+        timeoutMs
+      )
     }
 
     void this.post(command, controller.signal)
@@ -72,7 +75,12 @@ export class SQLiteCloudHttpConnection extends SQLiteCloudConnection {
         if (error instanceof SQLiteCloudError) {
           finish(error)
         } else {
-          finish(new SQLiteCloudError(error instanceof Error ? error.message : String(error), { errorCode: 'ERR_CONNECTION_ERROR', cause: error instanceof Error ? error : undefined }))
+          finish(
+            new SQLiteCloudError(error instanceof Error ? error.message : String(error), {
+              errorCode: 'ERR_CONNECTION_ERROR',
+              cause: error instanceof Error ? error : undefined
+            })
+          )
         }
       })
 
