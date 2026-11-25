@@ -47,22 +47,38 @@ export class SQLiteCloudRowset extends Array<SQLiteCloudRow> {
     this.#metadata = metadata
     this.#data = data
 
-    // adjust missing column names, duplicate column names, etc.
-    const columnNames = this.columnsNames
-    for (let i = 0; i < metadata.numberOfColumns; i++) {
-      if (!columnNames[i]) {
-        columnNames[i] = `column_${i}`
-      }
-      let j = 0
-      while (columnNames.findIndex((name, index) => index !== i && name === columnNames[i]) >= 0) {
-        columnNames[i] = `${columnNames[i]}_${j}`
-        j++
-      }
-    }
+    this.#columnsNames = SQLiteCloudRowset.getUniqueColumnsNames(this.originalColumnsNames, metadata.numberOfColumns)
 
     for (let i = 0, start = 0; i < metadata.numberOfRows; i++, start += metadata.numberOfColumns) {
-      this[i] = new SQLiteCloudRow(this, columnNames, data.slice(start, start + metadata.numberOfColumns))
+      this[i] = new SQLiteCloudRow(this, this.#columnsNames, data.slice(start, start + metadata.numberOfColumns))
     }
+  }
+
+  /**
+   * Adjust missing and duplicate column names so they can be used as row keys.
+   * Missing names become column_N, the first occurrence of a name is kept as is
+   * and later duplicates are suffixed with _1, _2, etc. skipping suffixes that
+   * are already used by another column, eg: id, id, id_1 becomes id, id_2, id_1
+   */
+  private static getUniqueColumnsNames(originalNames: string[], numberOfColumns: number): string[] {
+    const names: string[] = []
+    for (let i = 0; i < numberOfColumns; i++) {
+      names.push(originalNames[i] || `column_${i}`)
+    }
+
+    const reserved = new Set(names)
+    const used = new Set<string>()
+    for (let i = 0; i < names.length; i++) {
+      if (used.has(names[i])) {
+        let j = 1
+        while (reserved.has(`${names[i]}_${j}`) || used.has(`${names[i]}_${j}`)) {
+          j++
+        }
+        names[i] = `${names[i]}_${j}`
+      }
+      used.add(names[i])
+    }
+    return names
   }
 
   /** Metadata contains number of rows and columns, column names, types, etc.  */
@@ -70,6 +86,9 @@ export class SQLiteCloudRowset extends Array<SQLiteCloudRow> {
 
   /** Actual data organized in rows */
   #data: SQLiteCloudDataTypes[]
+
+  /** Unique column names used as keys in each row */
+  #columnsNames: string[]
 
   /**
    * Rowset version is 1 for a rowset with simple column names, 2 for extended metadata
@@ -89,8 +108,13 @@ export class SQLiteCloudRowset extends Array<SQLiteCloudRow> {
     return this.#metadata.numberOfColumns
   }
 
-  /** Array of columns names */
+  /** Array of unique columns names, the same names used as keys in each row (missing names are replaced, duplicates are suffixed) */
   get columnsNames(): string[] {
+    return [...this.#columnsNames]
+  }
+
+  /** Array of columns names exactly as returned by the query, may contain duplicates */
+  get originalColumnsNames(): string[] {
     return this.#metadata.columns.map(column => column.name)
   }
 
