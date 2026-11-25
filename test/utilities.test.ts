@@ -5,11 +5,15 @@
 import { SQLiteCloudError } from '../src/index'
 import {
   decodeBigIntMarkers,
+  decodeGatewayRowsetData,
   encodeBigIntMarkers,
+  encodeBlobMarker,
+  getAbortError,
   getInitializationCommands,
   parseconnectionstring,
   parseSafeIntegerMode,
   sanitizeSQLiteIdentifier,
+  reviveJsonBuffers,
   validateConfiguration
 } from '../src/drivers/utilities'
 import { getTestingDatabaseName } from './shared'
@@ -67,6 +71,11 @@ describe('parseconnectionstring', () => {
       apikey: 'yyy',
       maxrows: 42 // only parsing here, validation is later in validateConfiguration
     })
+  })
+
+  it('should parse usehttp as a boolean connection-string option', () => {
+    const config = parseconnectionstring('sqlitecloud://host?apikey=secret&usehttp=true')
+    expect(config.usehttp).toBe(true)
   })
 
   it('should parse connection string without port', () => {
@@ -260,7 +269,7 @@ describe('validateConfiguration()', () => {
       connectionstring: 'sqlitecloud://host:1234/database?apikey=xxx'
     })
 
-    expect(config.websocketBlobFormat).toBe('base64-blobs-v1')
+    expect(config.websocketBlobFormat).toBe('base64-blobs-v2')
     expect(config.websocketMaxAttachments).toBe(100000)
   })
 
@@ -295,15 +304,88 @@ describe('safe integer marker utilities', () => {
 
   it('should encode bigint values as marker strings', () => {
     expect(encodeBigIntMarkers({ id: BigInt('9223372036854775807'), values: [1, BigInt(2)] })).toEqual({
-      id: '9223372036854775807n',
-      values: [1, '2n']
+      id: { __sqlitecloud_bigint: '9223372036854775807' },
+      values: [1, { __sqlitecloud_bigint: '2' }]
     })
   })
 
   it('should decode bigint markers only in lossless modes', () => {
-    expect(decodeBigIntMarkers('9223372036854775807n', 'bigint')).toBe(BigInt('9223372036854775807'))
-    expect(decodeBigIntMarkers({ id: '9223372036854775807n' }, 'mixed')).toEqual({ id: BigInt('9223372036854775807') })
+    expect(decodeBigIntMarkers({ __sqlitecloud_bigint: '9223372036854775807' }, 'bigint')).toBe(BigInt('9223372036854775807'))
+    expect(decodeBigIntMarkers({ id: { __sqlitecloud_bigint: '9223372036854775807' } }, 'mixed')).toEqual({ id: BigInt('9223372036854775807') })
     expect(decodeBigIntMarkers('9223372036854775807n', 'number')).toBe('9223372036854775807n')
+  })
+})
+
+describe('validateConfiguration() with usehttp', () => {
+  it('should reject username and password, since the gateway HTTP route takes a bearer token only', () => {
+    expect(() => validateConfiguration({ host: 'host', username: 'user', password: 'pass', usehttp: true })).toThrow('usehttp')
+    expect(validateConfiguration({ host: 'host', apikey: 'key', usehttp: true }).usehttp).toBe(true)
+    expect(validateConfiguration({ host: 'host', token: 'tok', usehttp: true }).usehttp).toBe(true)
+    expect(validateConfiguration({ host: 'host', unauthenticated: true, usehttp: true }).usehttp).toBe(true)
+  })
+})
+
+describe('getAbortError', () => {
+  it('should always return a SQLiteCloudError with ERR_ABORTED and keep the reason as cause', () => {
+    const plain = new AbortController()
+    plain.abort()
+    expect(getAbortError(plain.signal)).toBeInstanceOf(SQLiteCloudError)
+    expect(getAbortError(plain.signal)).toMatchObject({ errorCode: 'ERR_ABORTED' })
+
+    const reason = new Error('user cancelled')
+    const withError = new AbortController()
+    withError.abort(reason)
+    expect(getAbortError(withError.signal)).toMatchObject({ errorCode: 'ERR_ABORTED', message: 'user cancelled', cause: reason })
+
+    // a SQLiteCloudError with another code is wrapped too, so the abort is still recognisable
+    const other = new SQLiteCloudError('timed out', { errorCode: 'ERR_CONNECTION_TIMEOUT' })
+    const withOther = new AbortController()
+    withOther.abort(other)
+    expect(getAbortError(withOther.signal)).toMatchObject({ errorCode: 'ERR_ABORTED', message: 'timed out', cause: other })
+
+    const own = new SQLiteCloudError('cancelled', { errorCode: 'ERR_ABORTED' })
+    const withOwn = new AbortController()
+    withOwn.abort(own)
+    expect(getAbortError(withOwn.signal)).toBe(own)
+  })
+})
+
+describe('gateway BLOB markers', () => {
+  const metadataWithoutTypes = { version: 1, numberOfRows: 3, numberOfColumns: 2, columns: [{ name: 'b' }, { name: 'one' }] } as any
+  const metadataDeclaringBlob = { version: 2, numberOfRows: 3, numberOfColumns: 1, columns: [{ name: 'b', type: 'BLOB' }] } as any
+
+  it('should encode a buffer as a base64-blobs-v2 marker', () => {
+    expect(encodeBlobMarker(Buffer.from([0, 255, 16]))).toEqual({ __sqlitecloud_blob: 'AP8Q' })
+  })
+
+  it('should decode base64-blobs-v2 markers without column metadata and leave TEXT alone', () => {
+    const data = [
+      [{ __sqlitecloud_blob: 'AP8Q' }, 1],
+      ['Hello', 1],
+      [null, 1]
+    ]
+    expect(decodeGatewayRowsetData(data, metadataWithoutTypes, 'mixed', 'base64-blobs-v2')).toEqual([
+      [Buffer.from([0, 255, 16]), 1],
+      ['Hello', 1],
+      [null, 1]
+    ])
+    // the marker is self-describing, so it is decoded even when the response does not echo the format
+    expect(decodeGatewayRowsetData(data, metadataWithoutTypes, undefined, undefined)).toEqual([
+      [Buffer.from([0, 255, 16]), 1],
+      ['Hello', 1],
+      [null, 1]
+    ])
+    expect(reviveJsonBuffers({ __sqlitecloud_blob: 'AP8Q', other: 1 })).toEqual({ __sqlitecloud_blob: 'AP8Q', other: 1 })
+  })
+
+  it('should keep decoding legacy base64-blobs-v1 strings in declared BLOB columns', () => {
+    const data = [['AP8Q'], ['Hello'], [null]]
+    expect(decodeGatewayRowsetData(data, metadataDeclaringBlob, undefined, 'base64-blobs-v1')).toEqual([
+      [Buffer.from([0, 255, 16])],
+      [Buffer.from('Hello', 'base64')],
+      [null]
+    ])
+    expect(decodeGatewayRowsetData(data, metadataDeclaringBlob, undefined, undefined)).toEqual(data)
   })
 })
 

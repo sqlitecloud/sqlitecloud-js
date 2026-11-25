@@ -5,23 +5,17 @@
 import { io, Socket } from 'socket.io-client'
 import { Decoder as SocketIODecoder, Encoder as SocketIOEncoder } from 'socket.io-parser'
 import { SQLiteCloudConnection } from './connection'
-import { SQLiteCloudRowset } from './rowset'
+import { decodeGatewayResponse } from './gateway-response'
+import { buildGatewayHost } from './gateway-url'
 import {
   DEFAULT_WEBSOCKET_BLOB_TRANSFER_FORMAT,
   ErrorCallback,
   ResultsCallback,
   SQLiteCloudCommand,
   SQLiteCloudConfig,
-  SQLiteCloudError,
-  SQLiteCloudWebsocketBlobTransferFormat
+  SQLiteCloudError
 } from './types'
-import {
-  decodeBigIntMarkers,
-  decodeWebsocketRowsetData,
-  encodeBigIntMarkers,
-  parseWebsocketBlobTransferFormat,
-  parseWebsocketMaxAttachments
-} from './utilities'
+import { encodeBigIntMarkers, parseWebsocketMaxAttachments } from './utilities'
 
 const SocketIODecoderBase = SocketIODecoder as unknown as new (...args: any[]) => { opts?: { maxAttachments?: number } }
 
@@ -41,10 +35,6 @@ function createSocketIOParser(maxAttachments: number) {
   }
 }
 
-function getResponseBlobTransferFormat(response: any): SQLiteCloudWebsocketBlobTransferFormat | undefined {
-  return parseWebsocketBlobTransferFormat(response?.capabilities?.blobTransferFormat || response?.blobTransferFormat, undefined)
-}
-
 function getAttachmentLimitError(description: unknown, limit: number): SQLiteCloudError | undefined {
   const descriptionMessage = description instanceof Error ? description.message : typeof description === 'string' ? description : ''
   if (/illegal attachments/i.test(descriptionMessage)) {
@@ -55,16 +45,6 @@ function getAttachmentLimitError(description: unknown, limit: number): SQLiteClo
         cause: description as Error | string
       }
     )
-  }
-}
-
-function getGatewayResponseError(response: any): Record<string, any> | undefined {
-  if (response?.error && typeof response.error === 'object') {
-    return response.error
-  }
-
-  if (Array.isArray(response?.errors) && response.errors[0] && typeof response.errors[0] === 'object') {
-    return response.errors[0]
   }
 }
 
@@ -221,7 +201,8 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
         row: 'array',
         safe_integer_mode: this.config.safe_integer_mode,
         capabilities: {
-          blobTransferFormat: this.config.websocketBlobFormat || DEFAULT_WEBSOCKET_BLOB_TRANSFER_FORMAT
+          blobTransferFormat: this.config.websocketBlobFormat || DEFAULT_WEBSOCKET_BLOB_TRANSFER_FORMAT,
+          bigIntMarkerFormat: 'tagged-v1'
         }
       },
       (response: any) => {
@@ -231,29 +212,9 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
         let error: Error | null = null
         let results: any
         try {
-          const gatewayError = getGatewayResponseError(response)
-          if (gatewayError) {
-            // Gateway error fields (errorCode, externalErrorCode, offsetCode) live under `meta`
-            // for the `errors[]` shape; fall back to top-level for the legacy `error` shape.
-            const errorFields = gatewayError.meta && typeof gatewayError.meta === 'object' ? gatewayError.meta : gatewayError
-            error = new SQLiteCloudError(gatewayError.detail || gatewayError.message || 'Gateway error', { ...errorFields })
-          } else {
-            const { metadata } = response
-            const blobTransferFormat = getResponseBlobTransferFormat(response)
-            const isRowset =
-              metadata && metadata.numberOfRows !== undefined && metadata.numberOfColumns !== undefined && metadata.columns !== undefined
-            const data = isRowset
-              ? decodeWebsocketRowsetData(response?.data, metadata, this.config.safe_integer_mode, blobTransferFormat)
-              : decodeBigIntMarkers(response?.data, this.config.safe_integer_mode)
-
-            if (isRowset && data !== undefined) {
-              console.assert(Array.isArray(data), 'SQLiteCloudWebsocketConnection.transportCommands - data is not an array')
-              // we can recreate a SQLiteCloudRowset from the response which we know to be an array of arrays
-              results = new SQLiteCloudRowset(metadata, data.flat())
-            } else {
-              results = data
-            }
-          }
+          const decoded = decodeGatewayResponse(response, this.config.safe_integer_mode)
+          error = decoded.error || null
+          results = decoded.result
         } catch (exception) {
           error =
             exception instanceof SQLiteCloudError
@@ -306,26 +267,6 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
     }
     return this
   }
-}
-
-/** Default gateway domain suffix used when `gatewayurl` is not provided. */
-const DEFAULT_GATEWAY_DOMAIN = 'gateway.sqlite.cloud'
-
-/** Builds the gateway hostname from a core hostname, swapping its last two labels (the
- *  TLD) with the given `gatewayurl` suffix.
- *
- *  Example: buildGatewayHost('crvheg7dhk.g4.sqlite.cloud')
- *    → 'crvheg7dhk.g4.gateway.sqlite.cloud'
- *
- *  Returns `host` unchanged when it already ends with the suffix (idempotent) or when
- *  it's too short to extract a tenant prefix (eg 'localhost'). */
-function buildGatewayHost(host: string, gatewayurl?: string): string {
-  if (!host) return host
-  const suffix = gatewayurl || DEFAULT_GATEWAY_DOMAIN
-  if (host === suffix || host.endsWith('.' + suffix)) return host
-  const parts = host.split('.')
-  if (parts.length < 3) return host
-  return parts.slice(0, -2).join('.') + '.' + suffix
 }
 
 export default SQLiteCloudWebsocketConnection

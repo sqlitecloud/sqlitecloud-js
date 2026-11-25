@@ -201,11 +201,18 @@ export function validateConfiguration(config: SQLiteCloudConfig): SQLiteCloudCon
   config.non_linearizable = parseBoolean(config.non_linearizable)
   config.insecure = parseBoolean(config.insecure)
   config.unauthenticated = parseBoolean(config.unauthenticated)
+  config.usehttp = parseBoolean(config.usehttp)
 
   const hasCredentials = (config.username && config.password) || config.apikey || config.token
   if (!config.host || (!config.unauthenticated && !hasCredentials)) {
     console.error('SQLiteCloudConnection.validateConfiguration - missing arguments', config)
     throw new SQLiteCloudError('The user, password and host arguments, the ?apikey= or the ?token= must be specified.', { errorCode: 'ERR_MISSING_ARGS' })
+  }
+  // the gateway's HTTP route authenticates with a bearer token only, so a password would fail every query with 401
+  if (config.usehttp && !config.unauthenticated && !config.apikey && !config.token) {
+    throw new SQLiteCloudError('The HTTP transport (usehttp) needs ?apikey= or ?token=; username and password are not supported over HTTP.', {
+      errorCode: 'ERR_MISSING_ARGS'
+    })
   }
 
   if (!config.connectionstring && !config.unauthenticated) {
@@ -268,6 +275,7 @@ export function parseconnectionstring(connectionstring: string): SQLiteCloudConf
       maxrowset: options.maxrowset ? parseInt(options.maxrowset) : undefined,
       safe_integer_mode: options.safe_integer_mode ? parseSafeIntegerMode(options.safe_integer_mode) : undefined,
       usewebsocket: options.usewebsocket ? parseBoolean(options.usewebsocket) : undefined,
+      usehttp: options.usehttp ? parseBoolean(options.usehttp) : undefined,
       websocketBlobFormat: options.websocket_blob_format ? parseWebsocketBlobTransferFormat(options.websocket_blob_format, undefined) : undefined,
       websocketMaxAttachments: options.websocket_max_attachments ? parseWebsocketMaxAttachments(options.websocket_max_attachments) : undefined,
       verbose: options.verbose ? parseBoolean(options.verbose) : undefined
@@ -321,7 +329,7 @@ export function parseWebsocketBlobTransferFormat(
   fallback: SQLiteCloudWebsocketBlobTransferFormat | undefined = DEFAULT_WEBSOCKET_BLOB_TRANSFER_FORMAT
 ): SQLiteCloudWebsocketBlobTransferFormat | undefined {
   const format = value?.toLowerCase()
-  if (format === 'base64-blobs-v1' || format === 'socketio-blobs-v1') {
+  if (format === 'base64-blobs-v2' || format === 'base64-blobs-v1' || format === 'socketio-blobs-v1') {
     return format
   }
   return fallback
@@ -336,20 +344,33 @@ export function parseWebsocketMaxAttachments(value: string | number | null | und
   return DEFAULT_WEBSOCKET_MAX_ATTACHMENTS
 }
 
-const BIGINT_MARKER_RE = /^-?\d+n$/
 const BLOB_COLUMN_TYPE_RE = /\bblob\b/i
+const BIGINT_MARKER_KEY = '__sqlitecloud_bigint'
+const BLOB_MARKER_KEY = '__sqlitecloud_blob'
+const BIGINT_MARKER_RE = /^-?\d+n$/
+
+/** The bytes of a Buffer, ArrayBuffer or typed array view as a Buffer, or undefined for any other value. */
+export function toBuffer(value: unknown): Buffer | undefined {
+  if (Buffer.isBuffer(value)) return value
+  if (value instanceof ArrayBuffer) return Buffer.from(value)
+  if (typeof ArrayBuffer !== 'undefined' && ArrayBuffer.isView(value)) return Buffer.from(value.buffer, value.byteOffset, value.byteLength)
+}
+
+function isBinaryValue(value: unknown): value is Buffer | Uint8Array | ArrayBuffer {
+  return toBuffer(value) !== undefined
+}
 
 /** Convert values that JSON cannot represent losslessly into sqlitecloud-js bigint markers. */
 export function encodeBigIntMarkers(value: any): any {
   if (typeof value === 'bigint') {
-    return `${value.toString()}n`
+    return { [BIGINT_MARKER_KEY]: value.toString() }
   }
 
   if (Array.isArray(value)) {
     return value.map(item => encodeBigIntMarkers(item))
   }
 
-  if (value && typeof value === 'object' && !Buffer.isBuffer(value)) {
+  if (value && typeof value === 'object' && !isBinaryValue(value)) {
     const result: Record<string, any> = {}
     Object.entries(value).forEach(([key, item]) => {
       result[key] = encodeBigIntMarkers(item)
@@ -361,23 +382,34 @@ export function encodeBigIntMarkers(value: any): any {
 }
 
 /** Convert sqlitecloud-js bigint markers back into BigInt values for lossless integer modes. */
-export function decodeBigIntMarkers(value: any, safeIntegerMode?: SQLiteCloudSafeIntegerMode): any {
+export function decodeBigIntMarkers(value: any, safeIntegerMode?: SQLiteCloudSafeIntegerMode, allowLegacyMarkers = true): any {
   if (safeIntegerMode !== 'bigint' && safeIntegerMode !== 'mixed') {
     return value
   }
 
-  if (typeof value === 'string' && BIGINT_MARKER_RE.test(value)) {
+  if (
+    value &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    Object.keys(value).length === 1 &&
+    typeof value[BIGINT_MARKER_KEY] === 'string' &&
+    /^-?\d+$/.test(value[BIGINT_MARKER_KEY])
+  ) {
+    return BigInt(value[BIGINT_MARKER_KEY])
+  }
+
+  if (allowLegacyMarkers && typeof value === 'string' && BIGINT_MARKER_RE.test(value)) {
     return BigInt(value.slice(0, -1))
   }
 
   if (Array.isArray(value)) {
-    return value.map(item => decodeBigIntMarkers(item, safeIntegerMode))
+    return value.map(item => decodeBigIntMarkers(item, safeIntegerMode, allowLegacyMarkers))
   }
 
-  if (value && typeof value === 'object' && !Buffer.isBuffer(value)) {
+  if (value && typeof value === 'object' && !isBinaryValue(value)) {
     const result: Record<string, any> = {}
     Object.entries(value).forEach(([key, item]) => {
-      result[key] = decodeBigIntMarkers(item, safeIntegerMode)
+      result[key] = decodeBigIntMarkers(item, safeIntegerMode, allowLegacyMarkers)
     })
     return result
   }
@@ -385,28 +417,80 @@ export function decodeBigIntMarkers(value: any, safeIntegerMode?: SQLiteCloudSaf
   return value
 }
 
-/** Decode websocket rowset cells using metadata-aware rules for bigint markers and negotiated BLOB transport. */
-export function decodeWebsocketRowsetData(
+/** The SQLiteCloudError a cancelled command completes with: always ERR_ABORTED, so callers can recognise an abort, with the signal's own reason kept as cause. */
+export function getAbortError(signal: AbortSignal): SQLiteCloudError {
+  const reason = (signal as AbortSignal & { reason?: unknown }).reason
+  if (reason instanceof SQLiteCloudError && reason.errorCode === 'ERR_ABORTED') return reason
+  if (reason instanceof Error) return new SQLiteCloudError(reason.message || 'Request aborted', { errorCode: 'ERR_ABORTED', cause: reason })
+  return new SQLiteCloudError(typeof reason === 'string' ? reason : 'Request aborted', { errorCode: 'ERR_ABORTED' })
+}
+
+/** Wire form of a BLOB under base64-blobs-v2: `{ __sqlitecloud_blob: base64 }`, the only object shape a cell or bind can take. */
+export function encodeBlobMarker(buffer: Buffer): Record<string, string> {
+  return { [BLOB_MARKER_KEY]: buffer.toString('base64') }
+}
+
+function isBlobMarker(value: unknown): value is Record<typeof BLOB_MARKER_KEY, string> {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    Object.keys(value).length === 1 &&
+    typeof (value as Record<string, unknown>)[BLOB_MARKER_KEY] === 'string'
+  )
+}
+
+/** Revive gateway BLOB values: base64-blobs-v2 markers and Node's JSON representation of a Buffer, which needs no metadata. */
+export function reviveJsonBuffers(value: any): any {
+  if (Array.isArray(value)) return value.map(reviveJsonBuffers)
+  if (!value || typeof value !== 'object' || isBinaryValue(value)) return value
+  if (isBlobMarker(value)) return Buffer.from(value[BLOB_MARKER_KEY], 'base64')
+  if (
+    value.type === 'Buffer' &&
+    Array.isArray(value.data) &&
+    value.data.every((byte: unknown) => Number.isInteger(byte) && (byte as number) >= 0 && (byte as number) <= 255)
+  ) {
+    return Buffer.from(value.data)
+  }
+
+  const result: Record<string, any> = {}
+  Object.entries(value).forEach(([key, item]) => {
+    result[key] = reviveJsonBuffers(item)
+  })
+  return result
+}
+
+/** Decode gateway rowset cells using metadata-aware rules for bigint markers and negotiated BLOB transport. */
+export function decodeGatewayRowsetData(
   data: any,
   metadata: SQLCloudRowsetMetadata,
   safeIntegerMode?: SQLiteCloudSafeIntegerMode,
-  blobTransferFormat?: SQLiteCloudWebsocketBlobTransferFormat
+  blobTransferFormat?: SQLiteCloudWebsocketBlobTransferFormat,
+  allowLegacyBigIntMarkers = true
 ): any {
   if (!Array.isArray(data)) {
-    return decodeBigIntMarkers(data, safeIntegerMode)
+    return decodeBigIntMarkers(reviveJsonBuffers(data), safeIntegerMode, allowLegacyBigIntMarkers)
   }
 
   const blobColumnIndexes = new Set(metadata.columns.flatMap((column, index) => (column.type && BLOB_COLUMN_TYPE_RE.test(column.type) ? [index] : [])))
   const decodeCell = (value: any, columnIndex: number) => {
+    // legacy base64-blobs-v1: a string in a column declared BLOB is base64, which cannot tell TEXT stored there apart
     if (blobTransferFormat === 'base64-blobs-v1' && blobColumnIndexes.has(columnIndex) && typeof value === 'string') {
       return Buffer.from(value, 'base64')
     }
-    return decodeBigIntMarkers(value, safeIntegerMode)
+    return decodeBigIntMarkers(reviveJsonBuffers(value), safeIntegerMode, allowLegacyBigIntMarkers)
   }
 
   if (data.every(row => !Array.isArray(row))) {
     return data.map((value, index) => decodeCell(value, index % metadata.numberOfColumns))
   }
 
-  return data.map(row => (Array.isArray(row) ? row.map((value, columnIndex) => decodeCell(value, columnIndex)) : decodeBigIntMarkers(row, safeIntegerMode)))
+  return data.map(row =>
+    Array.isArray(row)
+      ? row.map((value, columnIndex) => decodeCell(value, columnIndex))
+      : decodeBigIntMarkers(reviveJsonBuffers(row), safeIntegerMode, allowLegacyBigIntMarkers)
+  )
 }
+
+/** Backwards-compatible name for callers that still refer to the socket.io transport. */
+export const decodeWebsocketRowsetData = decodeGatewayRowsetData

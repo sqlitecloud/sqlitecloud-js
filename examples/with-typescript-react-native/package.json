@@ -9,12 +9,14 @@
     "start": "react-native start"
   },
   "dependencies": {
+    "@craftzdog/react-native-buffer": "^6.0.5",
     "@sqlitecloud/drivers": "^1.0.289",
     "react": "^18.3.1",
     "react-native": "^0.75.4",
     "react-native-dotenv": "^3.4.11",
     "react-native-quick-base64": "^2.1.2",
-    "react-native-tcp-socket": "^6.2.0"
+    "react-native-tcp-socket": "^6.2.0",
+    "react-native-url-polyfill": "^2.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

@@ -20,10 +20,16 @@ export const DEFAULT_PORT = 8860
  * mixed - use BigInt and Number types depending on the value size
  */
 export type SQLiteCloudSafeIntegerMode = 'number' | 'bigint' | 'mixed'
-export type SQLiteCloudWebsocketBlobTransferFormat = 'base64-blobs-v1' | 'socketio-blobs-v1'
+/**
+ * BLOB wire formats of the gateway transports.
+ * base64-blobs-v2 - every BLOB travels as `{ __sqlitecloud_blob: base64 }`, whatever its column, in rowsets and binds
+ * base64-blobs-v1 - BLOBs in columns declared BLOB travel as bare base64 strings (legacy, frozen as released)
+ * socketio-blobs-v1 - BLOBs travel as socket.io binary attachments (WebSocket only)
+ */
+export type SQLiteCloudWebsocketBlobTransferFormat = 'base64-blobs-v2' | 'base64-blobs-v1' | 'socketio-blobs-v1'
 
 export let SAFE_INTEGER_MODE: SQLiteCloudSafeIntegerMode = 'number'
-export const DEFAULT_WEBSOCKET_BLOB_TRANSFER_FORMAT: SQLiteCloudWebsocketBlobTransferFormat = 'base64-blobs-v1'
+export const DEFAULT_WEBSOCKET_BLOB_TRANSFER_FORMAT: SQLiteCloudWebsocketBlobTransferFormat = 'base64-blobs-v2'
 export const DEFAULT_WEBSOCKET_MAX_ATTACHMENTS = 100000
 if (typeof process !== 'undefined') {
   const mode = process.env['SAFE_INTEGER_MODE']?.toLowerCase()
@@ -105,16 +111,18 @@ export interface SQLiteCloudConfig {
 
   /** True if we should force use of SQLite Cloud Gateway and websocket connections, default: true in browsers, false in node.js */
   usewebsocket?: boolean
+  /** True to use the stateless HTTP gateway transport. Each query is an independent request. */
+  usehttp?: boolean
   /** Domain suffix used to build the gateway hostname the driver connects to.
    *  Default: `gateway.sqlite.cloud`.
    *
    *  Example: with `host: 'crvheg7dhk.g4.sqlite.cloud'` and the default `gatewayurl`,
    *  the driver opens `wss://crvheg7dhk.g4.gateway.sqlite.cloud:443`. For local
-   *  development, pass a value containing `localhost` (eg `'ws://localhost:4000'`)
-   *  and the driver will route TCP to that target while forwarding `host` as the
-   *  gateway Host header. */
+   *  development, pass a value containing `localhost` (eg `'ws://localhost:4000'`).
+   *  The WebSocket transport forwards `host` as the gateway Host header. Fetch
+   *  forbids that header, so HTTP transport needs a tenant-aware local proxy. */
   gatewayurl?: string
-  /** Preferred blob transfer format when using websocket transport. Defaults to base64-blobs-v1 for new clients. */
+  /** Preferred blob transfer format of the WebSocket transport. Defaults to base64-blobs-v2; HTTP always uses base64-blobs-v2. */
   websocketBlobFormat?: SQLiteCloudWebsocketBlobTransferFormat
   /** Maximum number of socket.io binary attachments accepted by the websocket parser. */
   websocketMaxAttachments?: number
@@ -156,11 +164,24 @@ export interface SQLCloudRowsetMetadata {
 }
 
 /** Basic types that can be returned by SQLiteCloud APIs */
-export type SQLiteCloudDataTypes = string | number | bigint | boolean | Record<string | number, unknown> | Buffer | null | undefined
+export type SQLiteCloudDataTypes =
+  | string
+  | number
+  | bigint
+  | boolean
+  | Record<string | number, unknown>
+  | Buffer
+  | ArrayBuffer
+  | ArrayBufferView
+  | null
+  | undefined
 
 export interface SQLiteCloudCommand {
   query: string
   parameters?: SQLiteCloudDataTypes[]
+  /** Cancels this command while it waits in the connection queue, with ERR_ABORTED. Over HTTP it also aborts the request in flight;
+   *  over TLS and WebSocket a command already sent runs to completion and its result is returned. */
+  signal?: AbortSignal
 }
 
 /** Custom error reported by SQLiteCloud drivers */

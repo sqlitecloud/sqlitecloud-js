@@ -24,7 +24,7 @@ import {
   SQLiteCloudDataTypes,
   SQLiteCloudError
 } from './types'
-import { isBrowser, popCallback } from './utilities'
+import { isBrowser, parseconnectionstring, popCallback } from './utilities'
 
 // Uses eventemitter3 instead of node events for browser compatibility
 // https://github.com/primus/eventemitter3
@@ -70,58 +70,56 @@ export class Database extends EventEmitter {
   /** Used to syncronize opening of connection and commands */
   private operations = new OperationsQueue()
 
+  /** True once close() has run, commands issued afterwards fail with ERR_CONNECTION_CLOSED */
+  private closed = false
+
   //
   // private methods
   //
 
+  /** Configuration with connection string options applied, so transport flags given there are seen */
+  private get transportConfig(): SQLiteCloudConfig {
+    const { connectionstring, ...overrides } = this.config
+    if (!connectionstring) return this.config
+    try {
+      // undefined overrides do not hide connection string options, as in validateConfiguration
+      return { ...parseconnectionstring(connectionstring), ...Object.fromEntries(Object.entries(overrides).filter(([, value]) => value !== undefined)) }
+    } catch {
+      return this.config // the connection reports the invalid string through the callback
+    }
+  }
+
   /** Returns first available connection from connection pool */
   private createConnection(callback: ConnectionCallback) {
-    // connect using websocket if tls is not supported or if explicitly requested
-    const useWebsocket = isBrowser || this.config?.usewebsocket || this.config?.gatewayurl
-    if (useWebsocket) {
-      // socket.io transport works in both node.js and browser environments and connects via SQLite Cloud Gateway
-      this.operations.enqueue(done => {
-        import('./connection-ws')
-          .then(module => {
-            this.connection = new module.default(this.config, (error: Error | null) => {
-              if (error) {
-                this.handleError(error, callback)
-              } else {
-                callback?.call(this, null)
-                this.emitEvent('open')
-              }
+    const { usehttp, usewebsocket, gatewayurl } = this.transportConfig
+    // HTTP only when asked for; socket.io works in both node.js and browsers through the SQLite Cloud Gateway,
+    // and is the fallback where tls is not available; otherwise a direct tls connection to the core
+    const loadTransport = usehttp
+      ? () => import('./connection-http')
+      : isBrowser || usewebsocket || gatewayurl
+        ? () => import('./connection-ws')
+        : () => import('./connection-tls')
 
-              done(error)
-            })
-          })
-          .catch(error => {
-            this.handleError(error, callback)
-            this.close()
+    this.operations.enqueue(done => {
+      loadTransport()
+        .then(module => {
+          this.connection = new module.default(this.config, (error: Error | null) => {
+            if (error) {
+              this.handleError(error, callback)
+            } else {
+              callback?.call(this, null)
+              this.emitEvent('open')
+            }
+
             done(error)
           })
-      })
-    } else {
-      this.operations.enqueue(done => {
-        import('./connection-tls')
-          .then(module => {
-            this.connection = new module.default(this.config, (error: Error | null) => {
-              if (error) {
-                this.handleError(error, callback)
-              } else {
-                callback?.call(this, null)
-                this.emitEvent('open')
-              }
-
-              done(error)
-            })
-          })
-          .catch(error => {
-            this.handleError(error, callback)
-            this.close()
-            done(error)
-          })
-      })
-    }
+        })
+        .catch(error => {
+          this.handleError(error, callback)
+          this.close()
+          done(error)
+        })
+    })
   }
 
   private enqueueCommand(command: string | SQLiteCloudCommand, callback?: ResultsCallback): void {
@@ -130,12 +128,21 @@ export class Database extends EventEmitter {
 
       // we don't wont to silently open a new connection after a disconnession
       if (this.connection && this.connection.connected) {
-        this.connection.sendCommands(command, (error, results) => {
-          callback?.call(this, error, results)
-          done(error)
-        })
+        if (this.connection.concurrent) {
+          this.connection.sendCommands(command, (error, results) => {
+            callback?.call(this, error, results)
+          })
+          done(null)
+        } else {
+          this.connection.sendCommands(command, (error, results) => {
+            callback?.call(this, error, results)
+            done(error)
+          })
+        }
       } else {
-        error = new SQLiteCloudError('Connection unavailable. Maybe it got disconnected?', { errorCode: 'ERR_CONNECTION_NOT_ESTABLISHED' })
+        error = this.closed
+          ? new SQLiteCloudError('Connection closed', { errorCode: 'ERR_CONNECTION_CLOSED' })
+          : new SQLiteCloudError('Connection unavailable. Maybe it got disconnected?', { errorCode: 'ERR_CONNECTION_NOT_ESTABLISHED' })
         callback?.call(this, error, null)
         done(error)
       }
@@ -384,13 +391,27 @@ export class Database extends EventEmitter {
    */
   public close(callback?: ConnectionCallback): void {
     this.operations.enqueue(done => {
+      if (this.closed) {
+        // closed already: the callback is still called, the close event is not emitted again
+        callback?.call(this, null)
+        done(null)
+        return
+      }
+      this.closed = true
       this.connection?.close()
 
-      callback?.call(this, null)
-      this.emitEvent('close')
+      const finish = () => {
+        callback?.call(this, null)
+        this.emitEvent('close')
 
-      this.operations.clear()
-      done(null)
+        // the operations queued behind close() are not discarded: each one runs next and fails
+        // with ERR_CONNECTION_CLOSED, so no caller is left with a callback that is never called
+        done(null)
+      }
+      // a concurrent transport may still have requests in flight: report closed once they have completed
+      const drained = this.connection?.drain()
+      if (drained) drained.then(finish)
+      else finish()
     })
   }
 

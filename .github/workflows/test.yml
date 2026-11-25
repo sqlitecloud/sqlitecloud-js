@@ -322,10 +322,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-14, macos-15]
+        # macos-14 runners were retired by GitHub (actions/runner-images#15226) and macos-15 ships no iOS 17 simulator runtime
+        os: [macos-15]
         include:
-          - os: macos-14
-            version: '17'
           - os: macos-15
             version: '18'
 
@@ -451,10 +450,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-14, macos-15]
+        # macos-14 runners were retired by GitHub (actions/runner-images#15226) and macos-15 ships no iOS 17 simulator runtime
+        os: [macos-15]
         include:
-          - os: macos-14
-            version: '17'
           - os: macos-15
             version: '18'
 

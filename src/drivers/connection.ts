@@ -5,7 +5,7 @@
 import { SQLiteCloudConfig, SQLiteCloudError, ErrorCallback, ResultsCallback, SQLiteCloudCommand, SQLiteCloudDataTypes } from './types'
 import { validateConfiguration } from './utilities'
 import { OperationsQueue } from './queue'
-import { anonimizeCommand, getUpdateResults } from './utilities'
+import { anonimizeCommand, getAbortError, getUpdateResults } from './utilities'
 
 /**
  * Base class for SQLiteCloudConnection handles basics and defines methods.
@@ -84,15 +84,19 @@ export abstract class SQLiteCloudConnection {
     this.config.verbose = true
   }
 
+  /** True if this transport can run commands independently instead of in connection order. */
+  public get concurrent(): boolean {
+    return false
+  }
+
   /** Will enquee a command to be executed and callback with the resulting rowset/result/error */
   public sendCommands(commands: string | SQLiteCloudCommand, callback?: ResultsCallback): this {
     this.operations.enqueue(done => {
-      if (!this.connected) {
-        const error = new SQLiteCloudError('Connection not established', { errorCode: 'ERR_CONNECTION_NOT_ESTABLISHED' })
-        callback?.call(this, error)
-        done(error)
+      if (this.concurrent) {
+        this.dispatchCommands(commands, callback)
+        done(null)
       } else {
-        this.transportCommands(commands, (error, result) => {
+        this.dispatchCommands(commands, (error, result) => {
           callback?.call(this, error, result)
           done(error)
         })
@@ -100,6 +104,20 @@ export abstract class SQLiteCloudConnection {
     })
 
     return this
+  }
+
+  /** Sends a command once the connection queue has reached it. */
+  private dispatchCommands(commands: string | SQLiteCloudCommand, callback?: ResultsCallback): void {
+    const signal = typeof commands === 'object' ? commands.signal : undefined
+    if (signal?.aborted) {
+      callback?.call(this, getAbortError(signal))
+      return
+    }
+    if (!this.connected) {
+      callback?.call(this, new SQLiteCloudError('Connection not established', { errorCode: 'ERR_CONNECTION_NOT_ESTABLISHED' }))
+      return
+    }
+    this.transportCommands(commands, callback)
   }
 
   /**
@@ -148,4 +166,10 @@ export abstract class SQLiteCloudConnection {
 
   /** Disconnect from server, release transport. */
   public abstract close(): this
+
+  /** A promise that settles once every request already sent to the server has completed, or undefined when nothing is in flight.
+   *  Database.close() waits on it, so a write the server already received is never reported as failed. */
+  public drain(): Promise<void> | undefined {
+    return undefined
+  }
 }

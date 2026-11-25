@@ -12,6 +12,7 @@ import {
   type SQLiteCloudSafeIntegerMode
 } from './types'
 import { getSafeBuffer } from './safe-imports'
+import { toBuffer } from './utilities'
 
 // explicitly importing buffer library to allow cross-platform support by replacing it
 // In React Native: Metro resolves 'buffer' to '@craftzdog/react-native-buffer' via package.json react-native field
@@ -409,9 +410,10 @@ function serializeData(data: SQLiteCloudDataTypes, zeroString: boolean = false):
     return Buffer.from(`${CMD_INT}${data} `)
   }
 
-  if (Buffer.isBuffer(data)) {
-    const header = `${CMD_BLOB}${data.byteLength} `
-    return Buffer.concat([Buffer.from(header), data])
+  const bytes = toBuffer(data)
+  if (bytes) {
+    const header = `${CMD_BLOB}${bytes.byteLength} `
+    return Buffer.concat([Buffer.from(header), bytes])
   }
 
   if (data === null || data === undefined) {
