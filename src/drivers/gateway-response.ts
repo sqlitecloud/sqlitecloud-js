@@ -35,7 +35,7 @@ export function decodeGatewayResponse(response: any, safeIntegerMode?: SQLiteClo
   if (isRowsetMetadata(metadata)) {
     const data = decodeGatewayRowsetData(response?.data, metadata, safeIntegerMode, blobTransferFormat(response), allowLegacyBigIntMarkers(response))
     if (!Array.isArray(data)) {
-      return { error: new SQLiteCloudError('Gateway returned an invalid rowset.', { errorCode: 'ERR_GATEWAY_INVALID_RESPONSE' }) }
+      return { error: new SQLiteCloudError('Gateway returned an invalid rowset.', { errorCode: 'ERR_INVALID_RESPONSE' }) }
     }
     return { result: new SQLiteCloudRowset(metadata, data.flat()) }
   }
