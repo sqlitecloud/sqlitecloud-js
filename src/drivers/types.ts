@@ -68,7 +68,13 @@ export interface SQLiteCloudConfig {
   /** Connect using plain TCP port, without TLS encryption, NOT RECOMMENDED, TEST ONLY */
   insecure?: boolean
 
-  /** Optional query timeout passed directly to TLS socket */
+  /**
+   * Optional timeout in milliseconds, defaults to DEFAULT_TIMEOUT (5 minutes).
+   * On the WebSocket transport a command that receives no response from the gateway within
+   * this time fails with ERR_CONNECTION_TIMEOUT and the connection is closed.
+   * On the TLS transport it only bounds the time taken to write the command to the socket;
+   * once the command is written the query is not timed out.
+   */
   timeout?: number
   /** Name of database to open */
   database?: string

@@ -78,6 +78,9 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
   /** Socket.io used to communicated with SQLiteCloud server */
   private socket?: Socket
 
+  /** Commands sent to the gateway that are still waiting for their ack, failed if the socket goes away */
+  private pendingCommands?: Set<(error: Error) => void>
+
   /** True if connection is open */
   get connected(): boolean {
     return !!(this.socket && this.socket?.connected)
@@ -116,44 +119,54 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
         }
         this.socket = io(gatewayUrl, ioOpts)
 
+        // the connect callback reports the outcome of the connection attempt and is called only once,
+        // errors that happen later are reported to the commands that are waiting for a response
+        let connectReported = false
+        const reportConnect = (error: Error | null) => {
+          if (!connectReported) {
+            connectReported = true
+            callback?.call(this, error)
+          }
+        }
+        const fail = (error: Error) => {
+          this.closeWithError(error)
+          reportConnect(error)
+        }
+
         this.socket.on('connect', () => {
-          callback?.call(this, null)
+          reportConnect(null)
         })
 
         this.socket.on('disconnect', (reason, description) => {
-          this.close()
-          callback?.call(
-            this,
+          fail(
             (reason === 'parse error' && getAttachmentLimitError(description, websocketMaxAttachments)) ||
               new SQLiteCloudError('Disconnected', { errorCode: 'ERR_CONNECTION_ENDED', cause: reason })
           )
         })
 
         this.socket.on('connect_error', (error: any) => {
-          this.close()
           if (error?.message === 'parse error' || error?.cause === 'parse error') {
-            callback?.call(
-              this,
+            fail(
               getAttachmentLimitError(error?.description || error?.data || error?.cause, websocketMaxAttachments) ||
                 new SQLiteCloudError('Connection error', { errorCode: 'ERR_CONNECTION_ERROR', cause: error })
             )
             return
           }
-          let message = error.message || 'Connection error'
-          if (typeof error.context == 'object' && error.context.responseText) {
+          let message = error?.message || 'Connection error'
+          const responseText = error?.context?.responseText
+          if (responseText) {
             try {
-              const parsed = JSON.parse(error.context.responseText)
-              message = parsed?.message || error.context.responseText
+              const parsed = JSON.parse(responseText)
+              message = parsed?.message || responseText
             } catch {
-              message = error.context.responseText
+              message = responseText
             }
           }
-          callback?.call(this, new SQLiteCloudError(message, { errorCode: 'ERR_CONNECTION_ERROR' }))
+          fail(new SQLiteCloudError(message, { errorCode: 'ERR_CONNECTION_ERROR' }))
         })
 
         this.socket.on('error', (error: Error) => {
-          this.close()
-          callback?.call(this, new SQLiteCloudError('Connection error', { errorCode: 'ERR_CONNECTION_ERROR', cause: error }))
+          fail(new SQLiteCloudError('Connection error', { errorCode: 'ERR_CONNECTION_ERROR', cause: error }))
         })
       }
     } catch (error) {
@@ -175,6 +188,30 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
       commands = { query: commands }
     }
 
+    // the callback is called exactly once: with the gateway response, on timeout or when the connection drops
+    let settled = false
+    let timeout: ReturnType<typeof setTimeout> | undefined
+    const finish = (error: Error | null, results?: any) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timeout)
+      this.pendingCommands?.delete(fail)
+      callback?.call(this, error, results)
+    }
+    const fail = (error: Error) => finish(error)
+
+    this.pendingCommands ||= new Set()
+    this.pendingCommands.add(fail)
+
+    // on timeout the connection is closed, like the TLS transport does: the gateway may still be executing
+    // the command and the next queued command must not run concurrently with it on the same connection
+    const timeoutMs = this.config?.timeout ?? 0
+    if (timeoutMs > 0) {
+      timeout = setTimeout(() => {
+        this.closeWithError(new SQLiteCloudError(`Request timed out after ${timeoutMs} ms`, { errorCode: 'ERR_CONNECTION_TIMEOUT' }))
+      }, timeoutMs)
+    }
+
     this.socket.emit(
       'GET /v2/weblite/sql',
       {
@@ -188,32 +225,42 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
         }
       },
       (response: any) => {
-        const gatewayError = getGatewayResponseError(response)
-        if (gatewayError) {
-          // Gateway error fields (errorCode, externalErrorCode, offsetCode) live under `meta`
-          // for the `errors[]` shape; fall back to top-level for the legacy `error` shape.
-          const errorFields = (gatewayError.meta && typeof gatewayError.meta === 'object') ? gatewayError.meta : gatewayError
-          const error = new SQLiteCloudError(gatewayError.detail || gatewayError.message || 'Gateway error', { ...errorFields })
-          callback?.call(this, error)
-        } else {
-          const { metadata } = response
-          const blobTransferFormat = getResponseBlobTransferFormat(response)
-          const data =
-            metadata && metadata.numberOfRows !== undefined && metadata.numberOfColumns !== undefined && metadata.columns !== undefined
+        // an exception while decoding the response must settle the command too, otherwise it would stay
+        // pending until the timeout and the exception would surface inside socket.io. The callback is
+        // called outside the try block so that an exception thrown by the caller is not swallowed.
+        let error: Error | null = null
+        let results: any
+        try {
+          const gatewayError = getGatewayResponseError(response)
+          if (gatewayError) {
+            // Gateway error fields (errorCode, externalErrorCode, offsetCode) live under `meta`
+            // for the `errors[]` shape; fall back to top-level for the legacy `error` shape.
+            const errorFields = gatewayError.meta && typeof gatewayError.meta === 'object' ? gatewayError.meta : gatewayError
+            error = new SQLiteCloudError(gatewayError.detail || gatewayError.message || 'Gateway error', { ...errorFields })
+          } else {
+            const { metadata } = response
+            const blobTransferFormat = getResponseBlobTransferFormat(response)
+            const isRowset =
+              metadata && metadata.numberOfRows !== undefined && metadata.numberOfColumns !== undefined && metadata.columns !== undefined
+            const data = isRowset
               ? decodeWebsocketRowsetData(response?.data, metadata, this.config.safe_integer_mode, blobTransferFormat)
               : decodeBigIntMarkers(response?.data, this.config.safe_integer_mode)
 
-          if (data !== undefined && metadata) {
-            if (metadata.numberOfRows !== undefined && metadata.numberOfColumns !== undefined && metadata.columns !== undefined) {
+            if (isRowset && data !== undefined) {
               console.assert(Array.isArray(data), 'SQLiteCloudWebsocketConnection.transportCommands - data is not an array')
               // we can recreate a SQLiteCloudRowset from the response which we know to be an array of arrays
-              const rowset = new SQLiteCloudRowset(metadata, data.flat())
-              callback?.call(this, null, rowset)
-              return
+              results = new SQLiteCloudRowset(metadata, data.flat())
+            } else {
+              results = data
             }
           }
-          callback?.call(this, null, data)
+        } catch (exception) {
+          error =
+            exception instanceof SQLiteCloudError
+              ? exception
+              : new SQLiteCloudError('Invalid response from the gateway', { errorCode: 'ERR_INVALID_RESPONSE', cause: exception as Error })
         }
+        finish(error, results)
       }
     )
 
@@ -222,14 +269,41 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
 
   /** Disconnect socket.io from server */
   public close(): this {
-    console.assert(this.socket !== null, 'SQLiteCloudWebsocketConnection.close - connection already closed')
+    return this.closeWithError(new SQLiteCloudError('Connection closed', { errorCode: 'ERR_CONNECTION_CLOSED' }))
+  }
+
+  /** Disconnect socket.io from server and fail the commands still waiting for a response with the given error */
+  private closeWithError(error: Error): this {
     if (this.socket) {
-      this.socket?.removeAllListeners()
-      this.socket?.close()
+      this.socket.removeAllListeners()
+      this.socket.close()
       this.socket = undefined
     }
 
-    this.operations.clear()
+    // the operations queue is deliberately not cleared: the commands that are queued behind the ones
+    // in flight keep running and each one fails right away with ERR_CONNECTION_NOT_ESTABLISHED
+    // (see SQLiteCloudConnection.sendCommands), so no caller is left with a promise that never settles
+
+    const pendingCommands = this.pendingCommands
+    this.pendingCommands = undefined
+    if (pendingCommands) {
+      // every command in flight is failed even if a callback throws, the first exception is rethrown afterwards
+      let thrown: unknown
+      let hasThrown = false
+      pendingCommands.forEach(fail => {
+        try {
+          fail(error)
+        } catch (exception) {
+          if (!hasThrown) {
+            hasThrown = true
+            thrown = exception
+          }
+        }
+      })
+      if (hasThrown) {
+        throw thrown
+      }
+    }
     return this
   }
 }
