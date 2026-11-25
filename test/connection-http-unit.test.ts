@@ -97,6 +97,30 @@ describe('Database with usehttp', () => {
     expect(events.sort()).toEqual(['closed', 'result'])
   })
 
+  it('settles a query and a second close() submitted while close() is draining', async () => {
+    let respond: (value: unknown) => void = () => {}
+    fetchMock.mockReturnValueOnce(new Promise(resolve => (respond = resolve)))
+    const db = new Database(connectionstring)
+    let closeEvents = 0
+    db.on('close', () => closeEvents++)
+
+    const rows = db.sql`UPDATE t SET x = 1`
+    while (fetchMock.mock.calls.length === 0) await new Promise(resolve => setTimeout(resolve, 1))
+    const closed = new Promise<void>(resolve => db.close(() => resolve()))
+    // issued while the request above is still in flight and close() waits for it
+    const late = db.sql`SELECT 2 AS two`
+    const closedAgain = new Promise<void>(resolve => db.close(() => resolve()))
+
+    respond(jsonResponse(oneRow))
+    await expect(rows).resolves.toHaveLength(1)
+    await closed
+    await expect(late).rejects.toMatchObject({ errorCode: 'ERR_CONNECTION_CLOSED' })
+    await closedAgain
+    await new Promise(resolve => setTimeout(resolve, 1)) // events are emitted on the next tick
+    expect(closeEvents).toBe(1)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
   it('runs a query issued from the open callback', async () => {
     fetchMock.mockResolvedValue(jsonResponse(oneRow))
 

@@ -420,7 +420,7 @@ export function decodeBigIntMarkers(value: any, safeIntegerMode?: SQLiteCloudSaf
 /** The SQLiteCloudError a cancelled command completes with: always ERR_ABORTED, so callers can recognise an abort, with the signal's own reason kept as cause. */
 export function getAbortError(signal: AbortSignal): SQLiteCloudError {
   const reason = (signal as AbortSignal & { reason?: unknown }).reason
-  if (reason instanceof SQLiteCloudError) return reason
+  if (reason instanceof SQLiteCloudError && reason.errorCode === 'ERR_ABORTED') return reason
   if (reason instanceof Error) return new SQLiteCloudError(reason.message || 'Request aborted', { errorCode: 'ERR_ABORTED', cause: reason })
   return new SQLiteCloudError(typeof reason === 'string' ? reason : 'Request aborted', { errorCode: 'ERR_ABORTED' })
 }

@@ -337,7 +337,13 @@ describe('getAbortError', () => {
     withError.abort(reason)
     expect(getAbortError(withError.signal)).toMatchObject({ errorCode: 'ERR_ABORTED', message: 'user cancelled', cause: reason })
 
-    const own = new SQLiteCloudError('timed out', { errorCode: 'ERR_CONNECTION_TIMEOUT' })
+    // a SQLiteCloudError with another code is wrapped too, so the abort is still recognisable
+    const other = new SQLiteCloudError('timed out', { errorCode: 'ERR_CONNECTION_TIMEOUT' })
+    const withOther = new AbortController()
+    withOther.abort(other)
+    expect(getAbortError(withOther.signal)).toMatchObject({ errorCode: 'ERR_ABORTED', message: 'timed out', cause: other })
+
+    const own = new SQLiteCloudError('cancelled', { errorCode: 'ERR_ABORTED' })
     const withOwn = new AbortController()
     withOwn.abort(own)
     expect(getAbortError(withOwn.signal)).toBe(own)

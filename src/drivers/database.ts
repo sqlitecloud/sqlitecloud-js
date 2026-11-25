@@ -70,6 +70,9 @@ export class Database extends EventEmitter {
   /** Used to syncronize opening of connection and commands */
   private operations = new OperationsQueue()
 
+  /** True once close() has run, commands issued afterwards fail with ERR_CONNECTION_CLOSED */
+  private closed = false
+
   //
   // private methods
   //
@@ -137,7 +140,9 @@ export class Database extends EventEmitter {
           })
         }
       } else {
-        error = new SQLiteCloudError('Connection unavailable. Maybe it got disconnected?', { errorCode: 'ERR_CONNECTION_NOT_ESTABLISHED' })
+        error = this.closed
+          ? new SQLiteCloudError('Connection closed', { errorCode: 'ERR_CONNECTION_CLOSED' })
+          : new SQLiteCloudError('Connection unavailable. Maybe it got disconnected?', { errorCode: 'ERR_CONNECTION_NOT_ESTABLISHED' })
         callback?.call(this, error, null)
         done(error)
       }
@@ -386,13 +391,21 @@ export class Database extends EventEmitter {
    */
   public close(callback?: ConnectionCallback): void {
     this.operations.enqueue(done => {
+      if (this.closed) {
+        // closed already: the callback is still called, the close event is not emitted again
+        callback?.call(this, null)
+        done(null)
+        return
+      }
+      this.closed = true
       this.connection?.close()
 
       const finish = () => {
         callback?.call(this, null)
         this.emitEvent('close')
 
-        this.operations.clear()
+        // the operations queued behind close() are not discarded: each one runs next and fails
+        // with ERR_CONNECTION_CLOSED, so no caller is left with a callback that is never called
         done(null)
       }
       // a concurrent transport may still have requests in flight: report closed once they have completed
