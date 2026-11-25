@@ -93,7 +93,7 @@ describe('Database with usehttp', () => {
 })
 
 describe('HTTP gateway transport', () => {
-  it('posts independent commands with tagged bigint and indexed base64 BLOB bindings', async () => {
+  it('posts independent commands with tagged bigint and tagged base64 BLOB bindings', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ data: 1 }))
     const db = connection()
 
@@ -111,43 +111,53 @@ describe('HTTP gateway transport', () => {
     )
     expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body)).toEqual({
       sql: 'SELECT ?, ?, ?, ?, ?',
-      bind: [{ __sqlitecloud_bigint: '9' }, 'AP8Q', 'AQI=', 'AwQ=', 'BQY='],
+      bind: [
+        { __sqlitecloud_bigint: '9' },
+        { __sqlitecloud_blob: 'AP8Q' },
+        { __sqlitecloud_blob: 'AQI=' },
+        { __sqlitecloud_blob: 'AwQ=' },
+        { __sqlitecloud_blob: 'BQY=' }
+      ],
       database: 'test.sqlite',
       row: 'array',
       safe_integer_mode: 'number',
       capabilities: {
-        blobTransferFormat: 'base64-blobs-v1',
-        blobBindIndexes: [1, 2, 3, 4],
+        blobTransferFormat: 'base64-blobs-v2',
         bigIntMarkerFormat: 'tagged-v1'
       }
     })
   })
 
-  it('revives JSON Buffer cells without BLOB metadata and decodes negotiated BLOB columns, keeping tagged TEXT as text', async () => {
+  it('decodes tagged BLOB cells whatever the metadata says and revives JSON Buffer cells from an older gateway', async () => {
     fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({
+          blobTransferFormat: 'base64-blobs-v2',
+          metadata: { version: 1, numberOfRows: 3, numberOfColumns: 2, columns: [{ name: 'payload' }, { name: 'one' }] },
+          data: [
+            [{ __sqlitecloud_blob: 'SGVsbG8=' }, 1],
+            ['Hello', 1],
+            [null, 1]
+          ]
+        })
+      )
       .mockResolvedValueOnce(
         jsonResponse({
           metadata: { version: 2, numberOfRows: 1, numberOfColumns: 1, columns: [{ name: 'expression' }] },
           data: [[{ type: 'Buffer', data: [0, 255, 16] }]]
         })
       )
-      .mockResolvedValueOnce(
-        jsonResponse({
-          blobTransferFormat: 'base64-blobs-v1',
-          metadata: { version: 2, numberOfRows: 3, numberOfColumns: 1, columns: [{ name: 'payload', type: 'BLOB' }] },
-          data: [['SGVsbG8='], [{ __sqlitecloud_text: 'Hello' }], [null]]
-        })
-      )
     const db = connection()
 
+    const blobs = await commandResult(db, 'SELECT payload, 1 AS one FROM t')
     const expression = await commandResult(db, "SELECT x'00ff10'")
-    const blobs = await commandResult(db, 'SELECT payload FROM t')
 
-    expect(expression).toBeInstanceOf(SQLiteCloudRowset)
-    expect(expression[0].expression).toEqual(Buffer.from([0, 255, 16]))
+    expect(blobs).toBeInstanceOf(SQLiteCloudRowset)
     expect(blobs[0].payload).toEqual(Buffer.from('Hello'))
     expect(blobs[1].payload).toBe('Hello')
     expect(blobs[2].payload).toBeNull()
+    expect(blobs[0].one).toBe(1)
+    expect(expression[0].expression).toEqual(Buffer.from([0, 255, 16]))
   })
 
   it('throws the gateway sql error with its codes instead of a generic HTTP error', async () => {

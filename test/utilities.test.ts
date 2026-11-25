@@ -5,11 +5,14 @@
 import { SQLiteCloudError } from '../src/index'
 import {
   decodeBigIntMarkers,
+  decodeGatewayRowsetData,
   encodeBigIntMarkers,
+  encodeBlobMarker,
   getInitializationCommands,
   parseconnectionstring,
   parseSafeIntegerMode,
   sanitizeSQLiteIdentifier,
+  reviveJsonBuffers,
   validateConfiguration
 } from '../src/drivers/utilities'
 import { getTestingDatabaseName } from './shared'
@@ -265,7 +268,7 @@ describe('validateConfiguration()', () => {
       connectionstring: 'sqlitecloud://host:1234/database?apikey=xxx'
     })
 
-    expect(config.websocketBlobFormat).toBe('base64-blobs-v1')
+    expect(config.websocketBlobFormat).toBe('base64-blobs-v2')
     expect(config.websocketMaxAttachments).toBe(100000)
   })
 
@@ -309,6 +312,45 @@ describe('safe integer marker utilities', () => {
     expect(decodeBigIntMarkers({ __sqlitecloud_bigint: '9223372036854775807' }, 'bigint')).toBe(BigInt('9223372036854775807'))
     expect(decodeBigIntMarkers({ id: { __sqlitecloud_bigint: '9223372036854775807' } }, 'mixed')).toEqual({ id: BigInt('9223372036854775807') })
     expect(decodeBigIntMarkers('9223372036854775807n', 'number')).toBe('9223372036854775807n')
+  })
+})
+
+describe('gateway BLOB markers', () => {
+  const metadataWithoutTypes = { version: 1, numberOfRows: 3, numberOfColumns: 2, columns: [{ name: 'b' }, { name: 'one' }] } as any
+  const metadataDeclaringBlob = { version: 2, numberOfRows: 3, numberOfColumns: 1, columns: [{ name: 'b', type: 'BLOB' }] } as any
+
+  it('should encode a buffer as a base64-blobs-v2 marker', () => {
+    expect(encodeBlobMarker(Buffer.from([0, 255, 16]))).toEqual({ __sqlitecloud_blob: 'AP8Q' })
+  })
+
+  it('should decode base64-blobs-v2 markers without column metadata and leave TEXT alone', () => {
+    const data = [
+      [{ __sqlitecloud_blob: 'AP8Q' }, 1],
+      ['Hello', 1],
+      [null, 1]
+    ]
+    expect(decodeGatewayRowsetData(data, metadataWithoutTypes, 'mixed', 'base64-blobs-v2')).toEqual([
+      [Buffer.from([0, 255, 16]), 1],
+      ['Hello', 1],
+      [null, 1]
+    ])
+    // the marker is self-describing, so it is decoded even when the response does not echo the format
+    expect(decodeGatewayRowsetData(data, metadataWithoutTypes, undefined, undefined)).toEqual([
+      [Buffer.from([0, 255, 16]), 1],
+      ['Hello', 1],
+      [null, 1]
+    ])
+    expect(reviveJsonBuffers({ __sqlitecloud_blob: 'AP8Q', other: 1 })).toEqual({ __sqlitecloud_blob: 'AP8Q', other: 1 })
+  })
+
+  it('should keep decoding legacy base64-blobs-v1 strings in declared BLOB columns', () => {
+    const data = [['AP8Q'], ['Hello'], [null]]
+    expect(decodeGatewayRowsetData(data, metadataDeclaringBlob, undefined, 'base64-blobs-v1')).toEqual([
+      [Buffer.from([0, 255, 16])],
+      [Buffer.from('Hello', 'base64')],
+      [null]
+    ])
+    expect(decodeGatewayRowsetData(data, metadataDeclaringBlob, undefined, undefined)).toEqual(data)
   })
 })
 

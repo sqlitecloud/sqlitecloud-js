@@ -323,7 +323,7 @@ export function parseWebsocketBlobTransferFormat(
   fallback: SQLiteCloudWebsocketBlobTransferFormat | undefined = DEFAULT_WEBSOCKET_BLOB_TRANSFER_FORMAT
 ): SQLiteCloudWebsocketBlobTransferFormat | undefined {
   const format = value?.toLowerCase()
-  if (format === 'base64-blobs-v1' || format === 'socketio-blobs-v1') {
+  if (format === 'base64-blobs-v2' || format === 'base64-blobs-v1' || format === 'socketio-blobs-v1') {
     return format
   }
   return fallback
@@ -340,7 +340,7 @@ export function parseWebsocketMaxAttachments(value: string | number | null | und
 
 const BLOB_COLUMN_TYPE_RE = /\bblob\b/i
 const BIGINT_MARKER_KEY = '__sqlitecloud_bigint'
-const TEXT_MARKER_KEY = '__sqlitecloud_text'
+const BLOB_MARKER_KEY = '__sqlitecloud_blob'
 const BIGINT_MARKER_RE = /^-?\d+n$/
 
 function isBinaryValue(value: unknown): value is Buffer | Uint8Array | ArrayBuffer {
@@ -416,10 +416,26 @@ export function getAbortError(signal: AbortSignal): Error {
   return new SQLiteCloudError(typeof reason === 'string' ? reason : 'Request aborted', { errorCode: 'ERR_ABORTED' })
 }
 
-/** Revive Node's JSON representation of a Buffer, including BLOB values without declared metadata. */
+/** Wire form of a BLOB under base64-blobs-v2: `{ __sqlitecloud_blob: base64 }`, the only object shape a cell or bind can take. */
+export function encodeBlobMarker(buffer: Buffer): Record<string, string> {
+  return { [BLOB_MARKER_KEY]: buffer.toString('base64') }
+}
+
+function isBlobMarker(value: unknown): value is Record<typeof BLOB_MARKER_KEY, string> {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    Object.keys(value).length === 1 &&
+    typeof (value as Record<string, unknown>)[BLOB_MARKER_KEY] === 'string'
+  )
+}
+
+/** Revive gateway BLOB values: base64-blobs-v2 markers and Node's JSON representation of a Buffer, which needs no metadata. */
 export function reviveJsonBuffers(value: any): any {
   if (Array.isArray(value)) return value.map(reviveJsonBuffers)
   if (!value || typeof value !== 'object' || isBinaryValue(value)) return value
+  if (isBlobMarker(value)) return Buffer.from(value[BLOB_MARKER_KEY], 'base64')
   if (
     value.type === 'Buffer' &&
     Array.isArray(value.data) &&
@@ -449,10 +465,9 @@ export function decodeGatewayRowsetData(
 
   const blobColumnIndexes = new Set(metadata.columns.flatMap((column, index) => (column.type && BLOB_COLUMN_TYPE_RE.test(column.type) ? [index] : [])))
   const decodeCell = (value: any, columnIndex: number) => {
-    if (blobTransferFormat === 'base64-blobs-v1' && blobColumnIndexes.has(columnIndex)) {
-      if (typeof value === 'string') return Buffer.from(value, 'base64')
-      // the gateway tags TEXT stored in a BLOB column so it is not mistaken for base64
-      if (value && typeof value === 'object' && typeof value[TEXT_MARKER_KEY] === 'string') return value[TEXT_MARKER_KEY]
+    // legacy base64-blobs-v1: a string in a column declared BLOB is base64, which cannot tell TEXT stored there apart
+    if (blobTransferFormat === 'base64-blobs-v1' && blobColumnIndexes.has(columnIndex) && typeof value === 'string') {
+      return Buffer.from(value, 'base64')
     }
     return decodeBigIntMarkers(reviveJsonBuffers(value), safeIntegerMode, allowLegacyBigIntMarkers)
   }
@@ -462,7 +477,9 @@ export function decodeGatewayRowsetData(
   }
 
   return data.map(row =>
-    Array.isArray(row) ? row.map((value, columnIndex) => decodeCell(value, columnIndex)) : decodeBigIntMarkers(reviveJsonBuffers(row), safeIntegerMode, allowLegacyBigIntMarkers)
+    Array.isArray(row)
+      ? row.map((value, columnIndex) => decodeCell(value, columnIndex))
+      : decodeBigIntMarkers(reviveJsonBuffers(row), safeIntegerMode, allowLegacyBigIntMarkers)
   )
 }
 

@@ -3,9 +3,12 @@
 import { SQLiteCloudConnection } from './connection'
 import { decodeGatewayResponse } from './gateway-response'
 import { buildGatewaySqlUrl } from './gateway-url'
-import { DEFAULT_WEBSOCKET_BLOB_TRANSFER_FORMAT, ErrorCallback, ResultsCallback, SQLiteCloudCommand, SQLiteCloudConfig, SQLiteCloudError } from './types'
-import { encodeBigIntMarkers, getAbortError } from './utilities'
+import { ErrorCallback, ResultsCallback, SQLiteCloudCommand, SQLiteCloudConfig, SQLiteCloudError, SQLiteCloudWebsocketBlobTransferFormat } from './types'
+import { encodeBigIntMarkers, encodeBlobMarker, getAbortError } from './utilities'
 import { Buffer } from 'buffer'
+
+/** HTTP binds and rowsets are plain JSON, so BLOBs always travel as base64-blobs-v2 markers. */
+const HTTP_BLOB_TRANSFER_FORMAT: SQLiteCloudWebsocketBlobTransferFormat = 'base64-blobs-v2'
 
 /** Runs each command as an independent POST to /v2/weblite/sql. */
 export class SQLiteCloudHttpConnection extends SQLiteCloudConnection {
@@ -88,7 +91,7 @@ export class SQLiteCloudHttpConnection extends SQLiteCloudConnection {
   }
 
   private async post(command: SQLiteCloudCommand, signal: AbortSignal): Promise<any> {
-    const { bind, blobBindIndexes } = encodeHttpBindings(command.parameters)
+    const bind = encodeHttpBindings(command.parameters)
     const response = await fetch(this.gatewayUrl(), {
       method: 'POST',
       headers: this.headers(),
@@ -100,8 +103,7 @@ export class SQLiteCloudHttpConnection extends SQLiteCloudConnection {
         row: 'array',
         safe_integer_mode: this.config.safe_integer_mode,
         capabilities: {
-          blobTransferFormat: DEFAULT_WEBSOCKET_BLOB_TRANSFER_FORMAT,
-          blobBindIndexes,
+          blobTransferFormat: HTTP_BLOB_TRANSFER_FORMAT,
           bigIntMarkerFormat: 'tagged-v1'
         }
       })
@@ -148,16 +150,12 @@ export class SQLiteCloudHttpConnection extends SQLiteCloudConnection {
   }
 }
 
-function encodeHttpBindings(parameters?: SQLiteCloudCommand['parameters']): { bind?: any[]; blobBindIndexes: number[] } {
-  if (!parameters) return { bind: undefined, blobBindIndexes: [] }
-  const blobBindIndexes: number[] = []
-  const bind = parameters.map((value, index) => {
+/** JSON bind parameters: a binary value becomes a base64-blobs-v2 marker, anything else keeps its tagged BigInt form. */
+function encodeHttpBindings(parameters?: SQLiteCloudCommand['parameters']): any[] | undefined {
+  return parameters?.map(value => {
     const buffer = binaryBuffer(value)
-    if (!buffer) return encodeBigIntMarkers(value)
-    blobBindIndexes.push(index)
-    return buffer.toString('base64')
+    return buffer ? encodeBlobMarker(buffer) : encodeBigIntMarkers(value)
   })
-  return { bind, blobBindIndexes }
 }
 
 function binaryBuffer(value: unknown): Buffer | undefined {

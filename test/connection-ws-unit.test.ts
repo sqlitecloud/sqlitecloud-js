@@ -118,7 +118,7 @@ describe('websocket transport helpers', () => {
             row: 'array',
             safe_integer_mode: 'bigint',
             capabilities: {
-              blobTransferFormat: 'base64-blobs-v1',
+              blobTransferFormat: 'base64-blobs-v2',
               bigIntMarkerFormat: 'tagged-v1'
             }
           },
@@ -159,7 +159,7 @@ describe('websocket transport helpers', () => {
     })
   })
 
-  it('should decode base64 blob columns using rowset metadata only', done => {
+  it('should still decode legacy base64-blobs-v1 blob columns using rowset metadata', done => {
     const connection = Object.create(SQLiteCloudWebsocketConnection.prototype) as any
     const emit = jest.fn((_event: string, _payload: any, callback: (response: any) => void) => {
       callback({

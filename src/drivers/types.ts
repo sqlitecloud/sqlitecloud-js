@@ -20,10 +20,16 @@ export const DEFAULT_PORT = 8860
  * mixed - use BigInt and Number types depending on the value size
  */
 export type SQLiteCloudSafeIntegerMode = 'number' | 'bigint' | 'mixed'
-export type SQLiteCloudWebsocketBlobTransferFormat = 'base64-blobs-v1' | 'socketio-blobs-v1'
+/**
+ * BLOB wire formats of the gateway transports.
+ * base64-blobs-v2 - every BLOB travels as `{ __sqlitecloud_blob: base64 }`, whatever its column, in rowsets and binds
+ * base64-blobs-v1 - BLOBs in columns declared BLOB travel as bare base64 strings (legacy, frozen as released)
+ * socketio-blobs-v1 - BLOBs travel as socket.io binary attachments (WebSocket only)
+ */
+export type SQLiteCloudWebsocketBlobTransferFormat = 'base64-blobs-v2' | 'base64-blobs-v1' | 'socketio-blobs-v1'
 
 export let SAFE_INTEGER_MODE: SQLiteCloudSafeIntegerMode = 'number'
-export const DEFAULT_WEBSOCKET_BLOB_TRANSFER_FORMAT: SQLiteCloudWebsocketBlobTransferFormat = 'base64-blobs-v1'
+export const DEFAULT_WEBSOCKET_BLOB_TRANSFER_FORMAT: SQLiteCloudWebsocketBlobTransferFormat = 'base64-blobs-v2'
 export const DEFAULT_WEBSOCKET_MAX_ATTACHMENTS = 100000
 if (typeof process !== 'undefined') {
   const mode = process.env['SAFE_INTEGER_MODE']?.toLowerCase()
@@ -110,7 +116,7 @@ export interface SQLiteCloudConfig {
    *  The WebSocket transport forwards `host` as the gateway Host header. Fetch
    *  forbids that header, so HTTP transport needs a tenant-aware local proxy. */
   gatewayurl?: string
-  /** Preferred blob transfer format when using the gateway transports. Defaults to base64-blobs-v1 for new clients. */
+  /** Preferred blob transfer format of the WebSocket transport. Defaults to base64-blobs-v2; HTTP always uses base64-blobs-v2. */
   websocketBlobFormat?: SQLiteCloudWebsocketBlobTransferFormat
   /** Maximum number of socket.io binary attachments accepted by the websocket parser. */
   websocketMaxAttachments?: number
@@ -152,7 +158,17 @@ export interface SQLCloudRowsetMetadata {
 }
 
 /** Basic types that can be returned by SQLiteCloud APIs */
-export type SQLiteCloudDataTypes = string | number | bigint | boolean | Record<string | number, unknown> | Buffer | ArrayBuffer | ArrayBufferView | null | undefined
+export type SQLiteCloudDataTypes =
+  | string
+  | number
+  | bigint
+  | boolean
+  | Record<string | number, unknown>
+  | Buffer
+  | ArrayBuffer
+  | ArrayBufferView
+  | null
+  | undefined
 
 export interface SQLiteCloudCommand {
   query: string
