@@ -175,3 +175,76 @@ describe('rowset', () => {
     })
   })
 })
+
+describe('rowset column names', () => {
+  function createRowset(names: (string | undefined)[], data: any[]): SQLiteCloudRowset {
+    return new SQLiteCloudRowset(
+      {
+        version: 1,
+        numberOfRows: data.length / names.length,
+        numberOfColumns: names.length,
+        columns: names.map(name => ({ name }) as any)
+      },
+      data
+    )
+  }
+
+  it('keeps the first duplicate column name and suffixes the following ones', () => {
+    const rowset = createRowset(['id', 'id', 'id'], [1, 2, 3])
+    expect(rowset.columnsNames).toEqual(['id', 'id_1', 'id_2'])
+    expect(rowset.originalColumnsNames).toEqual(['id', 'id', 'id'])
+    expect({ ...rowset[0] }).toEqual({ id: 1, id_1: 2, id_2: 3 })
+    expect(rowset[0].getData()).toEqual([1, 2, 3])
+  })
+
+  it('returns columnsNames matching the row keys', () => {
+    const rowset = createRowset(['id', 'name', 'id', 'customer_id', 'name'], [7, 'Ada', 42, 7, 'Laptop'])
+    expect(rowset.columnsNames).toEqual(['id', 'name', 'id_1', 'customer_id', 'name_1'])
+    expect(rowset.columnsNames.map(name => rowset[0][name])).toEqual([7, 'Ada', 42, 7, 'Laptop'])
+  })
+
+  it('skips suffixes already used by other columns', () => {
+    const rowset = createRowset(['id', 'id', 'id_1', 'id_2', 'id'], [1, 2, 3, 4, 5])
+    expect(rowset.columnsNames).toEqual(['id', 'id_3', 'id_1', 'id_2', 'id_4'])
+    expect({ ...rowset[0] }).toEqual({ id: 1, id_3: 2, id_1: 3, id_2: 4, id_4: 5 })
+  })
+
+  it('names missing columns by position', () => {
+    const rowset = createRowset(['', 'a', undefined, 'column_1'], [1, 2, 3, 4])
+    expect(rowset.columnsNames).toEqual(['column_0', 'a', 'column_2', 'column_1'])
+    expect(rowset.originalColumnsNames).toEqual(['', 'a', undefined, 'column_1'])
+  })
+
+  it('does not expose internal column names to mutation', () => {
+    const rowset = createRowset(['id', 'id'], [1, 2])
+    rowset.columnsNames.push('other')
+    expect(rowset.columnsNames).toEqual(['id', 'id_1'])
+  })
+
+  it('keeps unique column names after slice and filter', () => {
+    const rowset = createRowset(['id', 'id'], [1, 2, 3, 4, 5, 6])
+    const sliced = rowset.slice(1) as SQLiteCloudRowset
+    expect(sliced.columnsNames).toEqual(['id', 'id_1'])
+    expect({ ...sliced[0] }).toEqual({ id: 3, id_1: 4 })
+    const filtered = rowset.filter(row => row.id === 5) as SQLiteCloudRowset
+    expect(filtered.columnsNames).toEqual(['id', 'id_1'])
+    expect({ ...filtered[0] }).toEqual({ id: 5, id_1: 6 })
+  })
+
+  it('keeps the first duplicate column name for joined tables', done => {
+    const connection = getChinookTlsConnection()
+    connection.sendCommands(
+      'SELECT a.AlbumId, a.Title, t.TrackId AS AlbumId, t.Name AS Title FROM albums a JOIN tracks t ON t.AlbumId = a.AlbumId WHERE t.TrackId = 6;',
+      (error, rowset) => {
+        expect(error).toBeNull()
+        expect(rowset.originalColumnsNames).toEqual(['AlbumId', 'Title', 'AlbumId', 'Title'])
+        expect(rowset.columnsNames).toEqual(['AlbumId', 'Title', 'AlbumId_1', 'Title_1'])
+        expect({ ...rowset[0] }).toEqual({ AlbumId: 1, Title: 'For Those About To Rock We Salute You', AlbumId_1: 6, Title_1: 'Put The Finger On You' })
+        expect(rowset.columnsNames.map(name => rowset[0][name])).toEqual(rowset[0].getData())
+
+        done()
+        connection.close()
+      }
+    )
+  })
+})
