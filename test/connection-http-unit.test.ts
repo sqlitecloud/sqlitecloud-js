@@ -15,12 +15,22 @@ afterEach(() => {
   jest.clearAllMocks()
 })
 
-function connection() {
-  return new SQLiteCloudHttpConnection({
-    host: 'tenant.g4.sqlite.cloud',
-    apikey: 'secret',
-    database: 'test.sqlite',
-    gatewayurl: 'http://localhost:8090'
+function connection(callback?: (error: Error | null) => void) {
+  return new SQLiteCloudHttpConnection(
+    {
+      host: 'tenant.g4.sqlite.cloud',
+      apikey: 'secret',
+      database: 'test.sqlite',
+      gatewayurl: 'http://localhost:8090'
+    },
+    callback
+  )
+}
+
+/** Connection whose open callback has fired, so transportCommands is reached synchronously */
+function openConnection(): Promise<SQLiteCloudHttpConnection> {
+  return new Promise(resolve => {
+    const db = connection(() => resolve(db))
   })
 }
 
@@ -41,6 +51,35 @@ function commandResult(connection: SQLiteCloudHttpConnection, command: any): Pro
     })
   })
 }
+
+describe('Database with usehttp', () => {
+  const connectionstring = 'sqlitecloud://tenant.g4.sqlite.cloud/test.sqlite?apikey=secret&usehttp=true&gatewayurl=http://localhost:8090'
+  const oneRow = { metadata: { version: 2, numberOfRows: 1, numberOfColumns: 1, columns: [{ name: 'one' }] }, data: [[1]] }
+
+  it('selects the HTTP transport from the connection string and runs a query queued before opening completes', async () => {
+    fetchMock.mockResolvedValue(jsonResponse(oneRow))
+    const db = new Database(connectionstring)
+
+    const rows = await db.sql`SELECT 1 AS one`
+
+    expect(rows[0].one).toBe(1)
+    expect(fetchMock).toHaveBeenCalledWith('http://localhost:8090/v2/weblite/sql', expect.objectContaining({ method: 'POST' }))
+    db.close()
+  })
+
+  it('runs a query issued from the open callback', async () => {
+    fetchMock.mockResolvedValue(jsonResponse(oneRow))
+
+    const rows = await new Promise<any>((resolve, reject) => {
+      const db = new Database(connectionstring, error => {
+        if (error) return reject(error)
+        db.sql`SELECT 1 AS one`.then(resolve, reject).finally(() => db.close())
+      })
+    })
+
+    expect(rows[0].one).toBe(1)
+  })
+})
 
 describe('HTTP gateway transport', () => {
   it('posts independent commands with tagged bigint and indexed base64 BLOB bindings', async () => {
@@ -119,7 +158,7 @@ describe('HTTP gateway transport', () => {
   it('runs commands in parallel and rejects a command that was already aborted', async () => {
     const resolveFetches: Array<(response: any) => void> = []
     fetchMock.mockImplementation(() => new Promise(resolve => resolveFetches.push(resolve)))
-    const db = connection()
+    const db = await openConnection()
 
     db.sendCommands('SELECT 1')
     db.sendCommands('SELECT 2')

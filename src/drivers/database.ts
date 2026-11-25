@@ -24,7 +24,7 @@ import {
   SQLiteCloudDataTypes,
   SQLiteCloudError
 } from './types'
-import { isBrowser, popCallback } from './utilities'
+import { isBrowser, parseconnectionstring, popCallback } from './utilities'
 
 // Uses eventemitter3 instead of node events for browser compatibility
 // https://github.com/primus/eventemitter3
@@ -74,9 +74,21 @@ export class Database extends EventEmitter {
   // private methods
   //
 
+  /** Configuration with connection string options applied, so transport flags given there are seen */
+  private get transportConfig(): SQLiteCloudConfig {
+    const { connectionstring, ...overrides } = this.config
+    if (!connectionstring) return this.config
+    try {
+      return { ...parseconnectionstring(connectionstring), ...overrides }
+    } catch {
+      return this.config // the connection reports the invalid string through the callback
+    }
+  }
+
   /** Returns first available connection from connection pool */
   private createConnection(callback: ConnectionCallback) {
-    if (this.config?.usehttp) {
+    const { usehttp, usewebsocket, gatewayurl } = this.transportConfig
+    if (usehttp) {
       this.operations.enqueue(done => {
         import('./connection-http')
           .then(module => {
@@ -101,7 +113,7 @@ export class Database extends EventEmitter {
     }
 
     // connect using websocket if tls is not supported or if explicitly requested
-    const useWebsocket = isBrowser || this.config?.usewebsocket || this.config?.gatewayurl
+    const useWebsocket = isBrowser || usewebsocket || gatewayurl
     if (useWebsocket) {
       // socket.io transport works in both node.js and browser environments and connects via SQLite Cloud Gateway
       this.operations.enqueue(done => {

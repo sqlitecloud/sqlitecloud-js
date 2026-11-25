@@ -23,7 +23,8 @@ export class SQLiteCloudHttpConnection extends SQLiteCloudConnection {
   connectTransport(config: SQLiteCloudConfig, callback?: ErrorCallback): this {
     this.config = config
     this.closed = false
-    callback?.call(this, null)
+    // no handshake: report asynchronously like the other transports, so the caller has stored the connection first
+    queueMicrotask(() => callback?.call(this, null))
     return this
   }
 
