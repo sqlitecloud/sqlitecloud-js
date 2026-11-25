@@ -152,13 +152,14 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
             )
             return
           }
-          let message = error.message || 'Connection error'
-          if (typeof error.context == 'object' && error.context.responseText) {
+          let message = error?.message || 'Connection error'
+          const responseText = error?.context?.responseText
+          if (responseText) {
             try {
-              const parsed = JSON.parse(error.context.responseText)
-              message = parsed?.message || error.context.responseText
+              const parsed = JSON.parse(responseText)
+              message = parsed?.message || responseText
             } catch {
-              message = error.context.responseText
+              message = responseText
             }
           }
           fail(new SQLiteCloudError(message, { errorCode: 'ERR_CONNECTION_ERROR' }))
@@ -202,10 +203,12 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
     this.pendingCommands ||= new Set()
     this.pendingCommands.add(fail)
 
+    // on timeout the connection is closed, like the TLS transport does: the gateway may still be executing
+    // the command and the next queued command must not run concurrently with it on the same connection
     const timeoutMs = this.config?.timeout ?? 0
     if (timeoutMs > 0) {
       timeout = setTimeout(() => {
-        finish(new SQLiteCloudError(`Request timed out after ${timeoutMs} ms`, { errorCode: 'ERR_CONNECTION_TIMEOUT' }))
+        this.closeWithError(new SQLiteCloudError(`Request timed out after ${timeoutMs} ms`, { errorCode: 'ERR_CONNECTION_TIMEOUT' }))
       }, timeoutMs)
     }
 
@@ -222,32 +225,42 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
         }
       },
       (response: any) => {
-        const gatewayError = getGatewayResponseError(response)
-        if (gatewayError) {
-          // Gateway error fields (errorCode, externalErrorCode, offsetCode) live under `meta`
-          // for the `errors[]` shape; fall back to top-level for the legacy `error` shape.
-          const errorFields = (gatewayError.meta && typeof gatewayError.meta === 'object') ? gatewayError.meta : gatewayError
-          const error = new SQLiteCloudError(gatewayError.detail || gatewayError.message || 'Gateway error', { ...errorFields })
-          finish(error)
-        } else {
-          const { metadata } = response
-          const blobTransferFormat = getResponseBlobTransferFormat(response)
-          const data =
-            metadata && metadata.numberOfRows !== undefined && metadata.numberOfColumns !== undefined && metadata.columns !== undefined
+        // an exception while decoding the response must settle the command too, otherwise it would stay
+        // pending until the timeout and the exception would surface inside socket.io. The callback is
+        // called outside the try block so that an exception thrown by the caller is not swallowed.
+        let error: Error | null = null
+        let results: any
+        try {
+          const gatewayError = getGatewayResponseError(response)
+          if (gatewayError) {
+            // Gateway error fields (errorCode, externalErrorCode, offsetCode) live under `meta`
+            // for the `errors[]` shape; fall back to top-level for the legacy `error` shape.
+            const errorFields = gatewayError.meta && typeof gatewayError.meta === 'object' ? gatewayError.meta : gatewayError
+            error = new SQLiteCloudError(gatewayError.detail || gatewayError.message || 'Gateway error', { ...errorFields })
+          } else {
+            const { metadata } = response
+            const blobTransferFormat = getResponseBlobTransferFormat(response)
+            const isRowset =
+              metadata && metadata.numberOfRows !== undefined && metadata.numberOfColumns !== undefined && metadata.columns !== undefined
+            const data = isRowset
               ? decodeWebsocketRowsetData(response?.data, metadata, this.config.safe_integer_mode, blobTransferFormat)
               : decodeBigIntMarkers(response?.data, this.config.safe_integer_mode)
 
-          if (data !== undefined && metadata) {
-            if (metadata.numberOfRows !== undefined && metadata.numberOfColumns !== undefined && metadata.columns !== undefined) {
+            if (isRowset && data !== undefined) {
               console.assert(Array.isArray(data), 'SQLiteCloudWebsocketConnection.transportCommands - data is not an array')
               // we can recreate a SQLiteCloudRowset from the response which we know to be an array of arrays
-              const rowset = new SQLiteCloudRowset(metadata, data.flat())
-              finish(null, rowset)
-              return
+              results = new SQLiteCloudRowset(metadata, data.flat())
+            } else {
+              results = data
             }
           }
-          finish(null, data)
+        } catch (exception) {
+          error =
+            exception instanceof SQLiteCloudError
+              ? exception
+              : new SQLiteCloudError('Invalid response from the gateway', { errorCode: 'ERR_INVALID_RESPONSE', cause: exception as Error })
         }
+        finish(error, results)
       }
     )
 
@@ -261,18 +274,36 @@ export class SQLiteCloudWebsocketConnection extends SQLiteCloudConnection {
 
   /** Disconnect socket.io from server and fail the commands still waiting for a response with the given error */
   private closeWithError(error: Error): this {
-    console.assert(this.socket !== null, 'SQLiteCloudWebsocketConnection.close - connection already closed')
     if (this.socket) {
-      this.socket?.removeAllListeners()
-      this.socket?.close()
+      this.socket.removeAllListeners()
+      this.socket.close()
       this.socket = undefined
     }
 
-    this.operations.clear()
+    // the operations queue is deliberately not cleared: the commands that are queued behind the ones
+    // in flight keep running and each one fails right away with ERR_CONNECTION_NOT_ESTABLISHED
+    // (see SQLiteCloudConnection.sendCommands), so no caller is left with a promise that never settles
 
     const pendingCommands = this.pendingCommands
     this.pendingCommands = undefined
-    pendingCommands?.forEach(fail => fail(error))
+    if (pendingCommands) {
+      // every command in flight is failed even if a callback throws, the first exception is rethrown afterwards
+      let thrown: unknown
+      let hasThrown = false
+      pendingCommands.forEach(fail => {
+        try {
+          fail(error)
+        } catch (exception) {
+          if (!hasThrown) {
+            hasThrown = true
+            thrown = exception
+          }
+        }
+      })
+      if (hasThrown) {
+        throw thrown
+      }
+    }
     return this
   }
 }
