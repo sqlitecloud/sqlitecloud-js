@@ -265,7 +265,7 @@ describe('validateConfiguration()', () => {
       connectionstring: 'sqlitecloud://host:1234/database?apikey=xxx'
     })
 
-    expect(config.websocketBlobFormat).toBe('base64-blobs-v2')
+    expect(config.websocketBlobFormat).toBe('base64-blobs-v1')
     expect(config.websocketMaxAttachments).toBe(100000)
   })
 

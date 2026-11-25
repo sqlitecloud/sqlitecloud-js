@@ -66,7 +66,7 @@ describe('HTTP gateway transport', () => {
       row: 'array',
       safe_integer_mode: 'number',
       capabilities: {
-        blobTransferFormat: 'base64-blobs-v2',
+        blobTransferFormat: 'base64-blobs-v1',
         blobBindIndexes: [1, 2, 3, 4],
         bigIntMarkerFormat: 'tagged-v1'
       }
@@ -83,7 +83,7 @@ describe('HTTP gateway transport', () => {
       )
       .mockResolvedValueOnce(
         jsonResponse({
-          blobTransferFormat: 'base64-blobs-v2',
+          blobTransferFormat: 'base64-blobs-v1',
           metadata: { version: 2, numberOfRows: 3, numberOfColumns: 1, columns: [{ name: 'payload', type: 'BLOB' }] },
           data: [['SGVsbG8='], [{ __sqlitecloud_text: 'Hello' }], [null]]
         })

@@ -323,7 +323,7 @@ export function parseWebsocketBlobTransferFormat(
   fallback: SQLiteCloudWebsocketBlobTransferFormat | undefined = DEFAULT_WEBSOCKET_BLOB_TRANSFER_FORMAT
 ): SQLiteCloudWebsocketBlobTransferFormat | undefined {
   const format = value?.toLowerCase()
-  if (format === 'base64-blobs-v1' || format === 'base64-blobs-v2' || format === 'socketio-blobs-v1') {
+  if (format === 'base64-blobs-v1' || format === 'socketio-blobs-v1') {
     return format
   }
   return fallback
@@ -449,9 +449,9 @@ export function decodeGatewayRowsetData(
 
   const blobColumnIndexes = new Set(metadata.columns.flatMap((column, index) => (column.type && BLOB_COLUMN_TYPE_RE.test(column.type) ? [index] : [])))
   const decodeCell = (value: any, columnIndex: number) => {
-    if ((blobTransferFormat === 'base64-blobs-v1' || blobTransferFormat === 'base64-blobs-v2') && blobColumnIndexes.has(columnIndex)) {
+    if (blobTransferFormat === 'base64-blobs-v1' && blobColumnIndexes.has(columnIndex)) {
       if (typeof value === 'string') return Buffer.from(value, 'base64')
-      // v2 tags TEXT stored in a BLOB column so it is not mistaken for base64
+      // the gateway tags TEXT stored in a BLOB column so it is not mistaken for base64
       if (value && typeof value === 'object' && typeof value[TEXT_MARKER_KEY] === 'string') return value[TEXT_MARKER_KEY]
     }
     return decodeBigIntMarkers(reviveJsonBuffers(value), safeIntegerMode, allowLegacyBigIntMarkers)
