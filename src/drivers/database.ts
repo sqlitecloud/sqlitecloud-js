@@ -89,76 +89,34 @@ export class Database extends EventEmitter {
   /** Returns first available connection from connection pool */
   private createConnection(callback: ConnectionCallback) {
     const { usehttp, usewebsocket, gatewayurl } = this.transportConfig
-    if (usehttp) {
-      this.operations.enqueue(done => {
-        import('./connection-http')
-          .then(module => {
-            this.connection = new module.default(this.config, (error: Error | null) => {
-              if (error) {
-                this.handleError(error, callback)
-              } else {
-                callback?.call(this, null)
-                this.emitEvent('open')
-              }
+    // HTTP only when asked for; socket.io works in both node.js and browsers through the SQLite Cloud Gateway,
+    // and is the fallback where tls is not available; otherwise a direct tls connection to the core
+    const loadTransport = usehttp
+      ? () => import('./connection-http')
+      : isBrowser || usewebsocket || gatewayurl
+        ? () => import('./connection-ws')
+        : () => import('./connection-tls')
 
-              done(error)
-            })
-          })
-          .catch(error => {
-            this.handleError(error, callback)
-            this.close()
+    this.operations.enqueue(done => {
+      loadTransport()
+        .then(module => {
+          this.connection = new module.default(this.config, (error: Error | null) => {
+            if (error) {
+              this.handleError(error, callback)
+            } else {
+              callback?.call(this, null)
+              this.emitEvent('open')
+            }
+
             done(error)
           })
-      })
-      return
-    }
-
-    // connect using websocket if tls is not supported or if explicitly requested
-    const useWebsocket = isBrowser || usewebsocket || gatewayurl
-    if (useWebsocket) {
-      // socket.io transport works in both node.js and browser environments and connects via SQLite Cloud Gateway
-      this.operations.enqueue(done => {
-        import('./connection-ws')
-          .then(module => {
-            this.connection = new module.default(this.config, (error: Error | null) => {
-              if (error) {
-                this.handleError(error, callback)
-              } else {
-                callback?.call(this, null)
-                this.emitEvent('open')
-              }
-
-              done(error)
-            })
-          })
-          .catch(error => {
-            this.handleError(error, callback)
-            this.close()
-            done(error)
-          })
-      })
-    } else {
-      this.operations.enqueue(done => {
-        import('./connection-tls')
-          .then(module => {
-            this.connection = new module.default(this.config, (error: Error | null) => {
-              if (error) {
-                this.handleError(error, callback)
-              } else {
-                callback?.call(this, null)
-                this.emitEvent('open')
-              }
-
-              done(error)
-            })
-          })
-          .catch(error => {
-            this.handleError(error, callback)
-            this.close()
-            done(error)
-          })
-      })
-    }
+        })
+        .catch(error => {
+          this.handleError(error, callback)
+          this.close()
+          done(error)
+        })
+    })
   }
 
   private enqueueCommand(command: string | SQLiteCloudCommand, callback?: ResultsCallback): void {
@@ -430,11 +388,17 @@ export class Database extends EventEmitter {
     this.operations.enqueue(done => {
       this.connection?.close()
 
-      callback?.call(this, null)
-      this.emitEvent('close')
+      const finish = () => {
+        callback?.call(this, null)
+        this.emitEvent('close')
 
-      this.operations.clear()
-      done(null)
+        this.operations.clear()
+        done(null)
+      }
+      // a concurrent transport may still have requests in flight: report closed once they have completed
+      const drained = this.connection?.drain()
+      if (drained) drained.then(finish)
+      else finish()
     })
   }
 

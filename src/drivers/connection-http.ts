@@ -4,8 +4,7 @@ import { SQLiteCloudConnection } from './connection'
 import { decodeGatewayResponse } from './gateway-response'
 import { buildGatewaySqlUrl } from './gateway-url'
 import { ErrorCallback, ResultsCallback, SQLiteCloudCommand, SQLiteCloudConfig, SQLiteCloudError, SQLiteCloudWebsocketBlobTransferFormat } from './types'
-import { encodeBigIntMarkers, encodeBlobMarker, getAbortError } from './utilities'
-import { Buffer } from 'buffer'
+import { encodeBigIntMarkers, encodeBlobMarker, getAbortError, toBuffer } from './utilities'
 
 /** HTTP binds and rowsets are plain JSON, so BLOBs always travel as base64-blobs-v2 markers. */
 const HTTP_BLOB_TRANSFER_FORMAT: SQLiteCloudWebsocketBlobTransferFormat = 'base64-blobs-v2'
@@ -14,6 +13,7 @@ const HTTP_BLOB_TRANSFER_FORMAT: SQLiteCloudWebsocketBlobTransferFormat = 'base6
 export class SQLiteCloudHttpConnection extends SQLiteCloudConnection {
   private closed = false
   private readonly pending = new Set<AbortController>()
+  private readonly drained: Array<() => void> = []
 
   get connected(): boolean {
     return !this.closed
@@ -44,6 +44,7 @@ export class SQLiteCloudHttpConnection extends SQLiteCloudConnection {
       clearTimeout(timeout)
       signal?.removeEventListener('abort', abort)
       this.pending.delete(controller)
+      if (this.pending.size === 0) this.drained.splice(0).forEach(resolve => resolve())
       callback?.call(this, error, result)
     }
     const abort = () => controller.abort((signal as AbortSignal & { reason?: unknown }).reason)
@@ -71,8 +72,7 @@ export class SQLiteCloudHttpConnection extends SQLiteCloudConnection {
       .then(result => finish(null, result))
       .catch(error => {
         if (controller.signal.aborted) {
-          const reason = (controller.signal as AbortSignal & { reason?: unknown }).reason
-          finish(reason instanceof Error ? reason : signal ? getAbortError(signal) : new SQLiteCloudError('Request aborted', { errorCode: 'ERR_ABORTED' }))
+          finish(getAbortError(controller.signal))
           return
         }
         if (error instanceof SQLiteCloudError) {
@@ -133,38 +133,31 @@ export class SQLiteCloudHttpConnection extends SQLiteCloudConnection {
   }
 
   private headers(): Record<string, string> {
-    const token = this.config.apikey || this.config.token
+    const token = this.config.unauthenticated ? undefined : this.config.apikey || this.config.token
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (token) headers.Authorization = `Bearer ${token}`
     return headers
   }
 
+  /** Stops accepting commands. Requests already sent run to completion: the server has them, so aborting here would misreport a committed write. */
   close(): this {
     this.closed = true
-    for (const controller of this.pending) {
-      controller.abort(new SQLiteCloudError('Connection closed', { errorCode: 'ERR_CONNECTION_CLOSED' }))
-    }
-    this.pending.clear()
     this.operations.clear()
     return this
+  }
+
+  drain(): Promise<void> | undefined {
+    if (this.pending.size === 0) return undefined
+    return new Promise(resolve => this.drained.push(resolve))
   }
 }
 
 /** JSON bind parameters: a binary value becomes a base64-blobs-v2 marker, anything else keeps its tagged BigInt form. */
 function encodeHttpBindings(parameters?: SQLiteCloudCommand['parameters']): any[] | undefined {
   return parameters?.map(value => {
-    const buffer = binaryBuffer(value)
+    const buffer = toBuffer(value)
     return buffer ? encodeBlobMarker(buffer) : encodeBigIntMarkers(value)
   })
-}
-
-function binaryBuffer(value: unknown): Buffer | undefined {
-  if (Buffer.isBuffer(value)) return value
-  if (value instanceof ArrayBuffer) return Buffer.from(value)
-  if (typeof ArrayBuffer !== 'undefined' && ArrayBuffer.isView(value as ArrayBufferView)) {
-    const view = value as ArrayBufferView
-    return Buffer.from(view.buffer, view.byteOffset, view.byteLength)
-  }
 }
 
 function httpErrorCode(status: number): string {

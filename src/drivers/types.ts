@@ -173,7 +173,8 @@ export type SQLiteCloudDataTypes =
 export interface SQLiteCloudCommand {
   query: string
   parameters?: SQLiteCloudDataTypes[]
-  /** Cancels this command before or while its transport request is running. */
+  /** Cancels this command while it waits in the connection queue, with ERR_ABORTED. Over HTTP it also aborts the request in flight;
+   *  over TLS and WebSocket a command already sent runs to completion and its result is returned. */
   signal?: AbortSignal
 }
 

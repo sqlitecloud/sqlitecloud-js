@@ -4,6 +4,7 @@ import { Database } from '../src/drivers/database'
 import { OperationsQueue } from '../src/drivers/queue'
 import { SQLiteCloudRowset } from '../src/drivers/rowset'
 import { buildGatewaySqlUrl } from '../src/drivers/gateway-url'
+import { SQLiteCloudError } from '../src/drivers/types'
 
 const fetchMock: any = jest.fn()
 
@@ -78,6 +79,24 @@ describe('Database with usehttp', () => {
     db.close()
   })
 
+  it('close() waits for a request in flight and reports its result instead of failing it', async () => {
+    let respond: (value: unknown) => void = () => {}
+    fetchMock.mockReturnValueOnce(new Promise(resolve => (respond = resolve)))
+    const db = new Database(connectionstring)
+    const events: string[] = []
+
+    const rows = db.sql`UPDATE t SET x = 1`.then(result => (events.push('result'), result))
+    while (fetchMock.mock.calls.length === 0) await new Promise(resolve => setTimeout(resolve, 1))
+    const closed = new Promise<void>(resolve => db.close(() => (events.push('closed'), resolve())))
+    await new Promise(resolve => setTimeout(resolve, 5))
+    expect(events).toEqual([])
+
+    respond(jsonResponse(oneRow))
+    await expect(rows).resolves.toHaveLength(1)
+    await closed
+    expect(events.sort()).toEqual(['closed', 'result'])
+  })
+
   it('runs a query issued from the open callback', async () => {
     fetchMock.mockResolvedValue(jsonResponse(oneRow))
 
@@ -93,6 +112,53 @@ describe('Database with usehttp', () => {
 })
 
 describe('HTTP gateway transport', () => {
+  it('close() lets a request in flight complete, drain() settles after it, and later commands are refused', async () => {
+    let respond: (value: unknown) => void = () => {}
+    fetchMock.mockReturnValueOnce(new Promise(resolve => (respond = resolve)))
+    const db = await openConnection()
+
+    const result = commandResult(db, 'UPDATE t SET x = 1')
+    db.close()
+    const drained = db.drain()
+    expect(drained).toBeInstanceOf(Promise)
+    expect(db.connected).toBe(false)
+
+    respond(jsonResponse({ data: 'OK' }))
+    await expect(result).resolves.toBe('OK')
+    await drained
+    expect(db.drain()).toBeUndefined()
+    await expect(commandResult(db, 'SELECT 1')).rejects.toMatchObject({ errorCode: 'ERR_CONNECTION_CLOSED' })
+  })
+
+  it('reports an abort as a SQLiteCloudError with ERR_ABORTED whatever the signal reason is', async () => {
+    fetchMock.mockImplementationOnce(
+      (_url: string, init: any) => new Promise((_resolve, reject) => init.signal.addEventListener('abort', () => reject(init.signal.reason)))
+    )
+    const db = await openConnection()
+    const controller = new AbortController()
+
+    const result = commandResult(db, { query: 'SELECT 1', signal: controller.signal })
+    controller.abort() // the reason is the runtime's own DOMException
+
+    await expect(result).rejects.toBeInstanceOf(SQLiteCloudError)
+    await expect(result).rejects.toMatchObject({ errorCode: 'ERR_ABORTED' })
+  })
+
+  it('sends no Authorization header when unauthenticated', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ data: 1 }))
+    const db = new SQLiteCloudHttpConnection({
+      host: 'tenant.g4.sqlite.cloud',
+      apikey: 'secret',
+      database: 'test.sqlite',
+      gatewayurl: 'http://localhost:8090',
+      unauthenticated: true
+    })
+
+    await commandResult(db, 'SELECT 1')
+
+    expect(fetchMock.mock.calls[0]?.[1]?.headers).toEqual({ 'Content-Type': 'application/json' })
+  })
+
   it('posts independent commands with tagged bigint and tagged base64 BLOB bindings', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ data: 1 }))
     const db = connection()

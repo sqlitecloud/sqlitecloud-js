@@ -78,3 +78,14 @@ describe('Format command', () => {
     })
   })
 })
+
+describe('Format command with binary views', () => {
+  it('should serialize typed arrays, DataViews and ArrayBuffers like Buffers', () => {
+    const expected = formatCommand({ query: 'SELECT ?', parameters: [Buffer.from('hello')] })
+    const bytes = new Uint8Array([104, 101, 108, 108, 111])
+
+    expect(formatCommand({ query: 'SELECT ?', parameters: [bytes] })).toEqual(expected)
+    expect(formatCommand({ query: 'SELECT ?', parameters: [bytes.buffer] })).toEqual(expected)
+    expect(formatCommand({ query: 'SELECT ?', parameters: [new DataView(new Uint8Array([0, ...bytes, 0]).buffer, 1, 5)] })).toEqual(expected)
+  })
+})

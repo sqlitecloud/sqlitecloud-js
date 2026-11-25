@@ -208,6 +208,12 @@ export function validateConfiguration(config: SQLiteCloudConfig): SQLiteCloudCon
     console.error('SQLiteCloudConnection.validateConfiguration - missing arguments', config)
     throw new SQLiteCloudError('The user, password and host arguments, the ?apikey= or the ?token= must be specified.', { errorCode: 'ERR_MISSING_ARGS' })
   }
+  // the gateway's HTTP route authenticates with a bearer token only, so a password would fail every query with 401
+  if (config.usehttp && !config.unauthenticated && !config.apikey && !config.token) {
+    throw new SQLiteCloudError('The HTTP transport (usehttp) needs ?apikey= or ?token=; username and password are not supported over HTTP.', {
+      errorCode: 'ERR_MISSING_ARGS'
+    })
+  }
 
   if (!config.connectionstring && !config.unauthenticated) {
     // build connection string from configuration, values are already validated
@@ -343,13 +349,15 @@ const BIGINT_MARKER_KEY = '__sqlitecloud_bigint'
 const BLOB_MARKER_KEY = '__sqlitecloud_blob'
 const BIGINT_MARKER_RE = /^-?\d+n$/
 
+/** The bytes of a Buffer, ArrayBuffer or typed array view as a Buffer, or undefined for any other value. */
+export function toBuffer(value: unknown): Buffer | undefined {
+  if (Buffer.isBuffer(value)) return value
+  if (value instanceof ArrayBuffer) return Buffer.from(value)
+  if (typeof ArrayBuffer !== 'undefined' && ArrayBuffer.isView(value)) return Buffer.from(value.buffer, value.byteOffset, value.byteLength)
+}
+
 function isBinaryValue(value: unknown): value is Buffer | Uint8Array | ArrayBuffer {
-  return (
-    Buffer.isBuffer(value) ||
-    value instanceof Uint8Array ||
-    value instanceof ArrayBuffer ||
-    (typeof ArrayBuffer !== 'undefined' && ArrayBuffer.isView(value as ArrayBufferView))
-  )
+  return toBuffer(value) !== undefined
 }
 
 /** Convert values that JSON cannot represent losslessly into sqlitecloud-js bigint markers. */
@@ -409,10 +417,11 @@ export function decodeBigIntMarkers(value: any, safeIntegerMode?: SQLiteCloudSaf
   return value
 }
 
-/** Returns an Error suitable for completing a command that its caller cancelled. */
-export function getAbortError(signal: AbortSignal): Error {
+/** The SQLiteCloudError a cancelled command completes with: always ERR_ABORTED, so callers can recognise an abort, with the signal's own reason kept as cause. */
+export function getAbortError(signal: AbortSignal): SQLiteCloudError {
   const reason = (signal as AbortSignal & { reason?: unknown }).reason
-  if (reason instanceof Error) return reason
+  if (reason instanceof SQLiteCloudError) return reason
+  if (reason instanceof Error) return new SQLiteCloudError(reason.message || 'Request aborted', { errorCode: 'ERR_ABORTED', cause: reason })
   return new SQLiteCloudError(typeof reason === 'string' ? reason : 'Request aborted', { errorCode: 'ERR_ABORTED' })
 }
 

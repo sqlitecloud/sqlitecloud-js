@@ -86,6 +86,10 @@ const rows = await database.sql({ query: 'SELECT * FROM tracks LIMIT ?', paramet
 
 HTTP has no session. A transaction must be contained in one request; do not split `BEGIN`, writes, and `COMMIT` across `database.sql()` calls. The same applies to temporary tables, `ATTACH`, connection-scoped `PRAGMA` settings, and a later `last_insert_rowid()` call. HTTP construction does not make a network request, so invalid credentials or an unavailable gateway are reported by the first query rather than the constructor callback.
 
+Commands are not ordered. Each one is sent as soon as it is issued, so `run`, `exec`, `all` and `Statement` calls that depend on an earlier one must wait for its result, by awaiting or through the callback. `database.close()` waits for the requests already in flight and reports their results, so a write the server received is never reported as failed.
+
+HTTP authenticates with `apikey` or `token`; a username and password are rejected when the configuration is validated. A `signal` cancels an HTTP request while it is running with `ERR_ABORTED`. On the TLS and WebSocket transports it cancels a command only while it waits in the queue; a command already sent runs to completion.
+
 When using a localhost gateway with HTTP, configure a tenant-aware local reverse proxy. Browser and Node Fetch implementations do not reliably allow the driver to set the tenant `Host` header; the WebSocket transport remains the direct localhost option.
 
 ## Examples

@@ -8,6 +8,7 @@ import {
   decodeGatewayRowsetData,
   encodeBigIntMarkers,
   encodeBlobMarker,
+  getAbortError,
   getInitializationCommands,
   parseconnectionstring,
   parseSafeIntegerMode,
@@ -312,6 +313,34 @@ describe('safe integer marker utilities', () => {
     expect(decodeBigIntMarkers({ __sqlitecloud_bigint: '9223372036854775807' }, 'bigint')).toBe(BigInt('9223372036854775807'))
     expect(decodeBigIntMarkers({ id: { __sqlitecloud_bigint: '9223372036854775807' } }, 'mixed')).toEqual({ id: BigInt('9223372036854775807') })
     expect(decodeBigIntMarkers('9223372036854775807n', 'number')).toBe('9223372036854775807n')
+  })
+})
+
+describe('validateConfiguration() with usehttp', () => {
+  it('should reject username and password, since the gateway HTTP route takes a bearer token only', () => {
+    expect(() => validateConfiguration({ host: 'host', username: 'user', password: 'pass', usehttp: true })).toThrow('usehttp')
+    expect(validateConfiguration({ host: 'host', apikey: 'key', usehttp: true }).usehttp).toBe(true)
+    expect(validateConfiguration({ host: 'host', token: 'tok', usehttp: true }).usehttp).toBe(true)
+    expect(validateConfiguration({ host: 'host', unauthenticated: true, usehttp: true }).usehttp).toBe(true)
+  })
+})
+
+describe('getAbortError', () => {
+  it('should always return a SQLiteCloudError with ERR_ABORTED and keep the reason as cause', () => {
+    const plain = new AbortController()
+    plain.abort()
+    expect(getAbortError(plain.signal)).toBeInstanceOf(SQLiteCloudError)
+    expect(getAbortError(plain.signal)).toMatchObject({ errorCode: 'ERR_ABORTED' })
+
+    const reason = new Error('user cancelled')
+    const withError = new AbortController()
+    withError.abort(reason)
+    expect(getAbortError(withError.signal)).toMatchObject({ errorCode: 'ERR_ABORTED', message: 'user cancelled', cause: reason })
+
+    const own = new SQLiteCloudError('timed out', { errorCode: 'ERR_CONNECTION_TIMEOUT' })
+    const withOwn = new AbortController()
+    withOwn.abort(own)
+    expect(getAbortError(withOwn.signal)).toBe(own)
   })
 })
 

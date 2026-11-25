@@ -166,4 +166,10 @@ export abstract class SQLiteCloudConnection {
 
   /** Disconnect from server, release transport. */
   public abstract close(): this
+
+  /** A promise that settles once every request already sent to the server has completed, or undefined when nothing is in flight.
+   *  Database.close() waits on it, so a write the server already received is never reported as failed. */
+  public drain(): Promise<void> | undefined {
+    return undefined
+  }
 }
