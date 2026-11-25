@@ -10,6 +10,7 @@
   },
   "//": "FOLLOW THIS GUIDE IF YOU WANT TO UPDATE EXPO, DETOX OR @CONFIG-PLUGINS/DETOX. WRONG VERSIONS COULD BREAK THE CI. https://www.npmjs.com/package/@config-plugins/detox",
   "dependencies": {
+    "@craftzdog/react-native-buffer": "^6.0.5",
     "@expo/metro-runtime": "^4.0.0",
     "@react-native-picker/picker": "^2.10.1",
     "@react-navigation/native": "^7.0.9",
@@ -26,6 +27,7 @@
     "react-native-safe-area-context": "^4.14.0",
     "react-native-screens": "^4.3.0",
     "react-native-tcp-socket": "^6.2.0",
+    "react-native-url-polyfill": "^2.0.0",
     "react-native-vector-icons": "^10.2.0"
   },
   "devDependencies": {
