@@ -206,7 +206,7 @@ jobs:
         run: |
           npm i
           npx next dev -p 3005 &
-          sleep 3
+          for i in $(seq 1 60); do curl -s -o /dev/null localhost:3005 && break; sleep 1; done
           node_test=$(curl localhost:3005)
           node_test2=$(curl localhost:3005/api/hello)
 
@@ -225,7 +225,7 @@ jobs:
             bun i #re-installing dependencies in windows with bash causes a panic
           fi
           bun next dev -p 3004 &
-          sleep 3
+          for i in $(seq 1 60); do curl -s -o /dev/null localhost:3004 && break; sleep 1; done
           bun_test=$(curl localhost:3004)
           bun_test2=$(curl localhost:3004/api/hello)
           if [[ $bun_test == *"next.js json route"* && $bun_test2 == *"{\"data\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
@@ -240,7 +240,7 @@ jobs:
         working-directory: examples/with-typescript-nextjs
         run: |
           deno run dev &
-          sleep 3
+          for i in $(seq 1 60); do curl -s -o /dev/null localhost:3003 && break; sleep 1; done
           #not testing index page because it throws an error with deno
           deno_test=$(curl localhost:3003/api/hello)
           if [[ $deno_test == *"{\"data\":[{\"TrackId\":1,\"Name\":\"For Those About To Rock (We Salute You)\",\"AlbumId\":1,\"MediaTypeId\":1,\"GenreId\":1,\"Composer\":\"Angus Young, Malcolm Young, Brian Johnson\",\"Milliseconds\":343719,\"Bytes\":11170334,\"UnitPrice\":0.99},{"* ]]; then
